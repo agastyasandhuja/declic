@@ -1,8 +1,55 @@
 # Atlas provisioning handoff — Adi
 
-November 14, 2026. User asked Adi to take the shared cloud database setup while
-preserving teammate workflows. **No Atlas project/cluster/user has been created
-or verified by this work yet. The user is applying for GitHub Education/student credits and explicitly deferred connecting/provisioning until those are available.**
+November 14, 2026. **Hosted Atlas initialization is verified.** The user created
+a Free/M0 cluster and saved the database credential locally. The application
+database is `hackumass`. Adi's two domain drafts and Agastya's existing shared
+API/video migrations are applied. TLS connection, transaction commit/rollback,
+validator/index metadata and shared job constraints passed hosted checks.
+
+This establishes the database foundation. It does not establish deployed API
+hosting, real account-to-API integration, academic persistence, Storage signing
+or physical-iPhone acceptance.
+
+## Hosted result — November 14, 2026
+
+- First successful user-run read-only check: `2026-11-14T16:20:16.699698+00:00`.
+- Applied the existing Adi installer: app_profiles and entertainment_catalogs;
+  validators/indexes match, strict error enforcement enabled.
+- Used Agastya's published source snapshot
+  `36fbc201228cfad0055cc895b4d8af02930c509f`, without merging or modifying it.
+  Verified migration/config/database/collection/video-repository blobs against
+  their Git object hashes before execution. A read-only guard found a fresh
+  shared namespace, so existing shared schemas were not overwritten.
+- Executed the owner's `apply_ordered(database, include_videos=True)`: migration
+  `001_api_learning_runtime` creates 12 API collections; `002_video_indexes`
+  initializes 3 video collections. Both migration markers are now present.
+  Core validator/index definitions and video indexes match the published source.
+  The core startup migration check passes. Adi schemas stayed unchanged and
+  unrelated collections were preserved. No teammate implementation was edited.
+- Final hosted preflight: `2026-11-14T16:30:48.734149+00:00`; connection, replica
+  set/sessions, both owned schemas/indexes, both core migration markers and
+  transaction commit/rollback/cleanup all passed. The temporary probe was removed.
+- Separate hosted job checks: invalid api_jobs documents were rejected (121),
+  duplicate owner/job-type/dedupe-key records were rejected (11000), and all
+  synthetic job inserts were aborted. No synthetic jobs remain or were queued.
+- Bootstrap wrappers/reports remain ignored under .local/atlas-readiness. Only
+  safe results are recorded here; no URI, username, password or provider data is
+  committed. services/api/.env remains ignored with mode 0600.
+
+### Remaining access and integration handoff
+
+The currently saved credential has a broad database role (observed, not guessed).
+A dedicated runtime database user with readWrite scoped to hackumass still needs
+to be configured before deploying the API; bootstrap credentials are not the
+intended runtime identity. No database-user grants or project IP rules were
+changed by the agent. Current workstation connectivity works; deployed backend
+network access must be configured for the actual host.
+
+Agastya retains runtime/migration assembly and real adapter/router integration.
+Amogh's published branch still uses local academic JSON persistence; his Atlas
+repository/collection definitions remain his work. No academic schemas were
+invented, no Canvas/Gemini requests were made and no private source data was
+uploaded. Supabase private Storage setup remains separate.
 
 ## Work split
 
@@ -21,18 +68,18 @@ Existing runtime implementations and contracts remain with their owners.
 ## Current remote compatibility evidence
 
 Inspected Agastya's published feature branch at
-`c84f6d1ec2c2f7c45b1b85b3721d50711c95a5c5`:
+`36fbc201228cfad0055cc895b4d8af02930c509f`:
 
-- [API status](https://github.com/agastyasandhuja/hackumass-14/blob/c84f6d1ec2c2f7c45b1b85b3721d50711c95a5c5/docs/status/AGASTYA_API.md)
-  records a shared runtime, local replica-set tests and ordered migrations; hosted
-  Atlas access remains pending. Earlier Adi status saying shared code is absent
-  describes Adi's older checkout, not this newer remote branch.
-- [Configuration](https://github.com/agastyasandhuja/hackumass-14/blob/c84f6d1ec2c2f7c45b1b85b3721d50711c95a5c5/services/api/app/core/config.py)
+- [API status](https://github.com/agastyasandhuja/hackumass-14/blob/36fbc201228cfad0055cc895b4d8af02930c509f/docs/status/AGASTYA_API.md)
+  records a shared runtime, local replica-set tests and ordered migrations. The
+  hosted checks above extend that published checkpoint. Earlier Adi status saying
+  shared code is absent describes Adi's older checkout, not this remote branch.
+- [Configuration](https://github.com/agastyasandhuja/hackumass-14/blob/36fbc201228cfad0055cc895b4d8af02930c509f/services/api/app/core/config.py)
   uses `MONGODB_URI`, `MONGODB_DATABASE=hackumass`, and verified TLS in production.
-- [Manifest](https://github.com/agastyasandhuja/hackumass-14/blob/c84f6d1ec2c2f7c45b1b85b3721d50711c95a5c5/services/api/pyproject.toml)
+- [Manifest](https://github.com/agastyasandhuja/hackumass-14/blob/36fbc201228cfad0055cc895b4d8af02930c509f/services/api/pyproject.toml)
   pins PyMongo 4.15.5. Adi's isolated dev lock now matches that pin; existing local
   provider environments are preserved. Do not upgrade the shared lock to 4.17.0.
-- [Ordered setup](https://github.com/agastyasandhuja/hackumass-14/blob/c84f6d1ec2c2f7c45b1b85b3721d50711c95a5c5/services/api/app/core/migrate.py)
+- [Ordered setup](https://github.com/agastyasandhuja/hackumass-14/blob/36fbc201228cfad0055cc895b4d8af02930c509f/services/api/app/core/migrate.py)
   applies `001_api_learning_runtime`, optionally `002_video_indexes`. It already
   owns API/video schema assembly; this handoff does not create replacement migrations.
 - Core collections are `api_*`. Adi's `app_profiles` and
@@ -42,13 +89,12 @@ Inspected Agastya's published feature branch at
   mounting Adi's verifier/catalog adapters; the inspected manifest currently has
   it only in the development group. Adi does not edit the shared manifest.
 
-## Provisioning target to review
+## Provisioning choices and access review
 
-Reuse an existing team Atlas project if available. Otherwise, proposed names are
-project `HackUMass 14`, cluster `hackumass14-dev`, database `hackumass`.
-Start with an explicitly selected **Free/M0** deployment for the prototype; the
-provider/region must be available for that tier and should match the backend
-region where practical. Do not silently create a paid tier or consume credits.
+The user selected **Free/M0** and cluster `hackumass14`; the initialized application
+database is `hackumass`. For future provisioning, the provider/region must support
+the chosen tier and should match the backend region where practical. No paid tier
+or credits were configured by the agent.
 Any later upgrade is a separate cost decision. No sample dataset is needed.
 
 Proposed database identities, restricted to this database/cluster:
@@ -157,8 +203,8 @@ do not create collections, transaction commit/rollback/cleanup work, and an
 unrelated synthetic collection remains intact. Final run: **13/13 passed**, also including the full CLI and an existing
 warn-only validation policy that initialization refuses to overwrite. CLI --help,
 pip check and the owned wire-validator drift check passed. The temporary replica
-set was stopped after verification. Hosted checks remain deferred at the user's
-request until education/credit access is available.
+set was stopped after verification. These were the preparation checks; hosted
+results are now recorded above after the user proceeded with Free/M0.
 
 ## Official references checked
 
@@ -175,6 +221,6 @@ Atlas can wrap authentication and permission errors in server code 8000. The
 preflight now distinguishes known authentication phrases (AUTH_FAILED) from
 permission phrases (ACCESS_DENIED), keeping all raw messages/credentials private.
 The first hosted check reached Atlas but authentication was rejected before any
-schema work. Re-enter the database-user credential locally; missing migrations
-cannot explain that pre-authentication failure. A working hosted connection has
-not yet been verified.
+schema work; missing migrations could not explain that failure. The user
+subsequently corrected the credential locally. Hosted authentication and setup
+now pass as recorded above.

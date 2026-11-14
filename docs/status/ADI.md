@@ -1,5 +1,74 @@
 # Adi status
 
+## Hosted Atlas initialized — November 14, 2026
+
+**The shared database foundation is now hosted and verified.** The user selected
+Free/M0, corrected the database-user credential locally, and completed a read-only
+check at 2026-11-14T16:20:16.699698+00:00. No credential values appear in this file.
+This section supersedes earlier pending-credit/failed-authentication checkpoints.
+
+### Changes applied and actual results
+
+1. Ran `PYTHONPATH=services/api .local/atlas-readiness/venv/bin/python -m
+   app.modules.auth.atlas_preflight --env-file services/api/.env
+   --apply-owned-drafts --write-test` against Atlas `hackumass`.
+   **PASS**: app_profiles and entertainment_catalogs created; strict validators,
+   unique owner indexes and catalog TTL match the owned drafts. Majority commit,
+   snapshot rollback and exact synthetic probe cleanup passed.
+2. Read latest Agastya source at 36fbc201228cfad0055cc895b4d8af02930c509f.
+   Fetched it without switching/merging branches; exported an ignored source
+   snapshot under .local/atlas-readiness/shared-snapshot-36fbc201. Verified the
+   migration/config/database/collection/video-repository source blobs against Git
+   hashes. No shared Python source, manifest or ordered migration was edited.
+3. Installed only the missing pydantic-settings 2.16.3 and python-dotenv 1.2.4
+   into the isolated Atlas environment, matching Agastya's lock. Driver remains
+   PyMongo 4.15.5. `pip check` passed.
+4. Ran `.local/atlas-readiness/venv/bin/python
+   .local/atlas-readiness/bootstrap_shared.py` in read-only planning mode.
+   **PASS**: source hashes match, target is hackumass, shared namespaces are fresh,
+   existing Adi schemas match. Existing unrecorded shared schema would stop setup
+   for review rather than be overwritten.
+5. Ran the same wrapper with `--apply`, executing the unmodified owner's
+   `apply_ordered(database, include_videos=True)`.
+   **PASS**: 001_api_learning_runtime (12 API collections), then 002_video_indexes
+   (3 video collections). Both markers are present; core startup migration check
+   passes. All core validators/indexes and required video indexes match source;
+   Adi schemas are unchanged and unrelated collections are preserved.
+6. Ran final owned preflight with `--write-test` at
+   2026-11-14T16:30:48.734149+00:00.
+   **PASS**: actual Atlas connection, replica set/sessions, both Adi schemas/indexes,
+   both core migration markers, commit, rollback and probe_cleanup are true.
+   `owned_draft_apply_requested=false` here means no second apply was requested.
+7. Separate hosted api_jobs checks at 2026-11-14T16:30:52.767932+00:00:
+   **PASS**: invalid document rejected with 121; duplicate scoped dedupe key
+   rejected with 11000; both synthetic transactions aborted and no synthetic jobs
+   remain. No real jobs, private course records or provider outputs were inserted.
+8. Owned wire-validator drift check and `pip check` passed. No code change
+   required a mobile rerun. Documentation, Git-ignore and credential-marker
+   checks passed before the handoff commit.
+
+### Handoff and remaining work
+
+- Shared client/migration assembly stays with Agastya; existing published commands
+  were executed, not rewritten. Teammates use server-only MONGODB_URI and
+  MONGODB_DATABASE=hackumass. Secrets remain in local/deployment configuration,
+  not Git or the phone. No teammate messages, invitations or credentials were sent.
+- The saved bootstrap credential has broad database permissions. Create a
+  dedicated runtime identity scoped readWrite to hackumass before API deployment;
+  no role grants/changes were made automatically. Current workstation access
+  works, but deployed backend egress/IP configuration remains to be set.
+- Amogh's current published status still uses a local JSON academic store; his
+  Atlas persistence/collection drafts remain his task. No academic schemas were
+  invented or changed here. No Canvas/Gemini or generation services were invoked.
+- API hosting, owner-adapter registration, Supabase private Storage authorization,
+  actual authenticated app/API flow and physical-iPhone acceptance remain open.
+  Hosted database readiness does not establish those integrations.
+- Redacted local evidence: .local/atlas-readiness/report.json,
+  shared-bootstrap-report.json and shared-constraint-report.json, all mode 0600.
+  Bootstrap snapshot/helpers remain ignored. The backend .env stays mode 0600
+  and ignored. No raw URI/password, personal catalog or media was staged.
+- Runbook updated at [ADI_ATLAS_SETUP.md](../ADI_ATLAS_SETUP.md).
+
 ## Hosted Atlas authentication diagnostic — November 14, 2026
 
 The user proceeded with a Free cluster after credits were unavailable and ran the

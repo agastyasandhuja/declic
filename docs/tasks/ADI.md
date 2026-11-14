@@ -70,13 +70,16 @@ for commands, fixtures versus live results, and the remaining device checks.
 | 5. Secure device sessions | SecureStore chunking, torn-write/Unicode tests and explicit corrupted-session clearing. No password persistence. | Actual authenticated device restart/logout. |
 | 6. Shared authenticated client and server adapter | HTTPS-only bearer client, safe refresh/replay and body deadline. SupabaseVerifier plus identity router; missing/forged tokens and ownership tested. Real configured Supabase rejected an invalid token with 401. | Successful real-account protected API call and shared-core route assembly. |
 | 7. Fixture entertainment adapter | Five public test clips, finite pages, unavailable/expiry fixtures, no Canvas/Atlas dependency. Native playback/paging observed. | Physical-phone playback acceptance. |
-| 8. Exact setup/env/handoff | Mobile README/.env.example; owned API READMEs, server env placeholders and isolated dependency lock. | Deployment HTTPS origin and live Atlas configuration. |
+| 8. Exact setup/env/handoff | Mobile README/.env.example; owned API READMEs, server env placeholders and isolated dependency lock. | Deployment HTTPS API origin and scoped Atlas runtime credential. |
 
 Adi's identity/entertainment repositories, validators, indexes and backfill drafts
-are implemented and tested against a real local MongoDB 8.0.38 server. Agastya
-still integrates the shared client/dependencies, ordered migrations and routes.
-Cloud Atlas has not been provisioned or connected; Amogh's/Agastya's collections
-and application code have not been edited.
+are implemented and tested against a real local MongoDB 8.0.38 server. Hosted
+Atlas now also passes connection, commit/rollback and shared constraint checks.
+The published core/video migrations from Agastya's source snapshot
+36fbc201 are applied; his runtime/migration source and Amogh's academic code were
+not edited. Agastya still integrates real owner adapters/routes and runtime
+dependencies; Amogh still owns academic persistence. A scoped runtime credential,
+API hosting and physical-device acceptance remain open.
 
 ## Milestone A2 — provider acquisition experiment
 
