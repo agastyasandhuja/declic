@@ -97,6 +97,7 @@ class FeedService:
         item = {"item_id": new_id(), "inserted_at": iso(now), **item}
         data = {
             "item": item,
+            "curriculum_revision": state.get("curriculum_revision", 0),
             "history": history,
             "watch_ms": 0,
             "reported_watch_ms": 0,
@@ -130,7 +131,8 @@ class FeedService:
         }
         for exposure in reversed(exposures):
             definitions = self.quizzes.list_for_objective(user_id, exposure["objective_id"])
-            for definition in sorted(definitions, key=lambda q: (q.quiz_id, -q.revision)):
+            quiz_history = state.get("quiz_definition_history", [])
+            for definition in sorted(definitions, key=lambda q: (quiz_history.count(q.quiz_id), q.quiz_id, -q.revision)):
                 if not set(definition.objective_ids).issubset(exposed_objectives & authorized) or (
                     definition.scope == "private" and definition.owner_user_id != user_id
                 ):
@@ -169,6 +171,7 @@ class FeedService:
                         },
                     },
                 )
+                state["quiz_definition_history"] = [*quiz_history, definition.quiz_id][-100:]
                 state["required_quiz_instance_id"] = instance_id
                 return item
         return None

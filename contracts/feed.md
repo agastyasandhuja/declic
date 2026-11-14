@@ -105,3 +105,18 @@ User-facing reason text must not claim confirmed exam scope from inferred eviden
 ```
 
 The correct answer is intentionally absent from this payload.
+
+## Explicit seeking and curriculum switching
+
+`playback_seeked` is an additive playback event. Mobile first flushes preceding
+progress, sends the intended `position_ms` with **unchanged** last-reported
+`visible_watch_ms`, then waits for acknowledgement and actual player position
+settling before reporting more progress. The server requires an active owned
+foreground occurrence, validates duration bounds, accepts the position regression,
+awards zero watch/active/exposure credit and resets time anchors. Ordinary progress
+still cannot move backwards. Playback speed never multiplies wall-visible credit.
+
+Account-level demo mode and its ungraded old-gate recovery are specified in
+[the shared demo contract](demo-catalog.md). Mode changes reject late playback
+from the previous curriculum, including started cards. Old quiz answers cannot
+create a new grade after the gate was recovered.

@@ -46,6 +46,8 @@ class PlaybackEvents:
         row = repo.get_occurrence(conn, user_id, event.session_id, event.item_id)
         data = deepcopy(row["data"])
         item = data["item"]
+        if data.get("curriculum_revision", 0) != state.get("curriculum_revision", 0):
+            raise APIError(409, "CURRICULUM_CHANGED", "Playback belongs to the previous learning mode")
         if data.get("withdrawn"):
             raise APIError(409, "ITEM_UNAVAILABLE", "This feed item is no longer available")
         if item["kind"] == "quiz":
@@ -75,7 +77,7 @@ class PlaybackEvents:
                       and payload.visible_watch_ms >= data["reported_watch_ms"])
         if not control_event and (
             payload.visible_watch_ms < data["reported_watch_ms"]
-            or (payload.position_ms < data["position_ms"] and not looped)
+            or (payload.position_ms < data["position_ms"] and not looped and kind != "playback_seeked")
         ):
             raise APIError(422, "NON_MONOTONIC_PROGRESS", "Playback progress must be monotonic")
         if kind == "app_foregrounded":
@@ -84,6 +86,14 @@ class PlaybackEvents:
         elif kind == "app_backgrounded":
             state["foreground"] = False
             state["current_item_id"] = None
+        elif kind == "playback_seeked":
+            if (not state["foreground"] or state["current_item_id"] != event.item_id
+                    or not data["started"] or data["terminal"]):
+                raise APIError(409, "PLAYBACK_INACTIVE", "Seek requires active foreground playback")
+            if payload.visible_watch_ms != data["reported_watch_ms"]:
+                raise APIError(422, "INVALID_PROGRESS", "Seeking cannot add watch time")
+            data.update(anchor_client=iso(at), anchor_server=iso(now),
+                        anchor_reported=payload.visible_watch_ms, anchor_credited=data["watch_ms"])
         elif kind == "playback_started":
             if not state["foreground"] or data["terminal"]:
                 raise APIError(409, "PLAYBACK_INACTIVE", "Playback cannot start in this state")
