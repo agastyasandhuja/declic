@@ -20,10 +20,10 @@ export function FeedTouchArea({ interaction, paused, error, onToggle }: { intera
     </Pressable>)}</View>;
 }
 
-export function FeedSheet({ title, open, onClose, children }: React.PropsWithChildren<{ title: string; open: boolean; onClose(): void }>) {
+export function FeedSheet({ title, open, onClose, children, compact = false }: React.PropsWithChildren<{ title: string; open: boolean; onClose(): void; compact?: boolean }>) {
   return <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
     <View style={styles.modal}><Pressable accessibilityRole="button" accessibilityLabel="Close sheet" onPress={onClose} style={StyleSheet.absoluteFill} />
-      <View accessibilityViewIsModal style={styles.sheet}><View style={styles.handle} /><View style={styles.sheetHeader}><Text accessibilityRole="header" style={styles.heading}>{title}</Text><Pressable accessibilityRole="button" accessibilityLabel="Close sheet" onPress={onClose} style={styles.close}><Ionicons name="close" size={24} color={theme.colors.text} /></Pressable></View>{children}</View>
+      <View accessibilityViewIsModal style={[styles.sheet, compact && { height: '62%', maxHeight: '62%' }]}><View style={styles.handle} /><View style={styles.sheetHeader}><Text accessibilityRole="header" style={styles.heading}>{title}</Text><Pressable accessibilityRole="button" accessibilityLabel="Close sheet" onPress={onClose} style={styles.close}><Ionicons name="close" size={24} color={theme.colors.text} /></Pressable></View>{children}</View>
     </View>
   </Modal>;
 }
@@ -90,3 +90,7 @@ const styles = StyleSheet.create({
   progressWrap: { position: 'absolute', bottom: 0, left: 14, right: 14 }, scrubArea: { height: 30, justifyContent: 'center' }, track: { height: 3, borderRadius: 3, backgroundColor: '#FFFFFF45' }, trackActive: { height: 5 }, fill: { height: '100%', borderRadius: 3, backgroundColor: '#FFFFFF' }, thumb: { position: 'absolute', width: 8, height: 8, borderRadius: 6, top: -2.5, marginLeft: -4, backgroundColor: 'white' }, thumbActive: { width: 14, height: 14, top: -4.5, marginLeft: -7, borderRadius: 7 },
   timeLabel: { position: 'absolute', bottom: 36, alignSelf: 'center', backgroundColor: '#00000099', flexDirection: 'row', gap: 8, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 16 }, time: { color: 'white', fontFamily: theme.fonts.bold, fontSize: 13 },
 });
+
+export function SpeedIndicator({ visible }: { visible: boolean }) {
+  return visible ? <View pointerEvents="none" style={{ position: 'absolute', bottom: 24, alignSelf: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#00000099' }}><Text accessibilityLiveRegion="polite" style={{ color: 'white', fontFamily: theme.fonts.bold, fontSize: 14 }}>▶▶ 2× speed</Text></View> : null;
+}
