@@ -1,6 +1,6 @@
 import { parsePlayback } from '../../contracts/validate';
 import type { PlaybackSource } from '../../contracts/generated';
-export type UnifiedVideo = { item_id: string; kind: 'study_video' | 'entertainment_video'; video: { video_id: string; playback: PlaybackSource; title?: string; caption?: string; source_url?: string | null; creator?: { handle?: string | null; display_name?: string | null } }; course_context?: { title: string }; reason_text?: string };
+export type UnifiedVideo = { item_id: string; kind: 'study_video' | 'entertainment_video'; video: { video_id: string; playback: PlaybackSource; title?: string; caption?: string; thumbnail_url?: string | null; source_url?: string | null; creator?: { handle?: string | null; display_name?: string | null } }; course_context?: { title: string }; reason_text?: string };
 export type UnifiedQuiz = { item_id: string; kind: 'quiz'; quiz: { quiz_instance_id: string; prompt: string; options: { option_id: string; text: string }[] } };
 export type UnifiedItem = UnifiedVideo | UnifiedQuiz;
 export interface UnifiedPage { session_id: string; recommendation_revision: number; items: UnifiedItem[]; next_cursor: string | null }
@@ -17,6 +17,10 @@ export function parseUnifiedPage(value: unknown): UnifiedPage {
     } else if (item.kind === 'study_video' || item.kind === 'entertainment_video') {
       if (!item.video || typeof item.video.video_id !== 'string') throw new Error('Invalid video. Please reload.');
       parsePlayback(item.video.playback);
+      if (item.video.thumbnail_url) {
+        try { const url = new URL(item.video.thumbnail_url); if (url.protocol !== 'https:' || url.username || url.password) throw new Error(); }
+        catch { item.video.thumbnail_url = null; }
+      }
     } else throw new Error('Unknown feed item. Please reload.');
   }
   return p;

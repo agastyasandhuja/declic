@@ -191,6 +191,9 @@ class QuizService:
         return self.database.run(user_id, operation)
 
     def _request_missing_variants(self, conn, user_id, instance, definition, revision, now):
+        # Generic demo mode uses the finite reviewed catalog; never queue private reteaching.
+        if (conn.find_one(tables.users, {"user_id": user_id}) or {}).get("demo_mode"):
+            return
         # This is a reference-only handoff, never a call to a model or renderer.
         try:
             objectives = self.academics.list_objectives(user_id)

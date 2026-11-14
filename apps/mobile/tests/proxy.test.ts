@@ -28,6 +28,13 @@ test('preview transport forwards only app auth to loopback and rejects cookies, 
     assert.equal((await fetch(`${origin}/v1/instagram/browser-session`, { method: 'POST', body: '{}' })).status, 401);
     assert.equal((await fetch(`${origin}/v1/instagram/browser-session`, { headers })).status, 405);
     assert.equal((await fetch(`${origin}/v1/canvas/token`, { method: 'POST', headers, body: 'x'.repeat(70000) })).status, 413);
-    assert.equal(calls, 4);
+    for (const path of ['/v1/learning/settings', '/v1/learning/demo-catalog', '/v1/entertainment/videos/demo/comments?limit=20']) {
+      assert.equal((await fetch(`${origin}${path}`, { headers })).status, 200);
+      assert.equal((await fetch(`${origin}${path}`)).status, 401);
+    }
+    assert.equal((await fetch(`${origin}/v1/learning/settings`, { method: 'PATCH', headers, body: '{"demo_mode":true}' })).status, 200);
+    assert.equal((await fetch(`${origin}/v1/learning/demo-catalog`, { method: 'PATCH', headers, body: '{}' })).status, 405);
+    assert.equal((await fetch(`${origin}/v1/entertainment/videos/demo/comments`, { method: 'POST', headers, body: '{}' })).status, 405);
+    assert.equal(calls, 8);
   } finally { await Promise.all([new Promise<void>(resolve => proxy.close(() => resolve())), new Promise<void>(resolve => upstream.close(() => resolve()))]); }
 });

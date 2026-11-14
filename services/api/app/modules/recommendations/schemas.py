@@ -30,6 +30,7 @@ class PlaybackEvent(RequestModel):
     item_id: Identifier
     event_type: Literal[
         "playback_started",
+        "playback_seeked",
         "playback_progress",
         "playback_completed",
         "video_skipped",

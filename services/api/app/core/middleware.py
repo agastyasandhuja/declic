@@ -6,6 +6,7 @@ from uuid import uuid4
 from starlette.requests import Request
 
 from app.core.errors import APIError, error_response
+from app.core.request_cache import request_cache
 
 logger = logging.getLogger("learning_api.requests")
 
@@ -74,9 +75,11 @@ class RequestBoundary:
                 return {"type": "http.request", "body": bytes(body), "more_body": False}
             return await receive()
 
+        token = request_cache.set({})
         try:
             await self.app(scope, replay, guarded_send)
         finally:
+            request_cache.reset(token)
             route = scope.get("route")
             logger.info(
                 json.dumps(

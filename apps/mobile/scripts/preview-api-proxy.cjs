@@ -4,6 +4,9 @@ const { randomUUID } = require('node:crypto');
 // Opt-in local demo transport. Fixed loopback destination, route/method allowlist,
 // bearer auth only; neither cookies nor redirects cross this boundary.
 const routes = [
+  ['GET', /^\/v1\/learning\/(settings|demo-catalog)$/],
+  ['PATCH', /^\/v1\/learning\/settings$/],
+  ['GET', /^\/v1\/entertainment\/videos\/[^/]+\/comments$/],
   ['GET', /^\/v1\/(me|feed|learning\/progress|preparation|canvas\/connection|instagram\/connection|academics\/profile|entertainment\/feed)$/],
   ['GET', /^\/v1\/(academics\/jobs\/[^/]+|(learning|entertainment)\/videos\/[^/]+(\/playback)?)$/],
   ['POST', /^\/v1\/(feed\/(sessions|events)|canvas\/(token|sync)|instagram\/(connect|browser-session)|preparation\/retry)$/],

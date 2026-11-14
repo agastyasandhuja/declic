@@ -25,6 +25,7 @@ def definitions():
         if name == collections.occurrences:
             properties["sequence"] = {"bsonType": ["int", "long"], "minimum": 1}
         if name in {
+            collections.demo_catalogs,
             collections.sessions,
             collections.occurrences,
             collections.pages,

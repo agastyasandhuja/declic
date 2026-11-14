@@ -104,3 +104,28 @@ def test_empty_page_is_refreshable_when_inventory_arrives(client, catalog):
     assert client.get("/v1/feed", params={"session_id": sid}).json()["items"] == []
     catalog.clips = original
     assert client.get("/v1/feed", params={"session_id": sid}).json()["items"]
+
+
+def test_seek_moves_anchor_without_granting_watch_credit(client, clock, database):
+    import uuid
+    from app.core import collections as tables
+    session = client.post('/v1/feed/sessions', json={}).json()['session_id']
+    item = client.get('/v1/feed', params={'session_id': session, 'limit': 5}).json()['items'][0]
+    def event(kind, position, watched):
+        return client.post('/v1/feed/events', json=[{
+            'event_id': str(uuid.uuid4()), 'session_id': session, 'item_id': item['item_id'],
+            'event_type': kind, 'client_occurred_at': clock().isoformat(),
+            'payload': {'position_ms': position, 'visible_watch_ms': watched},
+        }]).json()
+    assert event('playback_started', 0, 0)['rejected'] == []
+    clock.advance(3)
+    assert event('playback_progress', 3000, 3000)['rejected'] == []
+    assert event('playback_seeked', 0, 3000)['rejected'] == []
+    state = database.read(lambda tx: tx.value(tables.sessions, 'data', {'session_id': session}))
+    assert state['active_view_ms'] == 3000
+    assert event('playback_seeked', 5000, 9000)['rejected'][0]['code'] == 'INVALID_PROGRESS'
+    clock.advance(2)
+    assert event('playback_progress', 2000, 5000)['rejected'] == []
+    state = database.read(lambda tx: tx.value(tables.sessions, 'data', {'session_id': session}))
+    assert state['active_view_ms'] == 5000
+    assert event('playback_progress', 1000, 5000)['rejected'][0]['code'] == 'NON_MONOTONIC_PROGRESS'
