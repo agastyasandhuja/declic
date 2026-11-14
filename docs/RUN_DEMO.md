@@ -56,11 +56,25 @@ python3 scripts/run-demo.py workers
 ```
 
 Set `VIDEO_GENERATION_ENABLED=false` to pause paid video jobs while keeping the
-API, feed and cached videos available. The local demo is currently paused at the
-user's request to conserve credits. Set it to `true` and restart workers when ready.
+API, feed and cached videos available. Set it to `true` and restart workers when ready.
+The user subsequently authorized five videos for the live phone test; use the
+persisted job allowlist below to prevent processing the rest of the course queue.
 `VIDEO_MAX_CLAUDE_CALLS=6` caps generation/review attempts per narrated demo video, including
 repairs and restarts; failed checks never publish. Model override is explicit. The separate legacy math CLI retains its own call cap;
 the automated course pipeline does not queue math jobs.
+
+For an authorized batch, restrict rendering to existing job IDs:
+
+```sh
+python3 scripts/run-demo.py workers --video-job-id JOB_ONE --video-job-id JOB_TWO
+```
+
+Repeat the option for every allowed job. Alternatively, persist the private worker
+setting `VIDEO_GENERATION_JOB_IDS=JOB_ONE,JOB_TWO` in the server environment so
+worker restarts retain the restriction. An explicitly empty value permits no video
+jobs; an absent setting retains the full queue. Explicit CLI IDs override that
+setting. The selection also scopes expired-lease cleanup and automatic retries;
+unselected video jobs are untouched. Academic and Instagram workers still run.
 
 Workers default to three import/preparation tasks and two concurrent video tasks.
 Course inventory and extraction each have bounded concurrency. Jobs survive restarts,

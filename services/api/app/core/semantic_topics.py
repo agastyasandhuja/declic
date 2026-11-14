@@ -17,6 +17,16 @@ def normalized(vector):
     return [x / length for x in vector]
 
 
+def approved_fact_set(lesson):
+    """Compare teaching content independently of titles, ordering, or citations."""
+    facts = frozenset(
+        " ".join(fact.casefold().split())
+        for fact in lesson.get("facts", [])
+        if isinstance(fact, str) and fact.strip()
+    )
+    return facts if len(facts) >= 2 else None
+
+
 class GeminiEmbeddings:
     model = "gemini-embedding-001"
 
@@ -65,6 +75,7 @@ class SemanticTopics:
         }
         text = "\n".join([lesson["title"], lesson["learning_goal"], *lesson.get("facts", [])])
         exact = digest({"text": " ".join(text.casefold().split()), **compatibility})
+        facts = approved_fact_set(lesson)
         existing = self.database.read(
             lambda tx: tx.find_one(tables.topics, {"user_id": owner, "exact_key": exact})
         )
@@ -78,6 +89,11 @@ class SemanticTopics:
             )
             matches = []
             for row in candidates:
+                if facts is not None and facts == approved_fact_set(row["lesson"]):
+                    # Exact fact agreement wins over a title-driven embedding
+                    # match. Scope/compatibility were enforced by this query.
+                    matches.append((2.0, row))
+                    continue
                 other = row["embedding"]
                 if len(other) == len(vector):
                     similarity = sum(a * b for a, b in zip(vector, other, strict=True))

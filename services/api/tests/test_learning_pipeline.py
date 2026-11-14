@@ -92,3 +92,92 @@ def test_model_cannot_invent_source_references():
         prepare_lesson(
             Gemini(), Academics.request, [{"source_id": "different", "text": "Other text"}]
         )
+
+
+def test_administrative_sources_and_cached_placeholders_cannot_publish(database, tmp_path):
+    from app.core import collections as tables
+
+    academics = Academics()
+    repository = LocalVideoRepository(tmp_path / "quality.db")
+    pipeline = LearningPipeline(
+        database,
+        SimpleNamespace(client=lambda *args: None),
+        academics,
+        Gemini(),
+        SemanticTopics(database, SimpleNamespace(model="fake", embed=lambda _: [1.0, 0.0])),
+        repository,
+    )
+    context = JobContext(
+        "job",
+        "alice",
+        {"lesson_request_id": "lr_1", "profile_revision": 1, "connection_id": "connection"},
+        lambda: True,
+    )
+    prepared = pipeline.prepare(context)
+    topic_id = prepared["topic_id"]
+    database.run(
+        "alice",
+        lambda tx: tx.update(
+            tables.topics,
+            {"user_id": "alice", "topic_id": topic_id},
+            {"lesson": {"title": "Insufficient Course Material", "facts": []}},
+        ),
+    )
+    assert pipeline.prepare(context) == {
+        "state": "unavailable",
+        "reason": "INSUFFICIENT_TEACHING_EVIDENCE",
+    }
+    assert StoredQuizzes(database).list_for_objective("alice", "obj_1") == []
+    assert (
+        pipeline.render(JobContext("render", "alice", {"topic_id": topic_id}, lambda: True))[
+            "state"
+        ]
+        == "unavailable"
+    )
+    academics.resolve_source_context = lambda *_: [
+        {
+            "source_id": "source_1",
+            "resource_type": "assignment",
+            "text": "Chapter 17 exists and the assignment is due tomorrow.",
+        }
+    ]
+    pipeline.client = SimpleNamespace(
+        generate_json=lambda **_: pytest.fail("No model call expected")
+    )
+    assert pipeline.prepare(context)["state"] == "unavailable"
+
+
+def test_stale_insufficient_job_does_not_disable_new_revision_quiz(database, tmp_path):
+    from app.core import collections as tables
+
+    pipeline = LearningPipeline(
+        database,
+        SimpleNamespace(client=lambda *args: None),
+        Academics(),
+        Gemini(),
+        SemanticTopics(database, SimpleNamespace(model="fake", embed=lambda _: [1.0, 0.0])),
+        LocalVideoRepository(tmp_path / "stale-quality.db"),
+    )
+    context = JobContext(
+        "job",
+        "alice",
+        {"lesson_request_id": "lr_1", "profile_revision": 1, "connection_id": "connection"},
+        lambda: True,
+    )
+    pipeline.prepare(context)
+    database.run(
+        "alice",
+        lambda tx: tx.update(
+            tables.quiz_bank, {"user_id": "alice", "objective_id": "obj_1"}, {"profile_revision": 2}
+        ),
+    )
+    pipeline._unavailable(context, "obj_1")
+    assert (
+        database.read(
+            lambda tx: tx.find_one(
+                tables.quiz_bank,
+                {"user_id": "alice", "objective_id": "obj_1", "profile_revision": 2},
+            )
+        )["active"]
+        is True
+    )

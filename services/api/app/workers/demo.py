@@ -13,12 +13,26 @@ from app.workers.queue import JobQueue
 from app.workers.runner import Worker
 
 
+def video_job_ids(cli_ids):
+    """CLI selection wins; an explicitly empty environment selection denies all."""
+    if cli_ids is not None:
+        return cli_ids
+    configured = os.getenv("VIDEO_GENERATION_JOB_IDS")
+    if configured is None:
+        return None
+    return [job_id.strip() for job_id in configured.split(",") if job_id.strip()]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--academic-workers", type=int, choices=range(1, 5), default=3)
     parser.add_argument("--video-workers", type=int, choices=range(1, 4), default=2)
+    parser.add_argument(
+        "--video-job-id", action="append", help="Render only these existing IDs; repeat per job"
+    )
     args = parser.parse_args()
     database, connections, academics, videos, pipeline = components()
+    selected_video_jobs = video_job_ids(args.video_job_id)
     database.verify_ready()
     stop = Event()
 
@@ -42,7 +56,10 @@ def main():
         artifact_root.mkdir(parents=True, exist_ok=True)
         while not stop.is_set():
             if not render_once(
-                videos.repository, artifact_root, private_demo_storage=videos.storage
+                videos.repository,
+                artifact_root,
+                private_demo_storage=videos.storage,
+                job_ids=selected_video_jobs,
             ):
                 stop.wait(1)
 

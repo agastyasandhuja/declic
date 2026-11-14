@@ -84,7 +84,7 @@ def test_past_assessment_alone_cannot_become_practice_but_lecture_material_can(t
     assert request["source_refs"] == ["lecture"] and request["assessment_ids"] == []
 
 
-def test_withdrawn_source_or_new_upcoming_target_invalidates_saved_practice(tmp_path):
+def test_withdrawn_source_invalidates_but_new_target_does_not_hide_grounded_practice(tmp_path):
     service, profile = publish(tmp_path, deepcopy(COURSE), [UNIT], [])
     profile["courses"][0]["source_inventory"] = []
     save_profile(tmp_path, "alice", profile)
@@ -94,5 +94,7 @@ def test_withdrawn_source_or_new_upcoming_target_invalidates_saved_practice(tmp_
     future["scheduled"].update(date="2026-11-20", timestamp="2026-11-20T15:00:00Z")
     profile["assessments"] = [future]
     save_profile(tmp_path, "alice", profile)
-    assert service.get_validated_plans("alice") == []
-    assert FeedAcademicReader(service, clock=lambda: NOW).list_objectives("alice") == []
+    assert len(service.get_validated_plans("alice")) == 1
+    candidates = FeedAcademicReader(service, clock=lambda: NOW).list_objectives("alice")
+    assert len(candidates) == 1 and not candidates[0].current_unit
+    assert candidates[0].assessment_date is None

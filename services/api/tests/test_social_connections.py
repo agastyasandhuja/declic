@@ -174,3 +174,24 @@ def test_api_rejects_sms_continuation_before_delivery_or_submitting_prior_code(
         )
     assert error.value.code == "INSTAGRAM_LOCAL_VERIFICATION_REQUIRED"
     assert social.public("alice")["status"] == "reconnect_required"
+
+
+def test_successful_reconnect_resets_playback_cooldown(database, monkeypatch):
+    social, _ = setup_social(database, monkeypatch)
+    social.connect("alice", Login(username="demo", password="private-password"))
+    database.run(
+        "alice",
+        lambda tx: tx.update(
+            tables.connections,
+            {"user_id": "alice", "provider": "instagram"},
+            {
+                "last_attempt": 0,
+                "playback_refresh_after": 9999999999,
+                "playback_refreshed_video_id": "instagram_123",
+            },
+        ),
+    )
+    social.connect("alice", Login(username="demo", password="private-password"))
+    row = social.get("alice")
+    assert row["playback_refresh_after"] == 0
+    assert row["playback_refreshed_video_id"] is None

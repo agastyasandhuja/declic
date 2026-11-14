@@ -16,7 +16,7 @@ from app.core.learning_pipeline import LearningPipeline, StoredQuizzes
 from app.core.learning_readers import BoundVideoReader
 from app.core.preparation import create_router as preparation_router
 from app.core.semantic_topics import GeminiEmbeddings, SemanticTopics
-from app.core.social_connections import SocialConnections
+from app.core.social_connections import ConnectedCatalogService, SocialConnections
 from app.core.social_connections import create_router as social_router
 from app.main import create_app as core_app
 from app.modules.auth.repository import ProfileRepository
@@ -31,7 +31,7 @@ from app.modules.curriculum.service import AcademicService
 from app.modules.curriculum.store import use_atlas
 from app.modules.entertainment.repository import CatalogRepository
 from app.modules.entertainment.router import create_entertainment_router
-from app.modules.entertainment.service import CatalogFailure, CatalogService
+from app.modules.entertainment.service import CatalogFailure
 from app.modules.videos.publication import SupabaseVideoStorage
 from app.modules.videos.repository import AtlasVideoRepository
 from app.modules.videos.router import create_router as video_router
@@ -71,8 +71,9 @@ def create_app():
     database, connections, academics, videos, pipeline = components()
     settings = database.settings
     profiles = ProfileRepository(database.mongo)
-    catalog = CatalogService(
+    catalog = ConnectedCatalogService(
         CatalogRepository(database.mongo),
+        pipeline.social,
         cursor_secret=settings.catalog_cursor_secret.get_secret_value().encode()
         if settings.catalog_cursor_secret
         else None,

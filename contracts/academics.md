@@ -182,12 +182,13 @@ instructor schedule changes or withdrawn material.
 
 ## Source-backed practice fallback for the integrated demo
 
-When an enrolled course has no eligible upcoming assessment topic, its latest
+When an enrolled course has no teachable upcoming assessment topic, its latest
 imported units may contribute up to three suggested-practice requests. Each
 request must cite an accessible lecture Page or file from that course's current
 source inventory. Assessment, exam, answer-key, and solution material alone does
-not qualify. The service rechecks the unit, source references, and absence of a
-higher-priority upcoming target when reading plans and feed candidates.
+not qualify. The service rechecks the unit and source references when reading plans and feed
+candidates. A due assignment without teaching evidence does not suppress grounded
+practice; practice retains lower priority alongside newly announced assessments.
 
 These requests have no assessment IDs or timeline topic, use unknown exam scope,
 and receive no exam urgency or current-unit ranking bonus. No date or current-week
@@ -195,3 +196,21 @@ claim is inferred. Expired assessment-derived requests remain excluded; reconnec
 or reimport is still needed to discover newly published course material. This is
 an additive fallback for the requested all-course demo, overriding the earlier
 blanket exclusion of otherwise grounded material without a known deadline.
+
+
+Planning with a source resolver requires extracted conceptual page/file text.
+Assessment labels, calendars, navigation links, schedules, and due dates provide
+priority evidence only, never approved teaching facts or quiz content. Chapter
+labels may select matching chapter material but cannot supply its explanation.
+Preparation returns `unavailable` with `INSUFFICIENT_TEACHING_EVIDENCE` before
+model work when no teaching excerpt exists, or when a model returns placeholder
+or administrative facts. No quiz or video job is published in that case.
+
+When extracted lecture text exists but the course map has no supported lesson,
+one bounded planning call may recover up to three practice concepts from five
+authorized excerpts. Each concept requires two distinct verbatim teaching quotes
+from those excerpts. The resulting source-backed units are persisted for service
+and feed eligibility checks, with unknown exam scope and no assessment dates.
+Learning outcomes describe teaching intent, not facts; neither outcomes nor
+syllabus-only material qualify. Short formula and wrapped lecture lines remain
+available to the model.

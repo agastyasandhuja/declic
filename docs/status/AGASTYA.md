@@ -1,5 +1,19 @@
 # Agastya status
 
+## Selected video worker batches — November 14
+
+- Added optional `job_ids` to Atlas/local video claiming and `run_once`; empty
+  selections claim nothing, and expiration/retry processing cannot mutate other jobs.
+- Demo workers accept repeated `--video-job-id` through `scripts/run-demo.py`.
+  Private `VIDEO_GENERATION_JOB_IDS` persists a comma-separated selection across
+  restarts; explicitly empty denies all, absent preserves the full queue.
+- Ran `.venv/bin/python -m pytest app/modules/videos/tests/test_job_allowlist.py
+  app/modules/videos/tests/test_retry.py app/modules/videos/tests/test_video_pipeline.py -q`
+  from `services/api`: 29 passed. Ruff checks and `git diff --check` passed.
+- Atlas query-scope tests used mocks. The separate `test_atlas_repository.py`
+  integration suite skipped all five tests because no disposable Mongo URI was
+  configured. No cloud/provider calls or video rendering were run for this change.
+
 API/recommendation implementation and its verification are tracked separately in
 [AGASTYA_API.md](AGASTYA_API.md) to avoid overwriting the concurrent video workstream.
 
@@ -1484,3 +1498,51 @@ Commands actually run were read-only source/status inspection (`git status --sho
 type/build checks, deterministic frame/pose checks, full stills and motion review,
 camera occlusion and caption clearance, encoded audio/video verification, and
 creative review. No gallery refresh, publication or iPhone playback was attempted.
+
+## Live phone installation and course-evidence correction — November 14, 2026
+
+Installed and launched a signed standalone Release of main `1ef4b69` on the user's
+iPhone 15 Pro. A physical screenshot shows authenticated real Instagram media in
+the native feed. This proves native rendering, not sustained swipe/audio/background
+or quiz acceptance. Build details, screenshot, and the isolated Xcode 26 Swift
+compatibility patch are private local artifacts under `.local/iphone-build/main-1ef4b69`.
+The app uses the integrated HTTPS API; no server secrets are bundled.
+
+Root `.env` now supplies Gemini. Live probes verified configured model access,
+one schema-valid grounded synthetic quiz, and a normalized 768-dimensional semantic
+embedding. The student connected Canvas and Instagram in the actual app: four
+courses imported and six Instagram clips were initially saved. No tokens or raw
+course documents are included in this status file.
+
+The user authorized five live videos. The first batch exposed administrative
+assignment topics rather than conceptual lessons and was cancelled before any
+publication. Diagnosis found 14 selected PDFs without persisted text because
+`pypdf` was absent from runtime dependencies. Added pinned PDF extraction, cache
+retention on unchanged reimport, and correct file-update invalidation. Added
+teaching-source and output gates, refusal support, stale-revision protection, and
+matching lecture references. The corrected live reimport is running; five ready
+videos and live quiz acceptance are not yet established.
+
+Instagram import now clears only the owner's prior account catalog. Explicit
+playback retry renews revoked/expired URLs using the encrypted saved session,
+with throttling and connection/version fences. Focused mocked-provider tests ran
+against disposable Mongo. Consolidated command with all three Mongo test URI
+settings enabled: `services/api/.venv/bin/python -m pytest services/api -q` —
+**465 passed, zero skips**. Independent PDF cache and worker-allowlist reviews
+found no blocking issue. No provider calls were used for automated tests.
+
+Follow-up live import retained 15 text-bearing files but revealed syllabus learning
+outcomes and old exam selection. Retrieval now reserves three of its five file
+reads for lecture/chapter material. Bounded source-quoted concept recovery fills
+missing grounded units without inventing deadlines or exam scope. Revision three
+produced plans across all four courses. Outcome-only facts and uncertain PDF
+notation are rejected; exact authorized citation tags stay out of narration and
+quiz text. One observed corrupted-symbol quiz was quarantined. Obsolete/invalid
+queued jobs were cancelled, preserving the active five-job batch.
+
+The semantic cache now reuses identical compatible fact sets even when headings
+or goals differ. Final consolidated API verification after these changes:
+**494 passed, zero skips**, with the disposable local Mongo configuration and no
+provider calls. The first two accepted live videos reached full rendering after
+content/frame checks; a rejected causal diagram is being replaced with comparison
+visuals. Private storage publication and native quiz verification remain pending.

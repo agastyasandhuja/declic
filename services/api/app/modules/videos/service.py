@@ -92,8 +92,8 @@ class VideoService:
         }
 
 
-def run_once(repository, artifact_root, *, fixture=False, private_demo_storage=None):
-    job = repository.claim()
+def run_once(repository, artifact_root, *, fixture=False, private_demo_storage=None, job_ids=None):
+    job = repository.claim() if job_ids is None else repository.claim(job_ids=job_ids)
     if not job:
         return False
     stop, lost = Event(), Event()

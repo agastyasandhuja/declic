@@ -78,3 +78,28 @@ def test_review_digest_and_fence(repo):
     assert repo.cancel(job["job_id"], "alice")
     with pytest.raises(StaleLease):
         repo.publish(job["job_id"], reviewed["fence"], {}, now=4)
+
+
+def test_allowlist_preserves_unselected_queue_and_expired_leases(repo):
+    queued = repo.enqueue("queued", "alice", {}, {})
+    expired = repo.enqueue("expired", "alice", {}, {})
+    repo.claim(now=1, lease=1, job_ids=[expired["job_id"]])
+    expired = repo.claim(now=3, lease=1, job_ids=[expired["job_id"]])
+    selected = repo.enqueue("selected", "alice", {}, {})
+    ids = [selected["job_id"]]
+    assert repo.claim(now=5, job_ids=[]) is None
+    assert repo.claim(now=5, job_ids=["missing"]) is None
+    first = repo.claim(now=5, lease=10, job_ids=ids)
+    assert first["job_id"] == selected["job_id"]
+    repo.update(first["job_id"], first["fence"], {"state": "retry_wait", "available_at": 8}, now=6)
+    assert repo.claim(now=7, job_ids=ids) is None
+    assert repo.claim(now=8, lease=1, job_ids=ids)["attempt"] == 2
+    assert repo.claim(now=10, job_ids=ids) is None
+    assert repo.get(first["job_id"], "alice")["state"] == "failed"
+    assert repo.get(queued["job_id"], "alice") == queued
+    assert repo.get(expired["job_id"], "alice") == expired
+    assert repo.retry_failed(first["job_id"], "alice")
+    restarted = repo.claim(now=11, lease=1, job_ids=ids)
+    reclaimed = repo.claim(now=13, lease=1, job_ids=ids)
+    assert reclaimed["fence"] > restarted["fence"]
+    assert repo.get(expired["job_id"], "alice") == expired

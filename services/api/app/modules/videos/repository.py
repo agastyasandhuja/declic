@@ -59,14 +59,18 @@ class AtlasVideoRepository:
     def get(self, job_id, owner):
         return self.jobs.find_one({"job_id": job_id, "owner_user_id": owner}, {"_id": 0})
 
-    def claim(self, now=None, lease=90):
+    def claim(self, now=None, lease=90, *, job_ids=None):
+        scope = {} if job_ids is None else {"job_id": {"$in": list(job_ids)}}
+        if job_ids is not None and not scope["job_id"]["$in"]:
+            return None
         now = time.time() if now is None else now
         self.jobs.update_many(
-            {"state": "running", "lease_until": {"$lte": now}, "attempt": {"$gte": 2}},
+            {**scope, "state": "running", "lease_until": {"$lte": now}, "attempt": {"$gte": 2}},
             {"$set": {"state": "failed", "error_code": "LEASE_EXHAUSTED"}},
         )
         return self.jobs.find_one_and_update(
             {
+                **scope,
                 "attempt": {"$lt": 2},
                 "$or": [
                     {"state": {"$in": ["queued", "retry_wait"]}, "available_at": {"$lte": now}},
@@ -259,11 +263,16 @@ class LocalVideoRepository:
             data = json.loads(row[0]) if row else None
             return data if data and data["owner_user_id"] == owner else None
 
-    def claim(self, now=None, lease=90):
+    def claim(self, now=None, lease=90, *, job_ids=None):
+        selected = None if job_ids is None else set(job_ids)
+        if selected is not None and not selected:
+            return None
         now = time.time() if now is None else now
         with self.transaction() as conn:
             for (raw,) in conn.execute("SELECT data FROM jobs ORDER BY rowid"):
                 row = json.loads(raw)
+                if selected is not None and row["job_id"] not in selected:
+                    continue
                 if row["state"] == "running" and row["lease_until"] <= now and row["attempt"] >= 2:
                     row.update(state="failed", error_code="LEASE_EXHAUSTED")
                     conn.execute(
