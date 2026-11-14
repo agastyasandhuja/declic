@@ -26,6 +26,16 @@ class FeedEntertainmentReader:
         self.catalog = catalog
 
     def list_candidates(self, user_id, limit):
+        snapshot = getattr(self.catalog, "candidate_snapshot", None)
+        if snapshot is not None:
+            try:
+                return [EntertainmentCandidate.model_validate(item)
+                        for item in snapshot({"user_id": user_id}, limit)]
+            except CatalogFailure as error:
+                if error.code == "CATALOG_NOT_FOUND":
+                    return []
+                raise APIError(error.status, error.code, error.message,
+                               retryable=error.status >= 500) from None
         candidates, cursor = [], None
         # Adi's snapshots contain at most 100 records. Expired windows may be empty
         # while later windows still contain usable clips.

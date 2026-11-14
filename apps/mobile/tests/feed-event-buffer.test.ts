@@ -29,3 +29,18 @@ test('feed and quiz flush callers wait for the same in-flight batch then all que
   await Promise.resolve(); assert.equal(secondComplete, false); release();
   await Promise.all([first, second]); assert.deepEqual(batches, [['started'], ['skipped']]);
 });
+
+test('continuous progress during slow uploads cannot starve feed pagination; later events remain queued', async () => {
+  const batches: string[][] = []; let number = 0;
+  const queue = new FeedEventBuffer({ request: async (_path, options) => {
+    if (++number > 5) throw new Error('unbounded draining');
+    const ids = (options!.body as FeedPlaybackEvent[]).map(item => item.event_id); batches.push(ids);
+    queue.add(event(`during-${number}`));
+    return { accepted_event_ids: ids, rejected: [] } as any;
+  } });
+  queue.add(event('before-page'));
+  await queue.flush();
+  assert.deepEqual(batches, [['before-page']]);
+  await queue.flush();
+  assert.deepEqual(batches, [['before-page'], ['during-1']]);
+});

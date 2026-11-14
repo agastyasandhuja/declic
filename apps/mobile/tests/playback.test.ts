@@ -128,3 +128,26 @@ test('late visibility/error callbacks and repeated cleanup never touch released 
   controller.setGate({ foreground: true }); controller.reportError(); controller.preload('late'); controller.dispose();
   await controller.setSelection('late');
 });
+
+test('a stalled stale preload cannot block a newer clip on the free slot', async () => {
+  let release!: () => void;
+  const source = ['', '']; const playing = [false, false]; const replacements: string[] = [];
+  const driver = (slot: number) => ({
+    pause() { playing[slot] = false; },
+    play() { playing[slot] = true; assert.equal(playing.filter(Boolean).length, 1); },
+    async replaceAsync(uri: string) {
+      replacements.push(uri);
+      if (uri === 'slow-preload') await new Promise<void>(resolve => { release = resolve; });
+      source[slot] = uri;
+    },
+  });
+  const controller = new BufferedPlayerController([driver(0), driver(1)], () => {});
+  await controller.setSelection('first', 'slow-preload'); await Promise.resolve(); await Promise.resolve();
+  await controller.setSelection('new-selection');
+  assert.equal(source[playing.findIndex(Boolean)], 'new-selection', 'must play before slow preload resolves');
+  controller.setGate({ foreground: false });
+  release(); await Promise.resolve(); await Promise.resolve();
+  assert.deepEqual(playing, [false, false]);
+  assert.deepEqual(replacements, ['first', 'slow-preload', 'new-selection']);
+  controller.dispose();
+});

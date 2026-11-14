@@ -98,3 +98,22 @@ def test_withdrawn_source_invalidates_but_new_target_does_not_hide_grounded_prac
     candidates = FeedAcademicReader(service, clock=lambda: NOW).list_objectives("alice")
     assert len(candidates) == 1 and not candidates[0].current_unit
     assert candidates[0].assessment_date is None
+
+
+def test_feed_projects_one_revision_without_loading_private_sources(tmp_path, monkeypatch):
+    from app.modules.curriculum import service as module
+    service, profile = publish(tmp_path, COURSE, [UNIT], [])
+    calls = []
+    original = module.load_profile
+
+    def read(*args, **kwargs):
+        calls.append(kwargs)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(module, "load_profile", read)
+    assert len(FeedAcademicReader(service, clock=lambda: NOW).list_objectives("alice")) == 1
+    assert calls == [{"include_sources": False}]
+    profile["revision"] += 1
+    profile["_plans"] = []
+    save_profile(tmp_path, "alice", profile)
+    assert FeedAcademicReader(service, clock=lambda: NOW).list_objectives("alice") == []

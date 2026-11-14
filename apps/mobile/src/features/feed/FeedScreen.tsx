@@ -21,7 +21,7 @@ import { theme } from '../../theme';
 export interface LocalPlaybackEvent { video_id: string; event_type: 'playback_progress' | 'video_skipped' | 'playback_failed'; position_ms: number; visible_watch_ms: number }
 const setupPlayer = (instance: VideoPlayer) => {
   instance.loop = true; instance.staysActiveInBackground = false; instance.audioMixingMode = 'doNotMix';
-  instance.bufferOptions = { preferredForwardBufferDuration: 5 };
+  instance.bufferOptions = { preferredForwardBufferDuration: 5, waitsToMinimizeStalling: false };
 };
 
 export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, preferences, setPreferences, clickedIds, savedIds, onClickVideo, onSaveVideo, history, allowReplay }: { history: FeedHistory; allowReplay: boolean; preferences: PlaybackPreferences; setPreferences(value: PlaybackPreferences): void; clickedIds: string[]; savedIds: string[]; onClickVideo(video: EntertainmentVideo): void; onSaveVideo(video: EntertainmentVideo): void; source: FeedSource; focused: boolean; brokenClip: boolean; onEvent(event: LocalPlaybackEvent): void; onReload(): void }) {
@@ -132,14 +132,15 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
     if (!video || needsPlaybackRefresh(video.playback.expires_at) || retryingVideo.current === video.video_id) return;
     controller.setGate({ focused: focusGate.current && viewableRef.current });
     const uri = brokenClip && index === 0 ? 'https://storage.googleapis.com/gtv-videos-bucket/sample/missing-demo-clip.mp4' : video.playback.url;
-    void controller.setSelection(uri, videos[index + 1]?.playback.url);
+    void controller.setSelection(uri);
   }, [controller, video?.video_id, video?.playback.url, video?.playback.expires_at, brokenClip]);
   useEffect(() => {
     if (video && focused && foreground && viewable && (needsPlaybackRefresh(video.playback.expires_at) || (playback.error && playback.sourceUri === video.playback.url)) && recovery.current.claim(video.video_id)) void retryVideo();
   }, [video?.video_id, focused, foreground, viewable, video?.playback.expires_at, video?.playback.url, playback.error, playback.sourceUri]);
   // React has now attached the selected surface; reapply the existing playback gates.
   useEffect(() => { if (sourceReady) controller.setGate({}); }, [controller, sourceReady, playback.selection]);
-  useEffect(() => { if (playback.ready) controller.preload(videos[index + 1]?.playback.url); }, [controller, playback.ready, videos[index + 1]?.playback.url]);
+  // Give the visible clip its first frame before competing for bandwidth.
+  useEffect(() => { if (sourceReady && frameRendered && focused && foreground) controller.preload(videos[index + 1]?.playback.url); }, [controller, sourceReady, frameRendered, focused, foreground, videos[index + 1]?.playback.url]);
   useEffect(() => { if (native.status === 'error' && sourceReady) controller.reportError(); }, [native.status, sourceReady, controller]);
   useEffect(() => {
     const enabled = !!video && sourceReady && focused && foreground && viewable && !paused;
@@ -199,7 +200,7 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
       if (request !== generation.current || current.current.video?.video_id !== selected) return;
       if (needsPlaybackRefresh(fresh.expires_at)) throw new Error('Expired playback');
       setVideos(previous => previous.map(item => item.video_id === selected ? { ...item, playback: fresh } : item));
-      await controller.setSelection(fresh.url, videosRef.current[selectedIndex.current + 1]?.playback.url, true);
+      await controller.setSelection(fresh.url, undefined, true);
       if (request === generation.current && current.current.video?.video_id === selected) controller.setGate({ focused: focusGate.current && viewableRef.current });
     } catch { if (request === generation.current && current.current.video?.video_id === selected) controller.reportError(); }
     finally { if (retryingVideo.current === selected) retryingVideo.current = null; }

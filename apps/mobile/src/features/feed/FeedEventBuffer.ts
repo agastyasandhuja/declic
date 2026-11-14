@@ -20,21 +20,24 @@ export class FeedEventBuffer {
     }
   }
   async flush(): Promise<void> {
-    if (this.flight) await this.flight;
-    if (!this.events.length) return;
-    if (this.flight) return this.flush();
-    const send = async () => {
-      while (this.events.length) {
+    // A caller needs all events observed up to this point, not an endless stream
+    // of progress appended while a slow request is in flight. Quiz activation
+    // still waits for every pre-gate event; new progress drains on the next tick.
+    const required = new Set(this.events.map(event => event.event_id));
+    while (this.events.some(event => required.has(event.event_id))) {
+      if (!this.flight) {
         const batch = this.events.slice(0, 100);
-        const result = await this.api.request<{ accepted_event_ids: string[]; rejected: { event_id: string }[] }>('/v1/feed/events', {
-          method: 'POST', body: batch, headers: { 'Idempotency-Key': batch[0].event_id },
-        });
-        const acknowledged = new Set([...result.accepted_event_ids, ...result.rejected.map(item => item.event_id)]);
-        if (!batch.every(item => acknowledged.has(item.event_id))) throw new Error('Playback event acknowledgement was incomplete.');
-        this.events = this.events.filter(item => !acknowledged.has(item.event_id));
+        const send = async () => {
+          const result = await this.api.request<{ accepted_event_ids: string[]; rejected: { event_id: string }[] }>('/v1/feed/events', {
+            method: 'POST', body: batch, headers: { 'Idempotency-Key': batch[0].event_id },
+          });
+          const acknowledged = new Set([...result.accepted_event_ids, ...result.rejected.map(item => item.event_id)]);
+          if (!batch.every(item => acknowledged.has(item.event_id))) throw new Error('Playback event acknowledgement was incomplete.');
+          this.events = this.events.filter(item => !acknowledged.has(item.event_id));
+        };
+        this.flight = send().finally(() => { this.flight = null; });
       }
-    };
-    this.flight = send();
-    try { await this.flight; } finally { this.flight = null; }
+      await this.flight;
+    }
   }
 }

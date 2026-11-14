@@ -1,8 +1,8 @@
 import type { PlaybackGate, PlaybackState, PlayerDriver } from './SinglePlayerController';
 
 export interface BufferedPlaybackState extends PlaybackState { activeSlot: 0 | 1; timedOut: boolean; sourceUri: string | null; selection: number }
-interface Slot { uri: string | null; ready: boolean; version: number; queue: Promise<void>; load: Promise<void> }
-const emptySlot = (): Slot => ({ uri: null, ready: false, version: 0, queue: Promise.resolve(), load: Promise.resolve() });
+interface Slot { inFlight: boolean; uri: string | null; ready: boolean; version: number; queue: Promise<void>; load: Promise<void> }
+const emptySlot = (): Slot => ({ inFlight: false, uri: null, ready: false, version: 0, queue: Promise.resolve(), load: Promise.resolve() });
 
 /** Two bounded media buffers. The standby surface stays mounted but hidden and paused. */
 export class BufferedPlayerController {
@@ -32,13 +32,14 @@ export class BufferedPlayerController {
     slot.uri = uri; slot.ready = false; this.drivers[slotIndex].pause();
     slot.load = slot.queue = slot.queue.catch(() => undefined).then(async () => {
       if (this.disposed || slot.version !== requested) return;
+      slot.inFlight = true;
       try {
         await this.drivers[slotIndex].replaceAsync(uri);
         if (this.disposed || slot.version !== requested) return;
         slot.ready = true;
       } catch {
         if (slot.version === requested) { slot.uri = null; slot.ready = false; }
-      }
+      } finally { slot.inFlight = false; }
       if (!this.disposed) this.reconcile();
     });
     return slot.load;
@@ -51,7 +52,10 @@ export class BufferedPlayerController {
     this.drivers.forEach(driver => driver.pause());
     this.failed = false;
     const match = this.slots.findIndex(slot => slot.uri === uri);
-    this.active = (match >= 0 ? match : 1 - this.active) as 0 | 1;
+    const standby = (1 - this.active) as 0 | 1;
+    // A stale, slow preload must not head-of-line block a different selected URI.
+    // Reuse the now-paused active slot when it has no replacement in flight.
+    this.active = (match >= 0 ? match : this.slots[standby].inFlight && !this.slots[this.active].inFlight ? this.active : standby) as 0 | 1;
     if (!force && this.slots[this.active].uri === uri && this.slots[this.active].ready) {
       this.emit(false); this.reconcile();
       if (upcoming && upcoming !== uri) void this.load((1 - this.active) as 0 | 1, upcoming);
