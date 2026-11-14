@@ -35,6 +35,9 @@ def main():
                 stop.wait(1)
 
     def render():
+        if os.getenv("VIDEO_GENERATION_ENABLED", "true").lower() not in {"1", "true", "yes"}:
+            stop.wait()
+            return
         artifact_root = ROOT / ".local/video-runs/worker"
         artifact_root.mkdir(parents=True, exist_ok=True)
         while not stop.is_set():

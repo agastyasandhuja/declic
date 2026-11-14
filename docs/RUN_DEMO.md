@@ -25,9 +25,10 @@ Existing root `.env` values are also loaded. Set server-only values:
 - `CONNECTION_ENCRYPTION_KEY`: generate once with the command in the example.
   Keep this stable and private; replacing it invalidates saved provider connections.
 - `CANVAS_BASE_URL`: institution origin, default `https://umamherst.instructure.com`.
-- `GEMINI_API_KEY` in `.env.gemini.local`; the example selects `gemini-2.5-flash`.
+- `GEMINI_API_KEY` in `.env.gemini.local`; the example selects `gemini-3.5-flash-lite`.
+  This is a [stable structured-output model](https://aistudio.google.com/docs/models/gemini-3.5-flash-lite).
   Embeddings use `gemini-embedding-001`.
-- `ANTHROPIC_API_KEY`, `VIDEO_CLAUDE_MODEL` (default `claude-opus-5-5`),
+- `ANTHROPIC_API_KEY`, `VIDEO_CLAUDE_MODEL` (default `claude-sonnet-4-5`),
   `ELEVENLABS_API_KEY`, and the narrator/Peter/Stewie voice IDs.
 - `VIDEO_RENDER_IMAGE`: the image built using the renderer's documented Docker
   instructions. Existing local image: `hackumass-renderer:reference-v9-semantic`.
@@ -53,6 +54,12 @@ Use separate terminals from the repository root:
 python3 scripts/run-demo.py api --port 8010
 python3 scripts/run-demo.py workers
 ```
+
+Set `VIDEO_GENERATION_ENABLED=false` to pause paid video jobs while keeping the
+API, feed and cached videos available. The local demo is currently paused at the
+user's request to conserve credits. Set it to `true` and restart workers when ready.
+`VIDEO_MAX_CLAUDE_CALLS=6` caps generation/review attempts per video, including
+repairs and restarts; failed checks never publish. Model override is explicit.
 
 Workers default to three import/preparation tasks and two concurrent video tasks.
 Course inventory and extraction each have bounded concurrency. Jobs survive restarts,

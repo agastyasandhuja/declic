@@ -1435,3 +1435,10 @@ Node 24 mobile typecheck, 40 tests, and generated contract consistency passed;
 renderer tests passed **85**, including trusted semantic-diagram geometry and
 malformed-pack rejection. The new generic visual strategy preserves all content,
 frame and media checks. Live generation observations are recorded separately below.
+
+Cost correction: the user requested lower provider spending. Stopped additional
+paid live probes, changed the default video model from Opus to Sonnet, capped
+Claude stage calls at six per job (previously forty), and paused the local video
+worker via VIDEO_GENERATION_ENABLED=false. The existing final diagram probe is
+already past all model calls and may finish CPU rendering/storage without new
+Claude calls. No background generation worker was started for student jobs.

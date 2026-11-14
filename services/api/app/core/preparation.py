@@ -85,6 +85,8 @@ def create_router(database):
         return {
             "schema_version": "1",
             "academic_generation_configured": bool(os.getenv("GEMINI_API_KEY")),
+            "video_generation_enabled": os.getenv("VIDEO_GENERATION_ENABLED", "true").lower()
+            in {"1", "true", "yes"},
             "imports_and_lessons": dict(Counter(row["state"] for row in jobs)),
             "videos": dict(Counter(row["state"] for row in videos)),
         }

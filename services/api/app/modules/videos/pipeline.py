@@ -33,7 +33,7 @@ def generation_recipe(*, fixture=False, custom_scene=False):
         raise ValueError("VIDEO_BACKGROUND_MODE must be auto, concept_only or gameplay")
     return {
         "fixture": fixture,
-        "claude": "fixture" if fixture else os.getenv("VIDEO_CLAUDE_MODEL", "claude-opus-5-5"),
+        "claude": "fixture" if fixture else os.getenv("VIDEO_CLAUDE_MODEL", "claude-sonnet-4-5"),
         "tts": "macos-say" if fixture else os.getenv("ELEVENLABS_MODEL", "eleven_multilingual_v2"),
         "voices": (
             {"peter": "Alex", "stewie": "Daniel", "narrator": "Samantha"}
@@ -182,7 +182,7 @@ def generate(
 
     def charge():
         checkpoint()
-        if budget["turns"] >= 40:
+        if budget["turns"] >= max(1, min(40, int(os.getenv("VIDEO_MAX_CLAUDE_CALLS", "6")))):
             raise ProviderError("AGENT_BUDGET_EXHAUSTED")
         budget["turns"] += 1
         atomic_json(budget_path, budget)

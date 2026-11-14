@@ -74,7 +74,7 @@ class Claude:
         self.key = os.environ.get("ANTHROPIC_API_KEY")
         if not self.key:
             raise ProviderError("MISSING_ANTHROPIC_API_KEY")
-        self.model = model or os.environ.get("VIDEO_CLAUDE_MODEL", "claude-opus-5-5")
+        self.model = model or os.environ.get("VIDEO_CLAUDE_MODEL", "claude-sonnet-4-5")
         self.client = client or httpx.Client(timeout=180, follow_redirects=False)
         self.usage = []
         self.charge = charge
