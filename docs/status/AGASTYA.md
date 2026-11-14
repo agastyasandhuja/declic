@@ -1566,3 +1566,46 @@ or goals differ. Final consolidated API verification after these changes:
 provider calls. The first two accepted live videos reached full rendering after
 content/frame checks; a rejected causal diagram is being replaced with comparison
 visuals. Private storage publication and native quiz verification remain pending.
+
+
+### Phone acceptance and dialogue presentation feedback
+
+The student confirmed video, audio, and quiz submission work in the installed
+iPhone app with their connected Canvas/Instagram account. Four private live
+videos are published; the fifth dialogue is still in generation at this update.
+This acceptance is user-reported, separate from synthetic automated checks.
+
+The student requested lower Peter/Stewie captions and useful visual explanation
+instead of isolated topic labels. Reference dialogue now places word captions at
+y=1450 on the 1080×1920 canvas. Text-only kinetic shots show gameplay, character,
+and captions; authored image/diagram shots remain available. Other formats keep
+their existing overlays. The isolated v10 renderer image was built and stills of
+the actual Promise dialogue were rendered and visually inspected, without model
+calls or re-generating narration. Already published MP4s remain their recorded
+version until explicitly regenerated; this change applies to subsequent renders.
+
+Focused production reference-template validation: **12 passed**. Independent
+source review found no blocker. No experimental voxel checks were run.
+
+The final dialogue completed media review but exceeded the storage service's
+upload size limit (HTTP 400 with provider status 413). The renderer now caps
+video bitrate at 6 Mbps with a 12 Mb buffer so 60-second gameplay clips remain
+within the demo delivery budget. This retains 1080×1920, 30fps and aligned audio.
+The completed fifth file is being compressed and revalidated without another
+script, voice, or model generation call.
+
+The completed five-video batch is now private and ready in Atlas/Supabase.
+All five signed video URLs returned HTTP 206 for a 1 KiB range, and each projected
+course objective has an active quiz. The final 49.749s dialogue was reduced from
+59,519,551 to 39,186,004 bytes; AAC packet hashes and duration are unchanged, and
+1080p/30fps/audio loudness/media checks passed. No additional model calls were
+used for the delivery repair. The test batch retains its recorded v9 presentation;
+lower dialogue captions apply to subsequent v10 renders.
+
+Release 1.0.0 (6), source main `cde623f`, was installed and launched on the physical
+iPhone. A screenshot confirms saved app login, restored typography/navigation,
+and actual Instagram video frames. User can update the cookie without first
+disconnecting. The remaining reported work is feed repetition and loading latency;
+those optimizations are in separate reviewed branches. The live account has no
+persisted quiz attempt yet, so backend grading remains covered by integration
+tests rather than claimed as a completed live submission.

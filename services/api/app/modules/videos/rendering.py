@@ -21,7 +21,7 @@ def render(
     *,
     stills_only=False,
 ):
-    image = os.environ.get("VIDEO_RENDER_IMAGE", "hackumass-renderer:reference-v9-semantic")
+    image = os.environ.get("VIDEO_RENDER_IMAGE", "hackumass-renderer:reference-v10-dialogue")
     if not image or image.startswith("-"):
         raise ValueError("Invalid renderer image")
     lesson = json.loads((pack / "lesson.json").read_text())
