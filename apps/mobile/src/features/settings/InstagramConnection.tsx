@@ -1,25 +1,120 @@
 import React, { useEffect, useState } from 'react';
-import { AppState, Text, TextInput, View } from 'react-native';
-import { useAuth } from '../../state/AuthProvider';
+import { AppState, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../../components/Button';
+import { useAuth } from '../../state/AuthProvider';
 import { sharedStyles as s, theme } from '../../theme';
+
 export function InstagramConnection() {
-  const { api } = useAuth(); const [status, setStatus] = useState('disconnected');
-  const [username, setUsername] = useState(''); const [password, setPassword] = useState(''); const [code, setCode] = useState('');
-  const [busy, setBusy] = useState(false); const [message, setMessage] = useState<string | null>(null);
-  const load = () => api.request<{status: string}>('/v1/instagram/connection').then(r => setStatus(r.status));
-  useEffect(() => { let active = true; const refresh = () => { if (active && AppState.currentState === 'active') void load().catch(problem => setMessage(problem.message)); }; refresh(); const timer = setInterval(refresh, 15000); const listener = AppState.addEventListener('change', state => { if (state === 'active') refresh(); }); return () => { active = false; clearInterval(timer); listener.remove(); }; }, [api]);
+  const { api } = useAuth();
+  const [status, setStatus] = useState('disconnected');
+  const [username, setUsername] = useState('');
+  const [sessionId, setSessionId] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const load = () => api.request<{ status: string }>('/v1/instagram/connection').then(response => setStatus(response.status));
+  useEffect(() => {
+    let active = true;
+    const refresh = () => {
+      if (active && AppState.currentState === 'active') {
+        void load().catch(() => setMessage('Unable to check the Instagram connection.'));
+      }
+    };
+    refresh();
+    const timer = setInterval(refresh, 15000);
+    const listener = AppState.addEventListener('change', state => { if (state === 'active') refresh(); });
+    return () => { active = false; clearInterval(timer); listener.remove(); };
+  }, [api]);
+
   async function connect() {
-    if (!/^[A-Za-z0-9_.]{1,30}$/.test(username.trim()) || !password) { setMessage('Enter your Instagram username and password.'); return; }
-    if (code && !/^\d{6}$/.test(code.trim())) { setMessage('Enter the complete verification code, or leave it empty.'); return; }
-    setBusy(true); setMessage(null);
-    try { await api.request('/v1/instagram/connect', { method: 'POST', timeoutMs: 60000, body: { username: username.trim(), password, ...(code ? { verification_code: code.trim() } : {}) } }); setPassword(''); setCode(''); await load(); setMessage('Connected. Reels are preparing in the background.'); }
-    catch (problem) { setMessage(problem instanceof Error ? problem.message : 'Instagram connection failed.'); }
-    finally { setBusy(false); }
+    const name = username.trim();
+    const value = sessionId.trim();
+    if (!/^[A-Za-z0-9_.]{1,30}$/.test(name)) {
+      setMessage('Enter your Instagram username.');
+      return;
+    }
+    if (value.length < 31 || value.length > 16384 || !/^\d\S+$/.test(value)) {
+      setMessage('Paste the value of the sessionid cookie from an Instagram session you own.');
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    try {
+      const result = await api.request<{ status: 'connected' }>('/v1/instagram/browser-session', {
+        method: 'POST',
+        timeoutMs: 60000,
+        body: { username: name, session_id: value },
+      });
+      setSessionId('');
+      setStatus(result.status);
+      setMessage('Connected. Reels are preparing in the background.');
+    } catch {
+      setMessage('Unable to verify the Instagram session. Check that the cookie is current and belongs to this username, then retry.');
+    } finally {
+      setBusy(false);
+    }
   }
-  const input = { color: theme.colors.text, borderColor: theme.colors.elevated, borderWidth: 1, borderRadius: 12, padding: 14 };
-  return <View style={[s.card, { gap: 12 }]}><Text style={s.eyebrow}>INSTAGRAM</Text><Text style={s.subtitle}>{status === 'connected' ? 'Your Instagram session is saved.' : status === 'reconnect_required' ? 'Instagram needs attention. Open Instagram on your phone, then reconnect here.' : 'Connect Instagram to bring Reels into your feed.'}</Text>
-    {status !== 'connected' ? <><TextInput accessibilityLabel="Instagram username" value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false} placeholder="Username" placeholderTextColor={theme.colors.muted} style={input} /><TextInput accessibilityLabel="Instagram password" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" autoCorrect={false} placeholder="Password" placeholderTextColor={theme.colors.muted} style={input} /><TextInput accessibilityLabel="Instagram authenticator code" value={code} onChangeText={setCode} secureTextEntry keyboardType="number-pad" placeholder="Authenticator code, if requested" placeholderTextColor={theme.colors.muted} style={input} /><Button title="Connect Instagram" busy={busy} onPress={() => void connect()} /></> : <Button title="Disconnect Instagram" secondary onPress={() => { void api.request('/v1/instagram/connection', { method: 'DELETE' }).then(load).catch(problem => setMessage(problem.message)); }} />}
-    {message && <Text accessibilityRole="alert" style={s.subtitle}>{message}</Text>}
-  </View>;
+
+  async function disconnect() {
+    setBusy(true);
+    setMessage(null);
+    try {
+      await api.request('/v1/instagram/connection', { method: 'DELETE' });
+      await load();
+    } catch {
+      setMessage('Unable to disconnect Instagram. Please retry.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <View style={[s.card, styles.card]}>
+      <Text accessibilityRole="header" style={styles.heading}>Instagram</Text>
+      <Text style={s.subtitle}>
+        {status === 'connected' ? 'Your Instagram session is connected.' : status === 'reconnect_required' ? 'Reconnect with a current session cookie.' : 'Connect your Instagram session for this demo.'}
+      </Text>
+      {status === 'connected' ? (
+        <Button title="Disconnect Instagram" busy={busy} secondary onPress={() => void disconnect()} />
+      ) : (
+        <>
+          <Text style={s.subtitle}>Sign in to Instagram in your browser, then copy the value of the sessionid cookie from its storage inspector.</Text>
+          <TextInput
+            accessibilityLabel="Instagram username"
+            value={username}
+            onChangeText={setUsername}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="off"
+            editable={!busy}
+            maxLength={30}
+            placeholder="Instagram username"
+            placeholderTextColor={theme.colors.muted}
+            style={s.input}
+          />
+          <TextInput
+            accessibilityLabel="Instagram session cookie"
+            value={sessionId}
+            onChangeText={setSessionId}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="off"
+            editable={!busy}
+            maxLength={16384}
+            placeholder="Paste sessionid value"
+            placeholderTextColor={theme.colors.muted}
+            style={s.input}
+          />
+          <Button title="Connect Instagram" busy={busy} onPress={() => void connect()} />
+        </>
+      )}
+      {message && <Text accessibilityRole="alert" style={s.subtitle}>{message}</Text>}
+    </View>
+  );
 }
+
+const styles = StyleSheet.create({
+  card: { gap: 12 },
+  heading: { fontFamily: theme.fonts.bold, fontSize: 17, color: theme.colors.text },
+});
