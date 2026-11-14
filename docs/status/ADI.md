@@ -1453,3 +1453,7 @@ paused outgoing element one page above. Preview caught and fixed Expo web's raw
 CSS transform mismatch via RN positioning wrappers (both video elements stay
 mounted). No paid/provider calls were made. Real comments, authenticated demo
 mode, physical hold/scrub behavior await integrated backend/native validation.
+
+The Expo HTTPS-to-loopback transport explicitly allows only the agreed read
+comments/catalog/settings routes and PATCH settings. Proxy tests verify auth is
+required, comments remain read-only, and cookies/redirects stay excluded.
