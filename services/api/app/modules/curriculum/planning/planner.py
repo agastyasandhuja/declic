@@ -13,13 +13,18 @@ from __future__ import annotations
 
 import hashlib
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from ..client.gemini import GeminiClient, parse_json_object
 from ..prompts.plan import SYSTEM_INSTRUCTION, build_plan_prompt
-from ..timing import assessment_topics, target_topic_is_supported, upcoming_assessments
-from ..sources import select_excerpts
 from ..schemas import LESSON_FORMATS, PLAN_SCHEMA, SCHEMA_VERSION
+from ..sources import select_excerpts
+from ..timing import (
+    assessment_topics,
+    priority_targets,
+    target_topic_is_supported,
+    upcoming_assessments,
+)
 
 _IMPORTANCE = {"core", "supporting", "optional"}
 DEFAULT_VARIANT_COUNT = 2
@@ -46,7 +51,9 @@ def _exam_scope(exam_related: bool, assessments: list[dict]) -> str:
         return "user_confirmed"
     if any(a.get("scope_status") == "explicit" for a in assessments):
         return "explicit"
-    return "inferred" if any(a.get("scope_status") == "inferred" for a in assessments) else "unknown"
+    return (
+        "inferred" if any(a.get("scope_status") == "inferred" for a in assessments) else "unknown"
+    )
 
 
 def _assessment_ids(objective_title: str, assessments: list[dict]) -> list[str]:
@@ -59,19 +66,102 @@ def _assessment_ids(objective_title: str, assessments: list[dict]) -> list[str]:
     return hits
 
 
-def plan_course(course: dict, units: list[dict], assessments: list[dict], client: GeminiClient, sources=(), *, now=None) -> dict:
+def practice_units(course, units, assessments, now):
+    """Conservative fallback from current imported teaching material, never exams.
+
+    The profile has no verified current-week marker, so these carry no urgency or
+    current-unit bonus. A lecture page/file is required; an old assessment alone
+    cannot create fallback eligibility.
+    """
+    if priority_targets(assessments, now, course.get("timezone")):
+        return []
+    allowed = {
+        source["source_id"]
+        for source in course.get("source_inventory", [])
+        if source.get("resource_type") in {"page", "file"}
+        and not re.search(
+            r"\b(?:exam|midterm|final|quiz|assignment|homework|solutions?|answer key)\b",
+            source.get("title", ""),
+            re.I,
+        )
+    }
+    result = []
+    for unit in sorted(units, key=lambda item: item.get("order", 0)):
+        refs = [ref for ref in unit.get("source_refs", []) if ref in allowed]
+        if unit.get("course_id", course["course_id"]) == course["course_id"] and refs:
+            result.append({**unit, "source_refs": refs})
+    return result
+
+
+def is_source_backed_practice(request, course, units, assessments, now):
+    if (
+        request.get("evidence_status") != "suggested_practice"
+        or request.get("assessment_ids")
+        or request.get("timeline_topic")
+        or request.get("exam_scope_status") != "unknown"
+        or not request.get("source_refs")
+    ):
+        return False
+    for unit in practice_units(course, units, assessments, now):
+        titles = {
+            " ".join(value.casefold().split())
+            for value in [unit.get("title", ""), *unit.get("objectives", [])]
+            if isinstance(value, str)
+        }
+        if (
+            request.get("unit_id") == unit.get("unit_id")
+            and " ".join(request.get("title", "").casefold().split()) in titles
+            and set(request["source_refs"]).issubset(unit["source_refs"])
+        ):
+            return True
+    return False
+
+
+def plan_course(
+    course: dict,
+    units: list[dict],
+    assessments: list[dict],
+    client: GeminiClient,
+    sources=(),
+    *,
+    now=None,
+) -> dict:
     """Assemble upcoming Canvas topics or run upload-fallback lesson planning."""
     timeline_required = bool(course.get("external_course_id"))
-    now = now or datetime.now(timezone.utc)
-    targets = upcoming_assessments(assessments, now, course.get("timezone")) if timeline_required else None
+    now = now or datetime.now(UTC)
+    targets = (
+        upcoming_assessments(assessments, now, course.get("timezone"))
+        if timeline_required
+        else None
+    )
     if timeline_required:
         # Canvas has already supplied the deadline and the topic evidence. Carry
         # those forward directly into the handoff without a generative veto.
-        raw = {"lessons": [
-            {"objective_title": topic, "learning_goal": f"Review {topic}.",
-             "target_assessment_id": target["assessment_id"], "target_topic": topic}
-            for target in targets for topic in assessment_topics(target)
-        ]}
+        raw = {
+            "lessons": [
+                {
+                    "objective_title": topic,
+                    "learning_goal": f"Review {topic}.",
+                    "target_assessment_id": target["assessment_id"],
+                    "target_topic": topic,
+                }
+                for target in targets
+                for topic in assessment_topics(target)
+            ]
+        }
+        if not raw["lessons"]:
+            raw["lessons"] = [
+                {
+                    "objective_title": objective,
+                    "learning_goal": f"Practice {objective}.",
+                    "unit_title": unit["title"],
+                    "is_suggested_practice": True,
+                    "practice_source_refs": unit["source_refs"],
+                }
+                for unit in practice_units(course, units, assessments, now)
+                for objective in (unit.get("objectives") or [unit["title"]])
+                if isinstance(objective, str) and objective.strip()
+            ][:3]
         usage = {}
     else:
         prompt = build_plan_prompt(course, units, assessments, LESSON_FORMATS, sources)
@@ -82,17 +172,29 @@ def plan_course(course: dict, units: list[dict], assessments: list[dict], client
     course_id = course["course_id"]
 
     # First pass: title -> objective_id, so prerequisites can reference them.
-    proposals = [p for p in (raw.get("lessons") or []) if isinstance(p, dict) and isinstance(p.get("objective_title"), str) and p["objective_title"].strip()]
-    title_to_oid = {p["objective_title"].strip(): _oid(course_id, p["objective_title"]) for p in proposals}
+    proposals = [
+        p
+        for p in (raw.get("lessons") or [])
+        if isinstance(p, dict)
+        and isinstance(p.get("objective_title"), str)
+        and p["objective_title"].strip()
+    ]
+    title_to_oid = {
+        p["objective_title"].strip(): _oid(course_id, p["objective_title"]) for p in proposals
+    }
 
     requests, seen = [], set()
     for proposal in proposals:
         title = proposal["objective_title"].strip()
         oid = title_to_oid[title]
         target = None
-        if timeline_required:
+        if timeline_required and "target_assessment_id" in proposal:
             topic = proposal["target_topic"]
-            target = next(item for item in targets if item["assessment_id"] == proposal["target_assessment_id"])
+            target = next(
+                item
+                for item in targets
+                if item["assessment_id"] == proposal["target_assessment_id"]
+            )
 
         if oid in seen:  # dedupe by meaning/level within the course
             continue
@@ -101,12 +203,31 @@ def plan_course(course: dict, units: list[dict], assessments: list[dict], client
         is_practice = bool(proposal.get("is_suggested_practice"))
         exam_related = bool(proposal.get("exam_related")) and not is_practice
         unit_title = proposal.get("unit_title")
-        matched_unit = next((u for u in units if isinstance(unit_title, str)
-                             and u["title"].strip().casefold() == unit_title.strip().casefold()), {})
-        source_refs = list(matched_unit.get("source_refs", []))
-        formats = [f for f in (proposal.get("suggested_formats") or []) if f in LESSON_FORMATS] or ["visual_explainer"]
-        prereq_ids = [title_to_oid[t] for t in (proposal.get("prerequisite_titles") or []) if isinstance(t, str) and t in title_to_oid and title_to_oid[t] != oid]
-        importance = proposal.get("importance") if proposal.get("importance") in _IMPORTANCE else "supporting"
+        matched_unit = next(
+            (
+                u
+                for u in units
+                if isinstance(unit_title, str)
+                and u["title"].strip().casefold() == unit_title.strip().casefold()
+            ),
+            {},
+        )
+        source_refs = list(
+            proposal.get("practice_source_refs", matched_unit.get("source_refs", []))
+        )
+        formats = [f for f in (proposal.get("suggested_formats") or []) if f in LESSON_FORMATS] or [
+            "visual_explainer"
+        ]
+        prereq_ids = [
+            title_to_oid[t]
+            for t in (proposal.get("prerequisite_titles") or [])
+            if isinstance(t, str) and t in title_to_oid and title_to_oid[t] != oid
+        ]
+        importance = (
+            proposal.get("importance")
+            if proposal.get("importance") in _IMPORTANCE
+            else "supporting"
+        )
 
         if is_practice:
             evidence = "suggested_practice"
@@ -119,31 +240,43 @@ def plan_course(course: dict, units: list[dict], assessments: list[dict], client
         if target:
             supporting = [item for item in targets if target_topic_is_supported(topic, item)]
             linked_ids = [item["assessment_id"] for item in supporting]
-            source_refs = list(dict.fromkeys(
-                ref for item in supporting
-                for ref in item.get("source_refs", []) + item["scheduled"].get("source_refs", [])
-            ))
+            source_refs = list(
+                dict.fromkeys(
+                    ref
+                    for item in supporting
+                    for ref in item.get("source_refs", [])
+                    + item["scheduled"].get("source_refs", [])
+                )
+            )
             evidence = "explicit"
         linked = [a for a in assessments if a["assessment_id"] in linked_ids]
         exam_links = [a for a in linked if a["kind"] in {"midterm", "final"} or a.get("is_exam")]
 
         requests.append(
             {
-                "lesson_request_id": "lr_" + hashlib.sha256(f"{course_id}\x1f{oid}".encode()).hexdigest()[:12],
+                "lesson_request_id": "lr_"
+                + hashlib.sha256(f"{course_id}\x1f{oid}".encode()).hexdigest()[:12],
                 "objective_id": oid,
-                "binding_id": "bind_" + hashlib.sha256(f"{course_id}\x1f{oid}".encode()).hexdigest()[:12],
+                "binding_id": "bind_"
+                + hashlib.sha256(f"{course_id}\x1f{oid}".encode()).hexdigest()[:12],
                 "unit_id": matched_unit.get("unit_id"),
                 "title": topic if target else title,
-                "learning_goal": proposal.get("learning_goal", "") if isinstance(proposal.get("learning_goal"), str) else "",
+                "learning_goal": proposal.get("learning_goal", "")
+                if isinstance(proposal.get("learning_goal"), str)
+                else "",
                 "prerequisite_objective_ids": prereq_ids,
                 "source_refs": source_refs,
                 "evidence_status": evidence,
-                "exam_scope_status": _exam_scope(bool(exam_links), exam_links) if target else _exam_scope(bool(linked), linked),
+                "exam_scope_status": _exam_scope(bool(exam_links), exam_links)
+                if target
+                else _exam_scope(bool(linked), linked),
                 **({"timeline_topic": topic} if target else {}),
                 "assessment_ids": linked_ids,
                 "importance": importance,
                 "suggested_formats": formats,
-                "teaching_approaches": [t for t in (proposal.get("teaching_approaches") or []) if isinstance(t, str)],
+                "teaching_approaches": [
+                    t for t in (proposal.get("teaching_approaches") or []) if isinstance(t, str)
+                ],
                 "target_duration_seconds": _clamp_duration(proposal.get("target_duration_seconds")),
                 "desired_variant_count": DEFAULT_VARIANT_COUNT,
                 "generic_brief": None,
@@ -169,9 +302,11 @@ def plan_course(course: dict, units: list[dict], assessments: list[dict], client
         "course_id": course_id,
         "revision": 1,
         "status": "validated",
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "requests": requests,
-        "warnings": ["No lesson matched a verified upcoming target"] if timeline_required and not requests else [],
+        "warnings": ["No lesson matched a verified upcoming target"]
+        if timeline_required and not requests
+        else [],
         "usage": usage,
     }
 
@@ -180,7 +315,7 @@ def build_lesson_plans(profile: dict, client: GeminiClient, resolver=None) -> li
     """Plan every ready course in the profile. One failing course is skipped
     with a warning recorded on the returned plan (empty requests)."""
     plans = []
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for course in profile["courses"]:
         if course.get("import_status") not in {"ready", "partial"}:
             continue
@@ -197,9 +332,13 @@ def build_lesson_plans(profile: dict, client: GeminiClient, resolver=None) -> li
             plan = {
                 "schema_version": SCHEMA_VERSION,
                 "plan_id": "plan_" + hashlib.sha256(course_id.encode()).hexdigest()[:12],
-                "course_id": course_id, "revision": 1, "status": "draft",
-                "created_at": datetime.now(timezone.utc).isoformat(), "requests": [],
-                "usage": {}, "warnings": [f"planning failed ({type(err).__name__})"],
+                "course_id": course_id,
+                "revision": 1,
+                "status": "draft",
+                "created_at": datetime.now(UTC).isoformat(),
+                "requests": [],
+                "usage": {},
+                "warnings": [f"planning failed ({type(err).__name__})"],
             }
         plan.setdefault("profile_id", profile["profile_id"])
         plan.setdefault("profile_revision", profile["revision"])

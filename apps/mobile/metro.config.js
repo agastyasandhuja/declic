@@ -36,6 +36,6 @@ if (privatePreview && !exporting) {
 }
 if (process.env.HACKUMASS_PREVIEW_API === '1' && !exporting) {
   const enhance = config.server.enhanceMiddleware;
-  config.server.enhanceMiddleware = (middleware, server) => previewApiProxy(enhance ? enhance(middleware, server) : middleware);
+  config.server.enhanceMiddleware = (middleware, server) => previewApiProxy(enhance ? enhance(middleware, server) : middleware, Number(process.env.HACKUMASS_API_PORT || 8000));
 }
 module.exports = config;

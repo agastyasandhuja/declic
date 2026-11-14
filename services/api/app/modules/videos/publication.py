@@ -4,9 +4,11 @@ import hashlib
 import mimetypes
 import os
 import re
+import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from threading import Lock
 from urllib.parse import quote, urlsplit
 
 import httpx
@@ -31,6 +33,8 @@ class SupabaseVideoStorage:
         key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
         self.headers = {"Authorization": f"Bearer {key}", "apikey": key}
         self.client = client or httpx.Client(timeout=180, follow_redirects=False)
+        self._signed_cache = {}
+        self._cache_lock = Lock()
 
     def verify_private_bucket(self):
         data = request_json(
@@ -72,6 +76,10 @@ class SupabaseVideoStorage:
         return {"key": key, "sha256": h.hexdigest(), "size": count}
 
     def signed_url(self, key):
+        with self._cache_lock:
+            cached = self._signed_cache.get(key)
+            if cached and cached[0] > time.monotonic():
+                return cached[1]
         data = request_json(
             self.client,
             "POST",
@@ -82,12 +90,23 @@ class SupabaseVideoStorage:
         signed = data["signedURL"]
         if not signed.startswith("/object/sign/"):
             raise ValueError("Unexpected signed URL")
-        return self.url + "/storage/v1" + signed
+        url = self.url + "/storage/v1" + signed
+        with self._cache_lock:
+            if len(self._signed_cache) >= 512:
+                self._signed_cache.pop(next(iter(self._signed_cache)))
+            self._signed_cache[key] = (time.monotonic() + 120, url)
+        return url
 
 
-def publish_validated_variant(repository, storage, job, brief, work: Path, manifest, review):
+def publish_validated_variant(
+    repository, storage, job, brief, work: Path, manifest, review, *, automated_private=False
+):
     quality = manifest["quality"]
     required = {"content", "visuals", "audio_sync", "assets"}
+    if automated_private and (
+        brief.scope != "private" or review.get("policy") != "private_demo_automated_v1"
+    ):
+        raise ValueError("Automatic publication is restricted to private demo lessons")
     if (
         manifest["fixture"]
         or quality.get("preview")
@@ -148,9 +167,53 @@ def publish_validated_variant(repository, storage, job, brief, work: Path, manif
         "template_version": brief.template_version,
         "brief_hash": manifest["generation_key"],
         "generation_version": "1.0.0",
-        "quality_checks": {**quality, "human_review": "approved"},
+        "quality_checks": {
+            **quality,
+            "human_review": "pending" if automated_private else "approved",
+            "publication_policy": "private_demo_automated_v1"
+            if automated_private
+            else "human_reviewed_v1",
+        },
         "created_at": now,
         "ready_at": now,
     }
     repository.publish(job["job_id"], job["fence"], variant)
     return variant
+
+
+def publish_private_demo(repository, storage, job, brief, work, manifest):
+    """Publish private assets only after exact content/frame/media checks.
+
+    This is automated model review and media validation, never human approval.
+    Generic/public publication continues through the explicit review route.
+    """
+    import json
+
+    from .models import digest
+
+    content = json.loads((work / "content-review.json").read_text())
+    frames = json.loads((work / "render-review.json").read_text())
+    board = json.loads((work / "storyboard.json").read_text())
+    lesson = json.loads((work / "pack/lesson.json").read_text())
+    if (
+        not content.get("passed")
+        or content.get("issues")
+        or content.get("storyboard_digest") != digest(board)
+        or not frames.get("passed")
+        or frames.get("issues")
+        or frames.get("lesson_digest") != digest(lesson)
+        or frames.get("renderer_source") != job["recipe"]["renderer_source"]
+    ):
+        raise ValueError("Automated private publication checks did not pass")
+    review = {
+        "policy": "private_demo_automated_v1",
+        "content": True,
+        "visuals": True,
+        "audio_sync": True,
+        "assets": True,
+        "video_sha256": manifest["quality"]["sha256"],
+        "artifact_digests": manifest["artifact_digests"],
+    }
+    return publish_validated_variant(
+        repository, storage, job, brief, work, manifest, review, automated_private=True
+    )

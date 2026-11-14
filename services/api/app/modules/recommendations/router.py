@@ -19,7 +19,8 @@ router = APIRouter(prefix="/v1/feed", tags=["feed"])
 
 @router.post("/sessions", response_model=SessionResponse)
 def sessions(body: SessionRequest, request: Request, user: CurrentUser):
-    return request.app.state.feed.start_session(user.user_id, body.resume_session_id)
+    return request.app.state.feed.start_session(user.user_id, body.resume_session_id,
+                                                refresh_unseen=body.refresh_unseen)
 
 
 @router.get("", response_model=FeedResponse, response_model_exclude_none=False)

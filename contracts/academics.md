@@ -178,3 +178,20 @@ Canvas requests are topic handoffs. Existing duration and suggested-format field
 remain defaults for compatibility. The video owner determines the narrow teaching
 objective and generation brief. Fresh Canvas synchronization is required to detect
 instructor schedule changes or withdrawn material.
+
+
+## Source-backed practice fallback for the integrated demo
+
+When an enrolled course has no eligible upcoming assessment topic, its latest
+imported units may contribute up to three suggested-practice requests. Each
+request must cite an accessible lecture Page or file from that course's current
+source inventory. Assessment, exam, answer-key, and solution material alone does
+not qualify. The service rechecks the unit, source references, and absence of a
+higher-priority upcoming target when reading plans and feed candidates.
+
+These requests have no assessment IDs or timeline topic, use unknown exam scope,
+and receive no exam urgency or current-unit ranking bonus. No date or current-week
+claim is inferred. Expired assessment-derived requests remain excluded; reconnect
+or reimport is still needed to discover newly published course material. This is
+an additive fallback for the requested all-course demo, overriding the earlier
+blanket exclusion of otherwise grounded material without a known deadline.

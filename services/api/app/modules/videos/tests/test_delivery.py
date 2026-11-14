@@ -158,3 +158,28 @@ def test_ready_video_maps_to_feed_and_authenticated_routes():
         assert data["lesson_request_id"] is None
         assert "assets" not in data and "owner_user_id" not in data
         assert data["playback"]["kind"] == "mp4"
+
+
+def test_automatic_publication_cannot_publish_shared_content(tmp_path):
+    brief = Brief.model_validate_json((ROOT / 'fixtures/learning/linked-list-brief.json').read_text())
+    brief = brief.model_copy(update={'scope': 'shared_generic_candidate', 'owner_user_id': None})
+    with pytest.raises(ValueError, match='restricted to private'):
+        publish_validated_variant(None, None, {}, brief, tmp_path, {'quality': {}},
+                                  {'policy': 'private_demo_automated_v1'}, automated_private=True)
+
+
+def test_storage_reuses_short_lived_signatures_with_bounded_cache(monkeypatch):
+    from app.modules.videos import publication
+    monkeypatch.setenv("SUPABASE_URL", "https://storage.example.test")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "synthetic")
+    clock = [0]
+    monkeypatch.setattr(publication.time, 'monotonic', lambda: clock[0])
+    calls = []
+    def respond(request):
+        calls.append(1)
+        return httpx.Response(200, json={"signedURL": "/object/sign/test?token=" + str(len(calls))})
+    storage = SupabaseVideoStorage(httpx.Client(transport=httpx.MockTransport(respond)))
+    assert storage.signed_url('owned') == storage.signed_url('owned')
+    assert len(calls) == 1
+    clock[0] = 121
+    assert storage.signed_url('owned').endswith('token=2')

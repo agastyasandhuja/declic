@@ -7,11 +7,11 @@ export function Button({ title, onPress, busy = false, secondary = false, disabl
 }) {
   return <Pressable accessibilityRole="button" accessibilityLabel={title} disabled={busy || disabled} onPress={onPress} testID={testID}
     style={({ pressed }) => [styles.button, secondary && styles.secondary, { opacity: pressed || disabled || busy ? 0.65 : 1 }]}>
-    {busy ? <ActivityIndicator color={secondary ? theme.colors.text : theme.colors.ink} /> : <Text style={[styles.label, secondary && { color: theme.colors.text }]}>{title}</Text>}
+    {busy && <ActivityIndicator color={secondary ? theme.colors.text : theme.colors.ink} />}<Text style={[styles.label, secondary && { color: theme.colors.text }]}>{busy ? `${title}…` : title}</Text>
   </Pressable>;
 }
 const styles = StyleSheet.create({
-  button: { minHeight: 54, paddingHorizontal: 20, paddingVertical: 16, borderRadius: 17, backgroundColor: theme.colors.accent, alignItems: 'center', justifyContent: 'center' },
+  button: { minHeight: 54, paddingHorizontal: 20, paddingVertical: 16, borderRadius: 999, backgroundColor: theme.colors.text, flexDirection: 'row', gap: 10, alignItems: 'center', justifyContent: 'center' },
   secondary: { backgroundColor: theme.colors.elevated, borderWidth: 1, borderColor: theme.colors.border },
-  label: { color: theme.colors.ink, fontSize: 15, fontWeight: '700' },
+  label: { color: theme.colors.ink, fontSize: 16, fontWeight: '700' },
 });

@@ -1359,3 +1359,92 @@ physical-device installation and requested the simulator instead.
   strips in addition to every-shot encoded frames. User then requested the full
   current template inventory; inspected four main manifest directories, voxel
   and cartoon adapters, the 19-style audition catalog and all 24 gallery records.
+## déclic design and app-branch integration — November 14, 2026
+
+Implemented the newer v2 déclic branding from the user-supplied ZIP in isolated
+`integration/declic-app` (`.local/declic-app`). All current remote branch tips are
+ancestors after merge `bbb3481`; original uncommitted video/renderer work is intact.
+Added licensed bundled fonts, app icons, welcome/auth UI, purple/coral feed actions,
+Profile collections and playback settings, and authenticated academic profile UI.
+No existing v1 fields or application identity changed.
+
+Verification and exact distinctions: [DECLIC_VERIFICATION.md](../DECLIC_VERIFICATION.md).
+Typecheck, 36 mobile tests, contract check, iOS/web export, 86 shared API/curriculum
+checks and 22 Instagram checks passed;
+7 real-database tests skipped. Live provider check retrieved 6 unique Reels over
+2 pages. Browser UI playback and navigation were exercised with fixture media.
+Native automation is awaiting dismissal of a stuck Simulator menu; no physical
+phone or redesigned live native playback claim is made.
+
+[Proposed API/storage follow-up](../decisions/009-declic-ui-api-storage.md) records
+owner-scoped collections/preferences, connection health, truthful progress,
+mixed feed/quiz UI, private sharing, runtime assembly and optional provider deps.
+Session-only Clicked/Saved state is capped and cleared on sign-out. No migrations,
+production deployment, provider credential collection or private media commits.
+
+User-reported Reels issues addressed: POST-body provider cursor, continuation and
+leftovers retained on reload, bounded session deduplication, earlier page prefetch,
+two stable preloaded media surfaces, no loading flash for ready buffers, bounded
+transient API retries, and whole-frame Fit/Fill control. Browser checks confirmed
+failed-clip recovery and watched clips excluded after feed remount. The loopback
+API now runs this integration on port 8000; Expo preview runs on 8094.
+
+## Full application consolidation — November 14, 2026
+
+Worktree `integration/e2e-app` combines the preserved learning/video work, déclic
+app, Amogh curriculum, and Adi's live Instagram implementation. PR #1 merged the
+learning foundation to main after recorded review. The follow-up integrates the
+runtime, encrypted per-user Canvas PAT and Instagram sessions, Gemini lesson/quiz
+preparation and semantic topic bindings, durable concurrent queues, private media
+publication, and the mobile mixed feed. See `docs/RUN_DEMO.md` and decision 010.
+
+Separate agent reviews found and fixed disconnect/publication races, stale quiz
+revisions, cross-process academic snapshot overwrite, failed-job retry, global
+Instagram diagnostic-stream corruption, and mobile swipe/watch/quiz ordering.
+These are agent reviews, not independent human approval. All observed branch
+implementation tips are included; the old dirty iPhone checkout remains intact.
+
+Cloud evidence: Atlas ping/migrations and private Supabase bucket verification
+passed. Disposable synthetic Supabase users exercised password login, refresh,
+owner-authenticated API routes, feed session/page, preparation status and 401
+rejection. Test sessions were revoked and test accounts/app rows removed.
+A real HTTPS browser run exercised login, empty feed, reload/session restoration,
+Courses provider/preparation status and logout with no page errors. No private
+student sources or provider credentials were committed.
+
+At 390×844, a separate synthetic-provider browser run exercised first→second video
+playback with one active player, quiz playback pause, wrong-answer unlock, event
+flush before quiz gate, PAT form, saved clip/profile navigation and tab restoration.
+Screenshots are local under `.local/mobile-verify`; they are not provider evidence.
+Mobile Node 24 typecheck and 40 tests passed; renderer 68 tests passed. The initial
+full backend real-Mongo run passed 353 tests with 8 separately configured tests
+skipped; the remaining auth/curriculum group subsequently passed 20 tests. Later
+review fixes have additional focused tests; final consolidated totals follow.
+
+Live limits: no Gemini key was supplied; `.env.gemini.example` and ignored
+`.env.gemini.local` are prepared. Students enter Canvas PATs in-app. Adi's latest
+real Instagram attempt failed `ClientNeedsUpgradeError` with zero pages; the
+integration surfaces this condition and does not claim successful fresh login.
+Physical iPhone playback and real Canvas→Gemini→feed remain unverified. Existing
+G4 recommendations are the demo baseline; G7 learned policies remain post-demo.
+
+Consolidated check: `API_TEST_MONGODB_URI=... MONGODB_TEST_URI=...
+VIDEO_TEST_MONGODB_URI=... services/api/.venv/bin/python -m pytest services/api -q`
+passed **402 tests, zero skipped**, against the disposable local replica set.
+Node 24 mobile typecheck, 40 tests, and generated contract consistency passed;
+renderer tests passed **85**, including trusted semantic-diagram geometry and
+malformed-pack rejection. The new generic visual strategy preserves all content,
+frame and media checks. Live generation observations are recorded separately below.
+
+Cost correction: the user requested lower provider spending. Stopped additional
+paid live probes, changed the default video model from Opus to Sonnet, capped
+Claude stage calls at six per job (previously forty), and paused the local video
+worker via VIDEO_GENERATION_ENABLED=false. The existing final diagram probe is
+already past all model calls and may finish CPU rendering/storage without new
+Claude calls. No background generation worker was started for student jobs.
+
+Final cost-control head verification: **403 backend tests passed, zero skipped**
+with all three disposable Mongo test settings enabled. The separate agent review
+of commit `6e11318` found no blocking issue in the narrated demo path. Mobile
+remains 40 passing tests and renderer 85. No live provider calls were used for
+this final test run.

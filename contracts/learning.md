@@ -180,3 +180,32 @@ music-led and minimal. Source/music/image attribution must travel in metadata an
 `CREDITS.txt`; the eventual publisher must preserve required attribution in the
 description or accompanying credits. These presentation changes do not establish
 measured learning/engagement gains or successful iPhone playback.
+
+## Generic semantic diagrams (November 14)
+
+Internal `Brief.visual_strategy` optionally selects `semantic_diagram`; its default
+`existing` preserves the authored/photo strategies. The new strategy is valid only
+for `visual_explainer`, `reference_v3`, `trace_kind=none`, without an installment
+example. It provides a bounded visual path for abstract coursework that does not
+require finding four relevant photographs.
+
+Every shot carries `semantic_diagram` with a `mode`, two to four distinct short
+`nodes: [{label}]`, and bounded `edges: [{source, target}]` using zero-based node
+indices. Labels are at most 24 characters. `comparison` has no edges; `sequence`
+has the exact consecutive chain; `cause_effect` connects node zero to every other
+node. The latter represents one cause and its stated effects, not arbitrary graph
+code. The model cannot supply coordinates, URLs, executable code, hidden numerical
+constants, or extra labels. At least two different diagrams must develop the
+explanation. Fact references remain on the containing shot.
+
+Both API validation and the isolated renderer enforce these bounds. Claude's
+content review checks the labels and implied order/causality against approved
+facts, and rendered-frame review still runs before automatic private publication.
+A typed diagram is not evidence that a causal claim is true; the existing grounding
+and review gates remain required. Existing photo diversity, linked-list traces,
+payment arithmetic and specialist scene policies are unchanged.
+
+The API worker and renderer image must be updated together; recipe identity includes
+the new authored renderer source. Public video/feed payloads, formats and MP4
+playback remain unchanged. Historical published assets remain playable; this change
+does not retroactively regenerate them or claim improved learning outcomes.

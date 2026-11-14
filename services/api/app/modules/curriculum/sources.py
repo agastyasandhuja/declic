@@ -83,10 +83,13 @@ class CanvasSourceResolver:
     def _load(self) -> list[ResolvedSource]:
         if self._cache is None:
             sources: list[ResolvedSource] = []
-            for row in fetch_current_courses(self._client):
+            from concurrent.futures import ThreadPoolExecutor
+
+            def load_course(row):
+                sources = []
                 course_id, name = str(row["id"]), str(row.get("name") or "")
                 if self._skip_tutoring and self._SKIP.search(name):
-                    continue
+                    return []
                 fetched_at = datetime.now(timezone.utc).isoformat()
                 syllabus, files = parse_html(row.get("syllabus_body"))
                 missing = [] if syllabus else ["syllabus"]
@@ -141,6 +144,12 @@ class CanvasSourceResolver:
                     title=name, external_course_id=course_id, timezone=row.get("time_zone"),
                     term=(row.get("term") or {}).get("name"), missing_sources=missing + unavailable,
                 )
+                return sources
+
+            rows = list(fetch_current_courses(self._client))
+            with ThreadPoolExecutor(max_workers=3) as pool:
+                for batch in pool.map(load_course, rows):
+                    sources.extend(batch)
             self._cache = sources
         return self._cache
 

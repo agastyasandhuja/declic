@@ -30,7 +30,7 @@ for(const [i,frame] of sampleFrames.entries()) {
 if(process.env.RENDER_STILLS_ONLY!=='1') {
 let lastProgress=0;
 await renderMedia({...common,composition,onProgress:({renderedFrames})=>{if(renderedFrames-lastProgress>=150){lastProgress=renderedFrames;console.log(`Rendered ${renderedFrames}/${lesson.frame_count}`)}},codec:'h264',audioCodec:'aac',pixelFormat:'yuv420p',sampleRate:48000,colorSpace:'bt709',
- outputLocation:path.join(output,'lesson.mp4'),concurrency:1,crf:20,
+ outputLocation:path.join(output,'lesson.mp4'),concurrency:2,crf:20,
  scale:process.env.RENDER_SCALE==='0.5'?.5:1,
  ffmpegOverride:({args})=>[...args.slice(0,-1),'-threads','2','-movflags','+faststart',args.at(-1)]});
 }

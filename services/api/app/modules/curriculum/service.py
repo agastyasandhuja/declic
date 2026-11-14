@@ -1,19 +1,20 @@
 """Owner-scoped academic services backed by a private local snapshot."""
+
 from copy import deepcopy
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .corrections import RevisionConflict, correct_profile, restore_corrections
 from .extract import build_profile
 from .handoff import build_profile_ready_event
-from .planning.planner import build_lesson_plans
-from .timing import priority_targets, target_topic_is_supported
+from .planning.planner import build_lesson_plans, is_source_backed_practice
 from .store import LOCK, latest_revision, load_plans, load_profile, save_profile
+from .timing import priority_targets, target_topic_is_supported
 
 
 class AcademicService:
-    def __init__(self, storage_dir: Path, client, *, clock=lambda: datetime.now(timezone.utc)):
+    def __init__(self, storage_dir: Path, client, *, clock=lambda: datetime.now(UTC)):
         self.storage_dir = storage_dir
         self.client = client
         self.clock = clock
@@ -34,26 +35,58 @@ class AcademicService:
         courses = {course["course_id"]: course for course in profile["courses"]}
         valid = []
         for plan in plans:
-            if (plan.get("user_id") != user_id or plan.get("profile_id") != profile["profile_id"]
-                    or plan.get("profile_revision") != profile["revision"]
-                    or plan.get("status") != "validated" or plan.get("course_id") not in courses):
+            if (
+                plan.get("user_id") != user_id
+                or plan.get("profile_id") != profile["profile_id"]
+                or plan.get("profile_revision") != profile["revision"]
+                or plan.get("status") != "validated"
+                or plan.get("course_id") not in courses
+            ):
                 continue
             plan = deepcopy(plan)
             course = courses[plan["course_id"]]
             if course.get("external_course_id"):
                 targets = priority_targets(
-                    [item for item in profile["assessments"] if item["course_id"] == course["course_id"]],
-                    self.clock(), course.get("timezone"),
+                    [
+                        item
+                        for item in profile["assessments"]
+                        if item["course_id"] == course["course_id"]
+                    ],
+                    self.clock(),
+                    course.get("timezone"),
                 )
                 retained = []
                 for request in plan["requests"]:
                     topic = request.get("timeline_topic")
-                    matches = [item for item in targets if item["assessment_id"] in request["assessment_ids"]
-                               and isinstance(topic, str) and target_topic_is_supported(topic, item)]
-                    if matches:
+                    matches = [
+                        item
+                        for item in targets
+                        if item["assessment_id"] in request["assessment_ids"]
+                        and isinstance(topic, str)
+                        and target_topic_is_supported(topic, item)
+                    ]
+                    if is_source_backed_practice(
+                        request,
+                        course,
+                        profile.get("units", []),
+                        [
+                            a
+                            for a in profile["assessments"]
+                            if a["course_id"] == course["course_id"]
+                        ],
+                        self.clock(),
+                    ):
+                        retained.append(request)
+                    elif matches:
                         request["assessment_ids"] = [item["assessment_id"] for item in matches]
-                        exam = next((item for item in matches if item["kind"] in {"midterm", "final"}
-                                     or item.get("is_exam")), None)
+                        exam = next(
+                            (
+                                item
+                                for item in matches
+                                if item["kind"] in {"midterm", "final"} or item.get("is_exam")
+                            ),
+                            None,
+                        )
                         request["exam_scope_status"] = exam["scope_status"] if exam else "unknown"
                         retained.append(request)
                 plan["requests"] = retained
@@ -67,13 +100,17 @@ class AcademicService:
             return []
         return [
             {
-                "binding_id": request["binding_id"], "user_id": user_id,
-                "course_id": plan["course_id"], "objective_id": request["objective_id"],
+                "binding_id": request["binding_id"],
+                "user_id": user_id,
+                "course_id": plan["course_id"],
+                "objective_id": request["objective_id"],
                 "unit_id": request.get("unit_id"),
                 "coverage_status": request["evidence_status"],
-                "assessment_ids": request["assessment_ids"], "source_refs": request["source_refs"],
+                "assessment_ids": request["assessment_ids"],
+                "source_refs": request["source_refs"],
             }
-            for plan in self.get_validated_plans(user_id) for request in plan["requests"]
+            for plan in self.get_validated_plans(user_id)
+            for request in plan["requests"]
         ]
 
     def resolve_source_context(self, user_id, source_refs):
@@ -83,7 +120,9 @@ class AcademicService:
         for ref in source_refs:
             source_id = ref.get("source_id") if isinstance(ref, dict) else ref
             source = sources.get(source_id) if isinstance(source_id, str) else None
-            if source is None or (isinstance(ref, dict) and ref.get("course_id") != source["course_id"]):
+            if source is None or (
+                isinstance(ref, dict) and ref.get("course_id") != source["course_id"]
+            ):
                 raise LookupError("source unavailable")
             result.append(dict(source))
         return result
@@ -118,10 +157,15 @@ class AcademicService:
             restore_corrections(self.storage_dir, user_id, profile)
             profile["_sources"] = [asdict(source) for source in resolver.list_sources()]
             profile["_plans"] = plans
-            validated = [plan for plan in plans if plan["status"] == "validated" and plan["requests"]]
+            validated = [
+                plan for plan in plans if plan["status"] == "validated" and plan["requests"]
+            ]
             profile["lesson_plan_ids"] = [plan["plan_id"] for plan in validated]
-            profile["binding_ids"] = [request["binding_id"] for plan in validated
-                                      for request in plan["requests"]]
-            profile["_ready_event"] = build_profile_ready_event(profile, validated) if validated else None
-            save_profile(self.storage_dir, user_id, profile)
+            profile["binding_ids"] = [
+                request["binding_id"] for plan in validated for request in plan["requests"]
+            ]
+            profile["_ready_event"] = (
+                build_profile_ready_event(profile, validated) if validated else None
+            )
+            save_profile(self.storage_dir, user_id, profile, publication_guard=publication_guard)
         return self.get_profile(user_id)

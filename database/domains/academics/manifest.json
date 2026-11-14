@@ -1,0 +1,67 @@
+{
+  "draft_version": 1,
+  "collections": [
+    {
+      "name": "academic_profiles",
+      "validator": {
+        "$jsonSchema": {
+          "bsonType": "object",
+          "additionalProperties": false,
+          "required": ["schema_version", "user_id", "revision", "profile", "updated_at"],
+          "properties": {
+            "_id": {},
+            "schema_version": {"enum": ["1"]},
+            "user_id": {"bsonType": "string", "minLength": 1},
+            "revision": {"bsonType": ["int", "long"], "minimum": 1},
+            "profile": {"bsonType": "object", "required": ["user_id", "revision", "courses"]},
+            "updated_at": {"bsonType": "date"}
+          }
+        }
+      },
+      "indexes": [
+        {"keys": [["user_id", 1]], "name": "academic_profile_owner_unique", "unique": true}
+      ]
+    },
+    {
+      "name": "academic_profile_revisions",
+      "validator": {
+        "$jsonSchema": {
+          "bsonType": "object",
+          "additionalProperties": false,
+          "required": ["schema_version", "user_id", "revision", "profile", "updated_at"],
+          "properties": {
+            "_id": {},
+            "schema_version": {"enum": ["1"]},
+            "user_id": {"bsonType": "string", "minLength": 1},
+            "revision": {"bsonType": ["int", "long"], "minimum": 1},
+            "profile": {"bsonType": "object", "required": ["user_id", "revision", "courses"]},
+            "updated_at": {"bsonType": "date"}
+          }
+        }
+      },
+      "indexes": [
+        {"keys": [["user_id", 1], ["revision", -1]], "name": "academic_revision_owner_unique", "unique": true}
+      ]
+    },
+    {
+      "name": "academic_lesson_plans",
+      "validator": {
+        "$jsonSchema": {
+          "bsonType": "object",
+          "additionalProperties": false,
+          "required": ["schema_version", "user_id", "plans", "updated_at"],
+          "properties": {
+            "_id": {},
+            "schema_version": {"enum": ["1"]},
+            "user_id": {"bsonType": "string", "minLength": 1},
+            "plans": {"bsonType": "array", "items": {"bsonType": "object", "required": ["user_id"]}},
+            "updated_at": {"bsonType": "date"}
+          }
+        }
+      },
+      "indexes": [
+        {"keys": [["user_id", 1]], "name": "academic_plans_owner_unique", "unique": true}
+      ]
+    }
+  ]
+}

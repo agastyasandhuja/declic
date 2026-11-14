@@ -242,6 +242,13 @@ class Database:
                 if attempt == 2:
                     raise
 
+    def read(self, operation):
+        """Read projections can be called inside a feed transaction without nesting writes."""
+        if self.mongo is not None:
+            return operation(UnitOfWork(mongo=self.mongo))
+        with sqlite3.connect(self.settings.fixture_database_path, timeout=15) as conn:
+            return operation(UnitOfWork(local=conn))
+
     @contextmanager
     def transaction(self, user_id=None):
         """Setup/tests only. HTTP services use retryable run(callback)."""

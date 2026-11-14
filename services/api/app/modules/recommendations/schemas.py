@@ -11,6 +11,7 @@ class RequestModel(BaseModel):
 
 class SessionRequest(RequestModel):
     resume_session_id: Identifier | None = None
+    refresh_unseen: bool = False
 
 
 class GateRequest(RequestModel):

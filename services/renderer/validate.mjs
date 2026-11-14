@@ -2,6 +2,22 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
+
+function validateSemanticDiagram(plan) {
+ if(!plan||typeof plan!=='object'||Array.isArray(plan)||Object.keys(plan).some(key=>!['mode','nodes','edges'].includes(key))
+  ||!['comparison','sequence','cause_effect'].includes(plan.mode)||!Array.isArray(plan.nodes)||plan.nodes.length<2||plan.nodes.length>4
+  ||!Array.isArray(plan.edges)||plan.edges.length>4)throw Error('Invalid semantic diagram');
+ for(const node of plan.nodes) {
+  if(!node||typeof node!=='object'||Array.isArray(node)||Object.keys(node).some(key=>key!=='label')
+   ||typeof node.label!=='string'||!node.label.trim()||node.label.length>24||/[\x00-\x1f\x7f]/.test(node.label))throw Error('Invalid semantic node');
+ }
+ if(new Set(plan.nodes.map(node=>node.label.trim().toLowerCase())).size!==plan.nodes.length)throw Error('Duplicate semantic nodes');
+ const expected=plan.mode==='comparison'?[]:plan.nodes.slice(1).map((_,i)=>({source:plan.mode==='sequence'?i:0,target:i+1}));
+ if(plan.edges.length!==expected.length||plan.edges.some((edge,i)=>!edge||typeof edge!=='object'||Array.isArray(edge)
+  ||Object.keys(edge).some(key=>!['source','target'].includes(key))||!Number.isInteger(edge.source)||!Number.isInteger(edge.target)
+  ||edge.source!==expected[i].source||edge.target!==expected[i].target))throw Error('Invalid semantic relationship');
+}
+
 export function validatePack(root) {
  const real=fs.realpathSync(root);
  const manifest=JSON.parse(fs.readFileSync(path.join(root,'manifest.json'),'utf8'));
@@ -19,6 +35,8 @@ export function validatePack(root) {
  }
  const lesson=JSON.parse(fs.readFileSync(path.join(root,'lesson.json'),'utf8'));
  if(!['dialogue_gameplay','visual_explainer','space_explainer','math_explainer'].includes(lesson.format_id)||!Number.isInteger(lesson.frame_count)||lesson.frame_count<(lesson.format_id==='math_explainer'?600:900)||lesson.frame_count>1800)throw Error('Invalid lesson');
+ if(lesson.visual_strategy!==undefined&&!['existing','semantic_diagram'].includes(lesson.visual_strategy))throw Error('Invalid visual strategy');
+ if(lesson.visual_strategy==='semantic_diagram'&&(lesson.format_id!=='visual_explainer'||lesson.presentation!=='reference_v3'||lesson.trace_kind!=='none'||lesson.installment_example||Object.keys(lesson.images||{}).length))throw Error('Invalid semantic strategy');
  if(lesson.presentation!==undefined&&!['guided_v1','reference_v2','reference_v3'].includes(lesson.presentation))throw Error('Invalid presentation');
  if(lesson.background_mode!==undefined&&!['concept_only','gameplay'].includes(lesson.background_mode))throw Error('Invalid background mode');
  if(lesson.teaching_beats!==undefined&&!['reference_v2','reference_v3'].includes(lesson.presentation)) {
@@ -51,11 +69,16 @@ export function validatePack(root) {
      ||s.labels.some(l=>typeof l!=='string'||l.length>24)||!Array.isArray(s.asset_ids)||s.asset_ids.length>2
      ||s.asset_ids.some(id=>!Object.hasOwn(lesson.images||{},id))
      ||(s.kind==='image'&&!s.asset_ids.length)||(s.kind==='space'&&lesson.format_id!=='space_explainer'))throw Error('Invalid shot timeline/content');
+   if(lesson.visual_strategy==='semantic_diagram') {
+    validateSemanticDiagram(s.semantic_diagram);
+    if(s.kind!=='diagram'||s.labels.length||s.headline||s.asset_ids.length||(s.motion_scene&&s.motion_scene!=='none')||(s.diagram_demo&&s.diagram_demo!=='trace'))throw Error('Invalid semantic shot');
+   } else if(s.semantic_diagram!=null)throw Error('Semantic payload requires explicit strategy');
    if(s.motion_scene!==undefined&&(!['none','price_tag','split_payment','stack_purchases','payment_calendar','total_cost','choice_balance','receipt','ticket_purchase','ticket_loss','future_choice','time_loss','decision_reset'].includes(s.motion_scene)||(s.motion_scene!=='none'&&s.kind!=='diagram')))throw Error('Invalid motion scene');
    if(['price_tag','split_payment','stack_purchases','payment_calendar','total_cost','choice_balance','receipt'].includes(s.motion_scene)&&!lesson.installment_example)throw Error('Missing payment example');
    if(s.diagram_demo!==undefined&&!['trace','broken_first_link'].includes(s.diagram_demo))throw Error('Invalid diagram demonstration');
    end=s.end;
   }
+  if(lesson.visual_strategy==='semantic_diagram'&&new Set(lesson.shots.map(shot=>JSON.stringify(shot.semantic_diagram))).size<2)throw Error('Semantic diagrams must develop different relationships');
   if(Math.abs(end-lesson.frame_count/30)>.001)throw Error('Incomplete shot timeline');
   if(Object.keys(lesson.images||{}).length>6)throw Error('Too many images');
   for(const image of Object.values(lesson.images||{})) {

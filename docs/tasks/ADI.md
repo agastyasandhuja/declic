@@ -81,6 +81,13 @@ not edited. Agastya still integrates real owner adapters/routes and runtime
 dependencies; Amogh still owns academic persistence. A scoped runtime credential,
 API hosting and physical-device acceptance remain open.
 
+Demo scope decision, November 14: the user accepts confirming an email and then
+returning to the app to sign in manually after the localhost redirect error.
+Redirect UX and custom SMTP are explicitly deferred. Use existing confirmed demo
+accounts for reliable demo access; broader signup/email-delivery acceptance is
+deferred. Keep the current email-confirmation setting enabled. These deferrals
+do not block private Storage setup or authenticated app/API integration.
+
 ## Milestone A2 — provider acquisition experiment
 
 User direction updated November 14, 2026: prioritize Instagram through instagrapi
@@ -97,6 +104,20 @@ Test logged-in Reels discovery, not only user_clips (a creator's posted Reels).
 The account owner confirmed the four Reels' topics/creators look familiar. This
 is qualitative evidence of relevance; exact native-app ranking and continued
 recommendation behavior remain unverified.
+
+Live-feed follow-up, November 14: implemented an owner-bound server session,
+on-demand provider paging, retry-stable app cursors, leftovers/deduplication,
+known-asset playback re-resolution, and bounded rolling mobile prefetch. The
+existing saved four-Reel adapter remains finite. See [live setup](../ADI_INSTAGRAM_LIVE.md).
+Thirty-one synthetic live/setup backend tests and thirteen existing entertainment
+tests pass; mobile tests cover 250 clips without exceeding the 100-record window.
+The first connection attempt stopped in app sign-in; the operator-UUID option
+then reached Instagram login, which requested phone approval/verification.
+The helper now reports safe stage-specific errors and preserves device identity
+across manual attempts. Actual later-page retrieval/renewal and physical-phone
+acceptance remain unverified. The user approved the authenticated Expo tunnel
+transfer for this phone test. Shared core assembly remains Agastya's work; no
+academic or shared database code was changed.
 
 Separate discovery from playback validation:
 
@@ -156,7 +177,7 @@ unavailable item. Record what was actually tested.
 | Pause in background/away | Foreground/focus/visibility/manual gates; simulator watch total retained 39s through background/resume and stopped in The lab. Physical audio exclusivity remains open. |
 | Loading/retry/skip/empty recovery | Native failed-item Skip recovered; load and post-load stall watchdogs, URL resolution on expiry, stale-page reload and cancellable requests. Real renewed Instagram URLs remain untested. |
 | Safe areas/captions | Native layout inspected; three-line captions above tabs, accessible paging alternative. |
-| Small preload buffer | One paused upcoming native player, preferred five-second forward buffer; promotion/reuse tested. Metadata capped at 100 records. |
+| Small preload buffer | One paused upcoming native player, preferred five-second forward buffer; promotion/reuse tested. Rolling metadata window capped at 100 records, with foreground near-end paging and eviction only behind the selected clip. |
 | Attribution/source | Creator display/handle and original-source link. |
 | Separate actual watch/skip events | Media-position deltas, wall bounds and loop accounting exclude stalls/seeks/background. Normal paging emits a distinct skip; local diagnostics only. A4 owns server event delivery. |
 

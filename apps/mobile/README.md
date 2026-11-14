@@ -239,3 +239,81 @@ The new [identity setup](../../services/api/app/modules/auth/README.md) and
 [entertainment setup](../../services/api/app/modules/entertainment/README.md) give
 exact isolated API/database test commands and backend dependency requests.
 Physical-iPhone Instagram setup remains paused; no private catalog is tunneled.
+
+## Live Instagram feed — November 14, 2026
+
+The user has requested live account-session retrieval. The new backend adapter
+uses the same authenticated entertainment routes; the old saved four-Reel mode
+remains an explicitly selected fallback. See [live setup](../../docs/ADI_INSTAGRAM_LIVE.md)
+for the local hidden-login helper, backend startup and HTTPS API configuration.
+Forwarding private data through a public tunnel remains subject to the earlier
+specific approval; no public tunnel is enabled automatically by these changes.
+
+From the root, instagram:connect binds a server-only Instagram session to the
+Supabase account, instagram:api starts the local owned factory, and
+instagram:mobile selects the API feed with the saved bundle preview disabled.
+The app still requires a reachable HTTPS API origin and the matching app sign-in.
+Demo mode never receives private feed credentials.
+
+Near-end pagination now runs only while focused/foregrounded, with at most one
+pending page request. A rolling 100-record window evicts only already-passed cards
+and retains the selected asset/unseen cards, allowing sessions beyond 100 clips.
+Empty/duplicate traversal is bounded and offers retry without dropping loaded
+videos. Native player/audio gates remain unchanged. Pure synthetic tests cover a
+250-clip session; actual account pagination and physical-phone acceptance still
+need the local connection/device checks.
+
+## Integrated cloud demo (November 14, 2026)
+
+Signed-in API mode now uses the mixed `/v1/feed` screen. It renders entertainment,
+private course lessons, and quiz gates through the same two-buffer player. Quiz
+answers preserve an idempotency key across retries; an incorrect answer still
+unlocks scrolling. On a successful answer the screen discards its old page cursor.
+Watch events retain their IDs and ordering when delivery retries, and are flushed
+before activating a quiz gate. Returning to an earlier clip does not count its
+completed occurrence twice.
+
+Courses accepts each student's Canvas personal access token and Instagram login.
+Provider credentials go only to the authenticated API; saved provider sessions
+remain on the backend. The app displays preparation counts and can retry failed
+preparation jobs. An empty visible feed polls every ten seconds while content
+prepares. Gemini configuration is a host requirement, shown explicitly when absent.
+
+Run the API and workers as documented in the repository's integrated demo guide.
+For one HTTPS tunnel carrying both the app and API, set only public values in
+`apps/mobile/.env` (`EXPO_PUBLIC_SUPABASE_URL`,
+`EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `EXPO_PUBLIC_API_BASE_URL`, and
+`EXPO_PUBLIC_FEED_SOURCE=api`), then start:
+
+```sh
+EXPO_PACKAGER_PROXY_URL=https://YOUR-DEMO-HOST \
+HACKUMASS_PREVIEW_API=1 HACKUMASS_API_PORT=8010 \
+npm run web --workspace @hackumass/mobile -- --localhost --port 8095
+```
+
+Forward the HTTPS demo host to port 8095 and disable tunnel request inspection.
+The proxy forwards only allowed app routes, bearer authorization, JSON, and
+idempotency keys to the fixed local API port; it strips cookies and blocks redirects.
+`EXPO_PACKAGER_PROXY_URL` makes the Expo native manifest advertise the reachable
+HTTPS bundle URL. Public mobile configuration never includes the Atlas URI,
+Supabase server key, Gemini key, or credential encryption key.
+
+Validation performed on this integrated checkout:
+
+- TypeScript and 40 mobile tests pass on Node 24, including event retry ordering,
+  concurrent quiz/feed flush calls, session storage, player exclusivity, and proxy
+  authentication/method/body-size boundaries.
+- A 390×844 browser test with **synthetic** auth, API data, and video checked real
+  first/second media playback, exactly one active player, paused media on the quiz,
+  incorrect-answer unlock, event delivery before gate activation, saved clips,
+  PAT form rendering, and browser-tab session restoration.
+- A separate **real cloud** browser test passed HTTPS app login, authenticated
+  empty feed, reload restoring the session, real connection/preparation status,
+  and logout. The disposable Supabase account and associated app records were
+  deleted afterward.
+
+These checks do not establish physical-iPhone playback or successful Instagram,
+Canvas, or Gemini acquisition. The pinned Expo web player also emits canceled
+`play()` AbortErrors during source replacement; the synthetic browser test recorded
+these separately while checking playback and exclusivity. Native device behavior
+still requires the phone acceptance sequence above.

@@ -90,6 +90,33 @@ class AtlasVideoRepository:
         if result.matched_count != 1:
             raise StaleLease("Job cancelled or lease expired")
 
+    def retry_failed(self, job_id, owner, *, session=None):
+        # Only the owning student's explicit retry/reteach can restart failure.
+        # Atomic state transition prevents duplicate retries and fences old workers.
+        return (
+            self.jobs.update_one(
+                {
+                    "job_id": job_id,
+                    "owner_user_id": owner,
+                    "state": "failed",
+                    "$or": [{"retry_count": {"$lt": 3}}, {"retry_count": {"$exists": False}}],
+                },
+                {
+                    "$set": {
+                        "state": "queued",
+                        "stage": "queued",
+                        "attempt": 0,
+                        "available_at": 0,
+                        "lease_until": 0,
+                        "error_code": None,
+                    },
+                    "$inc": {"fence": 1, "retry_count": 1},
+                },
+                session=session,
+            ).modified_count
+            == 1
+        )
+
     def cancel(self, job_id, owner):
         return (
             self.jobs.update_one(
@@ -273,6 +300,30 @@ class LocalVideoRepository:
     def update(self, job_id, fence, changes, now=None):
         with self.transaction() as conn:
             self._update(conn, job_id, fence, changes, time.time() if now is None else now)
+
+    def retry_failed(self, job_id, owner, *, session=None):
+        with self.transaction() as conn:
+            raw = conn.execute("SELECT data FROM jobs WHERE id=?", (job_id,)).fetchone()
+            row = json.loads(raw[0]) if raw else None
+            if (
+                not row
+                or row["owner_user_id"] != owner
+                or row["state"] != "failed"
+                or row.get("retry_count", 0) >= 3
+            ):
+                return False
+            row.update(
+                state="queued",
+                stage="queued",
+                attempt=0,
+                available_at=0,
+                lease_until=0,
+                error_code=None,
+                fence=row["fence"] + 1,
+                retry_count=row.get("retry_count", 0) + 1,
+            )
+            conn.execute("UPDATE jobs SET data=? WHERE id=?", (json.dumps(row), job_id))
+            return True
 
     def cancel(self, job_id, owner):
         with self.transaction() as conn:

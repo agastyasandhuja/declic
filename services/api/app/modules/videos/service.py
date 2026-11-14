@@ -87,12 +87,12 @@ class VideoService:
             "kind": "mp4",
             "asset_id": video["asset_id"],
             "url": self.storage.signed_url(video["assets"]["video"]["key"]),
-            "expires_at": (datetime.now(UTC) + timedelta(seconds=900)).isoformat(),
+            "expires_at": (datetime.now(UTC) + timedelta(seconds=600)).isoformat(),
             "mime_type": "video/mp4",
         }
 
 
-def run_once(repository, artifact_root, *, fixture=False):
+def run_once(repository, artifact_root, *, fixture=False, private_demo_storage=None):
     job = repository.claim()
     if not job:
         return False
@@ -132,6 +132,19 @@ def run_once(repository, artifact_root, *, fixture=False):
             stage=stage,
             check_cancelled=check_cancelled,
         )
+        if (
+            private_demo_storage is not None
+            and not fixture
+            and brief.scope == "private"
+            and brief.format_id != "math_explainer"
+        ):
+            from .publication import publish_private_demo
+
+            stage("publishing")
+            publish_private_demo(
+                repository, private_demo_storage, job, brief, artifact_root / job["job_id"], result
+            )
+            return True
         repository.update(
             job["job_id"],
             job["fence"],

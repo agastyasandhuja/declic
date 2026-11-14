@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 const { previewApiProxy } = require('../scripts/preview-api-proxy.cjs');
 
-test('preview transport forwards only app auth to loopback and rejects cookies, mutations and redirects', async () => {
+test('preview transport forwards only app auth to loopback and rejects cookies, unknown mutations and redirects', async () => {
   let calls = 0;
   const upstream = createServer((request, response) => {
     calls++; assert.equal(request.headers.cookie, undefined); assert.equal(request.headers.authorization, 'Bearer synthetic');
@@ -21,6 +21,9 @@ test('preview transport forwards only app auth to loopback and rejects cookies, 
     assert.equal((await fetch(`${origin}/v1/me`, { headers })).status, 503);
     assert.equal((await fetch(`${origin}/v1/me`, { headers, method: 'POST' })).status, 405);
     assert.equal((await fetch(`${origin}/v1/admin`, { headers })).status, 404);
-    assert.equal(calls, 2);
+    assert.equal((await fetch(`${origin}/v1/feed/sessions`, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json', 'Idempotency-Key': 'session-test' }, body: '{}' })).status, 200);
+    assert.equal((await fetch(`${origin}/v1/feed/sessions`, { method: 'POST', body: '{}' })).status, 401);
+    assert.equal((await fetch(`${origin}/v1/canvas/token`, { method: 'POST', headers, body: 'x'.repeat(70000) })).status, 413);
+    assert.equal(calls, 3);
   } finally { await Promise.all([new Promise<void>(resolve => proxy.close(() => resolve())), new Promise<void>(resolve => upstream.close(() => resolve()))]); }
 });

@@ -60,6 +60,7 @@ class Brief(Record):
     trace_kind: Literal["linked_list_reverse", "none"] = "linked_list_reverse"
     presentation: Literal["guided_v1", "reference_v2", "reference_v3"] = "reference_v3"
     format_id: Format
+    visual_strategy: Literal["existing", "semantic_diagram"] = "existing"
     teaching_approach: Identifier
     target_duration_seconds: int = Field(default=45, ge=20, le=60)
     scope: Literal["private", "shared_generic_candidate"] = "private"
@@ -77,6 +78,16 @@ class Brief(Record):
 
     @model_validator(mode="after")
     def consistent(self):
+        if self.visual_strategy == "semantic_diagram" and (
+            self.format_id != "visual_explainer"
+            or self.presentation != "reference_v3"
+            or self.trace_kind != "none"
+            or self.installment_example is not None
+        ):
+            raise ValueError(
+                "Semantic diagrams require a reference_v3 visual explainer "
+                "without a trace or payment example"
+            )
         if self.format_id != "math_explainer" and self.target_duration_seconds < 30:
             raise ValueError("Spoken lessons require at least 30 seconds")
         if self.format_id == "math_explainer":
@@ -166,10 +177,43 @@ class ImageRequest(Record):
     fact_ids: list[Identifier] = Field(min_length=1, max_length=6)
 
 
+class SemanticNode(Record):
+    label: Annotated[str, Field(min_length=1, max_length=24, pattern=r"^[^\x00-\x1f\x7f]+$")]
+
+
+class SemanticEdge(Record):
+    source: int = Field(ge=0, le=3, strict=True)
+    target: int = Field(ge=0, le=3, strict=True)
+
+
+class SemanticDiagramPlan(Record):
+    mode: Literal["comparison", "sequence", "cause_effect"]
+    nodes: list[SemanticNode] = Field(min_length=2, max_length=4)
+    edges: list[SemanticEdge] = Field(default_factory=list, max_length=4)
+
+    @model_validator(mode="after")
+    def supported_relationships(self):
+        labels = [node.label.strip().casefold() for node in self.nodes]
+        if any(not label for label in labels) or len(set(labels)) != len(labels):
+            raise ValueError("Semantic nodes require distinct nonblank labels")
+        expected = []
+        if self.mode == "sequence":
+            expected = [(index, index + 1) for index in range(len(self.nodes) - 1)]
+        elif self.mode == "cause_effect":
+            expected = [(0, index) for index in range(1, len(self.nodes))]
+        if [(edge.source, edge.target) for edge in self.edges] != expected:
+            raise ValueError(
+                "Semantic edges must match the selected comparison, ordered sequence, "
+                "or one-cause-to-effects layout"
+            )
+        return self
+
+
 class Shot(Record):
     shot_id: Identifier
     segment_id: Identifier
     kind: Literal["image", "diagram", "kinetic", "space"]
+    semantic_diagram: SemanticDiagramPlan | None = None
     diagram_demo: Literal["trace", "broken_first_link"] = Field(
         default="trace",
         description="For an opening misconception ONLY, broken_first_link shows "
@@ -333,6 +377,28 @@ class Storyboard(Record):
                 raise ValueError("Space scenes require the space format")
         if len(self.shots) < 6 or len({s.camera for s in self.shots}) < 2:
             raise ValueError("Reference videos need at least six shots and varied camera movement")
+        if brief.visual_strategy == "semantic_diagram":
+            if self.image_requests or any(
+                shot.kind != "diagram"
+                or shot.semantic_diagram is None
+                or shot.asset_ids
+                or shot.headline
+                or shot.labels
+                or shot.motion_scene != "none"
+                or shot.diagram_demo != "trace"
+                for shot in self.shots
+            ):
+                raise ValueError(
+                    "Semantic strategy requires only typed semantic diagrams, "
+                    "with no images, extra labels or specialized motion"
+                )
+            if len({digest(shot.semantic_diagram.model_dump()) for shot in self.shots}) < 2:
+                raise ValueError(
+                    "Semantic diagrams must develop at least two different "
+                    "relationships or examples"
+                )
+        elif any(shot.semantic_diagram is not None for shot in self.shots):
+            raise ValueError("Semantic diagram payload requires an explicit visual strategy")
         if brief.format_id == "space_explainer":
             spatial = [s for s in self.shots if s.kind == "space"]
             if len(spatial) < 4 or len({s.space_mode for s in spatial}) < 2:
@@ -413,6 +479,7 @@ class Storyboard(Record):
                 brief.format_id == "visual_explainer"
                 and brief.trace_kind == "none"
                 and not brief.installment_example
+                and brief.visual_strategy != "semantic_diagram"
             ):
                 used = [s.asset_ids[0] for s in self.shots if s.kind == "image"]
                 if len(set(used)) < 4 or any(used.count(a) > 2 for a in used):

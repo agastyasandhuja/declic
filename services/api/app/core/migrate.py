@@ -128,7 +128,8 @@ def apply_identity_catalog(database: Database):
     apply_domain_drafts(database.mongo)
     database.mongo.api_migrations.update_one(
         {"_id": IDENTITY_CATALOG_MIGRATION_ID},
-        {"$set": {"applied_at": iso(utc_now())}}, upsert=True,
+        {"$set": {"applied_at": iso(utc_now())}},
+        upsert=True,
     )
 
 
@@ -155,7 +156,8 @@ if __name__ == "__main__":
     database = Database(Settings())
     try:
         apply_ordered(
-            database, include_videos=args.include_videos,
+            database,
+            include_videos=args.include_videos,
             include_identity_catalog=args.include_identity_catalog,
         )
         print("API collection validators and indexes applied")

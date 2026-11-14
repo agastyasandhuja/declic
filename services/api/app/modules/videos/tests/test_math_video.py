@@ -85,7 +85,7 @@ def test_opus_uses_auto_tools_and_preserves_response_model(monkeypatch):
         )
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
-        model = Claude(client=client)
+        model = Claude(client=client, model="claude-opus-5-5")
         assert model.structured(ContentReview, "Return review", {}).passed
     assert seen[0]["model"] == "claude-opus-5-5"
     assert seen[0]["tool_choice"] == {"type": "auto"}

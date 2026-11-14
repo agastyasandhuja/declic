@@ -70,11 +70,11 @@ class Claude:
         max_tokens=9000,
     ):
         if not isinstance(max_tokens, int) or not 1 <= max_tokens <= 32000:
-            raise ValueError('max_tokens must be an integer between 1 and 32000')
+            raise ValueError("max_tokens must be an integer between 1 and 32000")
         self.key = os.environ.get("ANTHROPIC_API_KEY")
         if not self.key:
             raise ProviderError("MISSING_ANTHROPIC_API_KEY")
-        self.model = model or os.environ.get("VIDEO_CLAUDE_MODEL", "claude-opus-5-5")
+        self.model = model or os.environ.get("VIDEO_CLAUDE_MODEL", "claude-sonnet-4-5")
         self.client = client or httpx.Client(timeout=180, follow_redirects=False)
         self.usage = []
         self.charge = charge
@@ -82,11 +82,14 @@ class Claude:
         self.cache_dir = Path(cache_dir) if cache_dir else None
         self.max_tokens = max_tokens
 
-    def structured(self, schema, system, payload, validate=lambda x: x, attachments=None):
+    def structured(
+        self, schema, system, payload, validate=lambda x: x, attachments=None, input_schema=None
+    ):
+        input_schema = input_schema or schema.model_json_schema()
         cache_key = digest(
             {
                 "model": self.model,
-                "schema": schema.model_json_schema(),
+                "schema": input_schema,
                 "system": system,
                 "payload": payload,
                 "attachments": attachments,
@@ -118,7 +121,7 @@ class Claude:
                         {
                             "name": "submit_stage_result",
                             "description": "Submit validated stage output",
-                            "input_schema": schema.model_json_schema(),
+                            "input_schema": input_schema,
                         }
                     ],
                     "tool_choice": {"type": "auto"}
@@ -175,6 +178,38 @@ class Claude:
         prompt = (
             template_dir / brief.format_id / ("reference-prompt.txt" if reference else "prompt.txt")
         ).read_text()
+        input_schema = Storyboard.model_json_schema()
+        segment = input_schema["$defs"]["Segment"]["properties"]
+        segment["speaker_role"]["enum"] = (
+            ["peter", "stewie"] if brief.format_id == "dialogue_gameplay" else ["narrator"]
+        )
+        shot = input_schema["$defs"]["Shot"]
+        if brief.trace_kind == "none":
+            input_schema["properties"]["events"]["maxItems"] = 0
+            shot["properties"]["diagram_demo"]["enum"] = ["trace"]
+        if not brief.installment_example and brief.objective_id not in {
+            "sunk-cost-future-choice",
+            "enzyme-competitive-inhibition",
+        }:
+            shot["properties"]["motion_scene"]["enum"] = ["none"]
+        if brief.visual_strategy == "semantic_diagram":
+            prompt = """Use the trusted semantic diagram strategy for this abstract topic.
+Every shot is a diagram with 2–4 nodes, each label at most 24 characters, and a
+semantic_diagram mode comparison, sequence, or cause_effect. Comparison has no
+edges; sequence edges are 0→1→2→3 for the actual node count; cause_effect edges
+are root 0→each other node. Every edge is an assertion: use only source-supported
+order/causality. Do not add numbers or mechanisms absent from approved facts.
+Use a progression of examples and reveal relationships as the narration explains
+them; each shot adds a new idea, not cosmetic label rearrangements. Labels name
+concepts, never duplicate full sentences. Require >=2 distinct modes when the
+facts support them. All shots: kind=diagram, motion_scene=none, diagram_demo=trace,
+empty headline/labels/asset_ids. No image requests, trace events, or teaching beats.
+Use only narrator segments, 90–115 words total. Keep the captions unobstructed.
+"""
+            shot["properties"]["kind"]["enum"] = ["diagram"]
+            shot["properties"]["semantic_diagram"] = {"$ref": "#/$defs/SemanticDiagramPlan"}
+            shot.setdefault("required", []).append("semantic_diagram")
+            input_schema["properties"]["image_requests"]["maxItems"] = 0
         return self.structured(
             Storyboard,
             (REFERENCE_SYSTEM if reference else STORYBOARD_SYSTEM) + prompt,
@@ -202,6 +237,7 @@ class Claude:
                 ),
             },
             lambda value: value.validate_for(brief, require_engagement=True),
+            input_schema=input_schema,
         )
 
     def review(self, brief, board):
@@ -217,7 +253,8 @@ class Claude:
             SYSTEM
             + presentation
             + """Audit EVERY factual assertion in spoken_text, headlines,
-labels and image purposes against the literal approved_facts statements. Production labels
+labels, semantic_diagram node labels and every asserted sequence/cause-effect edge,
+and image purposes against the literal approved_facts statements. Production labels
 such as 'Illustration', 'Computer model' or 'Telescope image' specify the requested asset type;
 they are provisional until the separate actual-image review checks provenance. Do not reject
 those labels solely because the subject facts omit image metadata. Fact IDs do NOT
@@ -429,7 +466,8 @@ This is an automated content check, never proof of accuracy or improved engageme
             "do not claim engagement is proven, or that sampled stills verify audio or motion"
             " fluidity. For animation require meaningful different mechanisms, "
             "minimal labels, white single-word "
-            "speech-aligned captions. Do not request titles or onscreen sources: credits are sidecar metadata. "
+            "speech-aligned captions. Do not request titles or onscreen sources: "
+            "credits are sidecar metadata. "
             "For finance, check the payment counts/totals against installment_example and reject "
             "generic money photographs. Distinguish due-now payment from total commitment."
             + (
@@ -495,6 +533,8 @@ Create a compelling short-form educational film, not a slideshow or dashboard.
 For reference_v3: make the first shot and first line a specific problem or surprising
 contrast whose payoff is visible in the final scene. Avoid generic "Did you know" hooks.
 Every shot must add new information; changing a crop, label or camera does not count.
+For visual_explainer and space_explainer EVERY segment uses speaker_role narrator.
+For dialogue_gameplay EVERY segment uses only peter or stewie; never narrator.
 For dialogue: 8–12 short exchanges, at least FOUR speaker changes; TWO Stewie segments
 must have delivery sarcastic and a brief dry punchline responding to Peter's actual mistake.
 His snark targets the misunderstanding, never the learner. Do not add extra facts for jokes.

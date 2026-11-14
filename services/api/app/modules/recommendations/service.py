@@ -55,7 +55,8 @@ class FeedService:
             "study_ratio_target": study_ratio(state["active_view_ms"] / 1000, self.policy),
         }
 
-    def start_session(self, user_id: str, resume_session_id: str | None = None) -> dict:
+    def start_session(self, user_id: str, resume_session_id: str | None = None,
+                      *, refresh_unseen=False) -> dict:
         now = self.clock()
 
         def operation(conn):
@@ -73,6 +74,11 @@ class FeedService:
             ):
                 state["last_active_at"] = iso(now)
                 repo.save_session(conn, user_id, state)
+                if refresh_unseen and not state["required_quiz_instance_id"]:
+                    state = repo.invalidate_user_feeds(conn, user_id)[state["session_id"]]
+                    state["foreground"] = True
+                    state["current_item_id"] = None
+                    repo.save_session(conn, user_id, state)
             else:
                 state = repo.create_session(conn, user_id, now)
             return self.session_response(state)
@@ -211,7 +217,11 @@ class FeedService:
                     available = True
             else:
                 try:
-                    video = self.videos.get_variant(user_id, item["video"]["video_id"])
+                    bound_lookup = getattr(self.videos, "get_variant_for_objective", None)
+                    video = (bound_lookup(user_id, item["video"]["video_id"],
+                                          item["course_context"]["objective_id"])
+                             if bound_lookup else
+                             self.videos.get_variant(user_id, item["video"]["video_id"]))
                     if video and video.playback and not video.playback.playable(now):
                         playback = self.videos.resolve_playback(user_id, video.video_id)
                         video = video.model_copy(update={"playback": playback})
