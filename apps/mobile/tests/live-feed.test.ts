@@ -36,9 +36,12 @@ test('rolling pages deduplicate both identities and never evict current or unsee
   assert.throws(() => appendFeedWindow(existing, [clip(10)], 0, 10));
 });
 
-test('prefetch runs near the end only while visible, foregrounded, idle and healthy', () => {
+test('metadata prefetch fills eight upcoming clips only while visible, foregrounded, idle and healthy', () => {
   const state = { index: 2, count: 5, hasNext: true, focused: true, foreground: true, loading: false, hasError: false };
   assert.ok(shouldPrefetchPage(state));
+  assert.ok(shouldPrefetchPage({ ...state, index: 0 }));
+  assert.equal(shouldPrefetchPage({ ...state, index: 0, count: 9 }), false);
+  assert.ok(shouldPrefetchPage({ ...state, index: 1, count: 9 }));
   for (const patch of [{ index: 0, count: 10 }, { count: 0 }, { hasNext: false }, { focused: false }, { foreground: false }, { loading: true }, { hasError: true }]) {
     assert.equal(shouldPrefetchPage({ ...state, ...patch }), false);
   }
@@ -59,4 +62,18 @@ test('history stays bounded and initial short batches prefetch before the first 
   history.remember(clip(1)); history.remember(clip(2)); history.remember(clip(3));
   assert.deepEqual(history.unseen([clip(1), clip(2), clip(3)]).map(v => v.video_id), ['synthetic_1']);
   assert.equal(shouldPrefetchPage({ index: 0, count: 4, hasNext: true, focused: true, foreground: true, loading: false, hasError: false }), true);
+});
+
+test('a four-clip first page refills during the current clip and stops with eight ahead', () => {
+  let window = { items: Array.from({ length: 4 }, (_, i) => clip(i)), index: 0, removed: 0 };
+  const selected = window.items[0]; let calls = 0;
+  while (shouldPrefetchPage({ index: 0, count: window.items.length, hasNext: true, focused: true,
+    foreground: true, loading: false, hasError: false })) {
+    window = appendFeedWindow(window.items, [clip(window.items.length)], 0);
+    calls++;
+    assert.ok(calls <= 5, 'Metadata refill must stop at its target.');
+    assert.equal(window.items[0], selected);
+  }
+  assert.equal(window.items.length, 9);
+  assert.equal(calls, 5);
 });

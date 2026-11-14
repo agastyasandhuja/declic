@@ -22,7 +22,7 @@ class LiveInstagramCatalog:
     Old cursor replay fails explicitly; active scrolling can continue past 100.
     """
     def __init__(self, owner_user_id, provider, *, cursor_secret=None, clock=None,
-                 monotonic=None, minimum_interval=2, session_seconds=1800):
+                 monotonic=None, minimum_interval=2, session_seconds=1800, diagnostics=None):
         self.owner = str(UUID(owner_user_id))
         self.provider, self.cursors = provider, CursorCodec(cursor_secret)
         self.clock = clock or (lambda: datetime.now(timezone.utc))
@@ -36,6 +36,24 @@ class LiveInstagramCatalog:
         self.epoch, self.started, self.root_at = None, 0, float('-inf')
         self.provider_cursor, self.exhausted, self.next_page = None, False, 0
         self.next_fetch_at = 0
+        self.diagnostics = diagnostics
+        self.metrics = {'provider_reads': 0, 'provider_items': 0, 'new_items': 0,
+                        'duplicates': 0, 'empty_windows': 0, 'pacing_deferrals': 0,
+                        'last_error': None, 'end_reason': None}
+
+    def _diagnose(self):
+        if self.diagnostics is None:
+            return
+        try:
+            value = {'schema_version': '1', 'checked_at': self.clock().isoformat(),
+                     **self.metrics, 'exhausted': self.exhausted,
+                     'pending_items': len(self.pending), 'recent_items': len(self.records),
+                     'cached_pages': len(self.pages),
+                     'cooldown_seconds': max(0, math.ceil(self.cooldown_until - self.monotonic())),
+                     'reconnect_required': self.reconnect}
+            self.diagnostics(value)
+        except Exception:
+            pass  # Local diagnostic persistence must not break playback.
 
     def _authorize(self, user):
         if user.get('user_id') != self.owner:
@@ -45,23 +63,34 @@ class LiveInstagramCatalog:
         if self.reconnect:
             raise self.failure
         if self.monotonic() < self.cooldown_until:
-            raise self.failure
+            failure = CatalogFailure(self.failure.status, self.failure.code, self.failure.message)
+            failure.retry_after = max(1, math.ceil(self.cooldown_until - self.monotonic()))
+            raise failure
 
     def _provider_call(self, call):
         self._unavailable()
         now = self.monotonic()
         if now < self.next_fetch_at:
+            self.metrics['pacing_deferrals'] += 1
+            self.metrics['last_error'] = 'INSTAGRAM_BUSY'
             failure = CatalogFailure(503, 'INSTAGRAM_BUSY', 'More Reels are warming up. Keep watching and retry shortly.')
             failure.retry_after = max(1, math.ceil(self.next_fetch_at - now))
             raise failure
         self.next_fetch_at = now + self.minimum_interval
+        self.metrics['provider_reads'] += 1
         try:
-            return call()
+            result = call()
+            self.metrics['last_error'] = None
+            return result
         except CatalogFailure as failure:
+            self.metrics['last_error'] = failure.code if failure.code in {
+                'INSTAGRAM_RECONNECT_REQUIRED', 'INSTAGRAM_RATE_LIMITED',
+                'INSTAGRAM_UNAVAILABLE', 'INSTAGRAM_INVALID_RESPONSE', 'PLAYBACK_UNAVAILABLE'} else 'DEPENDENCY_FAILED'
             if failure.code == 'INSTAGRAM_RECONNECT_REQUIRED':
                 self.reconnect, self.failure = True, failure
             elif failure.status >= 500:
-                self.cooldown_until = self.monotonic() + getattr(failure, 'retry_after', 30)
+                failure.retry_after = getattr(failure, 'retry_after', 30)
+                self.cooldown_until = self.monotonic() + failure.retry_after
                 self.failure = failure
             raise
 
@@ -106,6 +135,7 @@ class LiveInstagramCatalog:
                 if self.exhausted and not self.pending:
                     self.provider_cursor, self.exhausted = None, False
                     self.provider_cursors.clear()
+                    self.metrics['end_reason'] = None
                 self.pages.clear()
                 number = 0
             if number in self.pages:
@@ -124,17 +154,27 @@ class LiveInstagramCatalog:
                 fingerprint = hashlib.sha256(next_cursor.encode()).digest() if next_cursor else None
                 if not next_cursor or fingerprint in self.provider_cursors:
                     self.exhausted = True
+                    self.metrics['end_reason'] = 'provider_end' if not next_cursor else 'repeated_cursor'
                 else:
                     self.provider_cursors.append(fingerprint)
                 self.provider_cursor = next_cursor
+                self.metrics['provider_items'] += len(items)
+                added = 0
                 for item in items:
                     identifier = item['provider_video_id']
-                    if identifier in self.seen or not playable(item, self.clock()):
+                    if identifier in self.seen:
+                        self.metrics['duplicates'] += 1
+                        continue
+                    if not playable(item, self.clock()):
                         continue
                     self.seen.add(identifier); self.seen_order.append(identifier)
                     while len(self.seen_order) > 2048:
                         self.seen.remove(self.seen_order.popleft())
                     self.pending.append(item)
+                    added += 1
+                self.metrics['new_items'] += added
+                if not added:
+                    self.metrics['empty_windows'] += 1
             items = []
             while self.pending and len(items) < limit:
                 item = self.pending.popleft()
@@ -149,6 +189,7 @@ class LiveInstagramCatalog:
             self.next_page = number + 1
             return {'schema_version': '1', 'items': deepcopy(items), 'next_cursor': token}
         finally:
+            self._diagnose()
             self.lock.release()
 
     def resolve_playback(self, video_id, user):
@@ -171,6 +212,7 @@ class LiveInstagramCatalog:
                 self.refresh_at.popitem(last=False)
             return deepcopy(fresh['playback'])
         finally:
+            self._diagnose()
             self.lock.release()
 
     def close(self):

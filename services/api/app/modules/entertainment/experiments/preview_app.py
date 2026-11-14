@@ -82,9 +82,12 @@ def create_fixture_app():
 
 def create_live_app():
     """Local owner-bound live assembly; shared main.py still belongs to Agastya."""
-    from app.modules.entertainment.instagram_connection import DEFAULT_CONNECTION, open_live_catalog
-    catalog = open_live_catalog(os.environ.get('INSTAGRAM_CONNECTION_FILE', DEFAULT_CONNECTION))
+    from app.modules.entertainment.instagram_connection import DEFAULT_CONNECTION, open_live_catalog, write_private
+    report_path = ROOT / '.local/instagram-live/runtime-report.json'
+    catalog = open_live_catalog(os.environ.get('INSTAGRAM_CONNECTION_FILE', DEFAULT_CONNECTION),
+        diagnostics=lambda value: write_private(report_path, value))
     try:
+        catalog._diagnose()
         return create_preview_app(catalog=catalog)
     except Exception:
         catalog.close()
