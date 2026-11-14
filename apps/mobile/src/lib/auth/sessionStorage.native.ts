@@ -1,0 +1,9 @@
+import * as SecureStore from 'expo-secure-store';
+import * as Crypto from 'expo-crypto';
+import { createChunkedStorage } from './chunkedStorage';
+
+export const sessionStorage = createChunkedStorage({
+  getItem: key => SecureStore.getItemAsync(key),
+  setItem: (key, value) => SecureStore.setItemAsync(key, value, { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY }),
+  removeItem: key => SecureStore.deleteItemAsync(key),
+}, () => Crypto.randomUUID());

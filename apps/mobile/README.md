@@ -1,0 +1,137 @@
+# Mobile prototype
+
+Expo SDK 58 + React Native + TypeScript. Adi owns this app and the root npm
+workspace. Atlas persistence is deferred. Supabase Auth is wired independently;
+the fixture feed and development demo need no backend.
+
+## Install and run
+
+Use Node 24 LTS (see root .nvmrc). Run from the repository root:
+
+```sh
+npm ci
+cp apps/mobile/.env.example apps/mobile/.env
+npm start
+```
+
+Preserve an existing .env instead of copying over it. Add the Supabase project URL
+and publishable key to that ignored file for real signup/login. Never add server
+keys, Canvas tokens or an Atlas URI to mobile configuration. Restart Metro after
+changing environment variables.
+
+- Physical iPhone: install Expo Go supporting SDK 58; sign into the same Expo
+  account in Expo Go and the CLI (`npx expo login --browser` from apps/mobile).
+  Keep laptop/phone on the same reachable network, then scan Metro's QR code.
+- iOS Simulator: finish Xcode setup and install an iOS runtime in Xcode settings,
+  then run `npm run ios`. Expo installs the matching simulator Expo Go app.
+- Browser preview: `npm run web`. This is useful for UI checks; native playback
+  and secure storage still require device/simulator checks.
+
+If Metro is already running, use its `i`/`w` keys rather than starting another
+server. To clear stale bundles, run `npx expo start --clear` from apps/mobile.
+Shared fixtures and schemas are included in Metro's watch folders.
+
+## Try the prototype
+
+1. Choose **Explore the demo** on the sign-in screen. This entry exists only in
+   development (`__DEV__` plus EXPO_PUBLIC_ENABLE_PREVIEW, default true).
+2. Swipe the full-height **Your feed** cards. Tap to pause; use the speaker control
+   to mute. Only one player exists. Backgrounding and leaving the feed pause it.
+3. Open **Courses** for clearly labeled synthetic course cards.
+4. Open **The lab** for component integration slots and local playback activity.
+   Enable **Unavailable clip test** to restart the demo at a deliberate missing
+   asset; verify retry/skip, then turn the switch off to restore the working feed.
+5. Choose **Leave demo** to return to authentication. Preview state is temporary;
+   it has a synthetic identity and cannot authenticate any API request.
+
+The media catalog is fixtures/entertainment/feed.json. These are public test-media
+URLs, not TikTok/Instagram retrieval or generated lessons. Edge-case fixtures also
+include a duplicate provider item, unavailable item, expired link, and unknown
+durations. No downloaded media bytes belong in Git. Sample clips are not promised
+to have production portrait framing or a 30–60 second lesson duration.
+
+## Real authentication
+
+Signup, email-confirmation messaging, login, logout, session restoration and token
+refresh use @supabase/supabase-js. Native sessions are chunked into secure device
+storage, with a small manifest committed only after all chunks are written.
+Browser preview sessions use sessionStorage, scoped to the current browser tab.
+Passwords are never persisted. Sign-out unmounts the private app shell, clearing
+its feed, route, diagnostic state and synthetic data.
+
+The configured project's public Auth endpoint was checked separately and requires
+email confirmation. Successful signup/email delivery/login and actual persisted
+session restoration still need a controlled test account; do not infer those from
+the implemented UI or public endpoint checks.
+
+## Backend connection
+
+Set EXPO_PUBLIC_API_BASE_URL to the reachable **HTTPS origin** of Agastya's API and
+restart Metro. After real sign-in, enable **Use connected feed** in The lab. It
+uses GET /v1/entertainment/feed and the per-video playback-refresh route from the
+v1 entertainment contract. **Check authenticated API** calls GET /v1/me.
+
+The shared client attaches only the current app access token, performs at most one
+refresh/replay after a 401, accepts only /v1 paths on the configured origin, and
+handles timeouts/errors. Mutations replay only with an Idempotency-Key. The actual
+FastAPI auth enforcement is a backend handoff and is not implemented by this app.
+There is no Atlas connection in the mobile app. Playback observations are local
+diagnostics; feed-session event delivery awaits Agastya's unified-feed integration.
+
+## Teammate integration
+
+See src/integration/index.ts for FeatureScreenProps and reusable Button/theme/API
+exports. src/integration/registry.ts has `academics` and `learning` screen slots,
+reachable through The lab. Adi owns registering package imports and navigation.
+
+Amogh and Agastya should export a React Native component accepting:
+
+```ts
+type FeatureScreenProps = {
+  user: CurrentUser;
+  api: ApiClient;
+  theme: typeof theme;
+  isPreview: boolean;
+  onBack(): void;
+  onOpenFeed(): void;
+};
+```
+
+Use a type-only import of FeatureScreenProps from the app integration index until
+a shared package is agreed. Inject their domain's local fake adapter when
+isPreview is true; demo mode deliberately provides no backend credentials. Do
+not add another auth store or navigation root. Never authorize requests using
+the user_id prop: the backend derives identity from the bearer token.
+
+Deliver the component/export name plus package dependencies to Adi. The owner can
+create their package.json under packages/mobile-academics or mobile-learning;
+Adi adds its workspace dependency and integrates the root lockfile. Do not modify
+another stream's implementation to fill a slot. The initial slots are placeholders,
+not completed academic/learning features or a simulated server quiz gate.
+
+## Checks
+
+From the repository root:
+
+```sh
+npm run typecheck
+npm test
+npm run contracts:check
+```
+
+From apps/mobile:
+
+```sh
+npx expo-doctor@latest
+npx expo export --platform ios --output-dir /private/tmp/hackumass-mobile-ios
+```
+
+TypeScript wire types in src/contracts/generated.ts are generated from Adi's
+versioned JSON Schemas under contracts/schemas. After editing a schema, run
+`npm run contracts:generate` at the root and commit its generated types. Runtime
+Ajv validation uses those same schemas for feed/playback data and fixtures.
+
+Behavior tests cover rapid-swipe source races, background/focus gating, playback
+failure recovery, secure-storage torn writes/Unicode, authenticated API refresh,
+timeouts, safe mutation retries, and fixture normalization/pagination. Record actual
+simulator and physical-device acceptance results in docs/status/ADI.md.

@@ -1,0 +1,131 @@
+{
+  "schema_version": "1",
+  "items": [
+    {
+      "schema_version": "1",
+      "video_id": "fixture_bunny",
+      "provider": "fixture",
+      "provider_video_id": "bunny",
+      "source_url": "https://peach.blender.org/",
+      "creator": {
+        "handle": null,
+        "display_name": "Blender Foundation",
+        "attribution_url": "https://peach.blender.org/"
+      },
+      "caption": "Big Buck Bunny",
+      "duration_seconds": null,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "fixture_asset_bunny",
+        "url": "https://storage.googleapis.com/exoplayer-test-media-0/BigBuckBunny_320x180.mp4",
+        "expires_at": null,
+        "mime_type": "video/mp4"
+      },
+      "thumbnail_url": null,
+      "acquired_at": "2026-11-14T06:00:00Z",
+      "availability": "ready",
+      "acquisition_mode": "fixture"
+    },
+    {
+      "schema_version": "1",
+      "video_id": "fixture_dream",
+      "provider": "fixture",
+      "provider_video_id": "dream",
+      "source_url": "https://github.com/androidx/media",
+      "creator": {
+        "handle": null,
+        "display_name": "Android Media test sample",
+        "attribution_url": "https://github.com/androidx/media"
+      },
+      "caption": "A short interlude",
+      "duration_seconds": null,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "fixture_asset_dream",
+        "url": "https://storage.googleapis.com/exoplayer-test-media-0/shortform_2.mp4",
+        "expires_at": null,
+        "mime_type": "video/mp4"
+      },
+      "thumbnail_url": null,
+      "acquired_at": "2026-11-14T06:00:00Z",
+      "availability": "ready",
+      "acquisition_mode": "fixture"
+    },
+    {
+      "schema_version": "1",
+      "video_id": "fixture_escape",
+      "provider": "fixture",
+      "provider_video_id": "escape",
+      "source_url": "https://github.com/androidx/media",
+      "creator": {
+        "handle": null,
+        "display_name": "Android Media test sample",
+        "attribution_url": "https://github.com/androidx/media"
+      },
+      "caption": "A little change of pace",
+      "duration_seconds": null,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "fixture_asset_escape",
+        "url": "https://storage.googleapis.com/exoplayer-test-media-1/mp4/android-screens-10s.mp4",
+        "expires_at": null,
+        "mime_type": "video/mp4"
+      },
+      "thumbnail_url": null,
+      "acquired_at": "2026-11-14T06:00:00Z",
+      "availability": "ready",
+      "acquisition_mode": "fixture"
+    },
+    {
+      "schema_version": "1",
+      "video_id": "fixture_fun",
+      "provider": "fixture",
+      "provider_video_id": "fun",
+      "source_url": "https://github.com/androidx/media",
+      "creator": {
+        "handle": null,
+        "display_name": "Android Media test sample",
+        "attribution_url": "https://github.com/androidx/media"
+      },
+      "caption": "Round and round",
+      "duration_seconds": null,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "fixture_asset_fun",
+        "url": "https://storage.googleapis.com/exoplayer-test-media-1/mp4/dizzy-with-tx3g.mp4",
+        "expires_at": null,
+        "mime_type": "video/mp4"
+      },
+      "thumbnail_url": null,
+      "acquired_at": "2026-11-14T06:00:00Z",
+      "availability": "ready",
+      "acquisition_mode": "fixture"
+    },
+    {
+      "schema_version": "1",
+      "video_id": "fixture_joyride",
+      "provider": "fixture",
+      "provider_video_id": "joyride",
+      "source_url": "https://github.com/androidx/media",
+      "creator": {
+        "handle": null,
+        "display_name": "Android Media test sample",
+        "attribution_url": "https://github.com/androidx/media"
+      },
+      "caption": "Color in motion",
+      "duration_seconds": null,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "fixture_asset_joyride",
+        "url": "https://storage.googleapis.com/exoplayer-test-media-1/gen-3/screens/dash-vod-single-segment/video-avc-baseline-480.mp4",
+        "expires_at": null,
+        "mime_type": "video/mp4"
+      },
+      "thumbnail_url": null,
+      "acquired_at": "2026-11-14T06:00:00Z",
+      "availability": "ready",
+      "acquisition_mode": "fixture"
+    }
+  ],
+  "next_cursor": null
+}
