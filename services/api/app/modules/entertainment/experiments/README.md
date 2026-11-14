@@ -49,7 +49,11 @@ A retrieved catalog completes the retrieval part of A2. Before claiming
 personalization, the account owner must compare its creators/topics with the
 account's usual recommendations; authenticated access alone is insufficient.
 Video URL availability, expiry and actual iPhone playback need separate tests.
-No mobile source switch, Atlas persistence or FastAPI route is added here.
+To view a successfully retrieved batch in the iOS Simulator, stop the normal
+Metro server and run `npm run ios:instagram` from the repository root. See the
+[mobile preview guide](../../../../../../apps/mobile/README.md#saved-instagram-preview-in-the-ios-simulator).
+The mobile integration normalizes metadata and uses the existing player in a
+localhost-only development preview. No Atlas persistence or FastAPI route is added.
 Before serving a private feed to the app, finish A1's protected API authentication
 and bind each app user to their own provider connection on the server.
 

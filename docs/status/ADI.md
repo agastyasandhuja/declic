@@ -45,8 +45,9 @@ by this audit.
 **A2 item 1 is complete for the first experiment.** The user ran the probe locally
 with their existing account. The sanitized report confirms authenticated discovery
 retrieval of four unique Reels with four HTTPS video candidates. The account owner
-confirmed familiar topics/creators. Native playback, normalization, pagination,
-exact feed parity and ongoing personalization updates remain pending checks.
+confirmed familiar topics/creators. Normalization and local iOS simulator playback
+are now verified as recorded below. Physical-iPhone playback, pagination, exact
+feed parity and ongoing personalization updates remain pending checks.
 
 ### Live evidence — November 14, 2026
 
@@ -72,8 +73,8 @@ exact feed parity and ongoing personalization updates remain pending checks.
   This is qualitative relevance evidence from the selected account, not a test
   of exact native-app ranking, cross-account differences or ongoing adaptation.
   The probe's automatic personalization_verified/native_playback_verified flags
-  remain false; it cannot perform this human comparison itself. No candidate
-  video URL has yet been tested in Expo or on the actual iPhone.
+  remain false; it cannot perform this human comparison itself. The probe report
+  predates the separate simulator playback test below; actual iPhone remains untested.
 - Commands for this verification: a local Python JSON/metadata validation with
   aggregate-only output; git status; read-only inspection of installed SDK
   version/profile and login handling. No credentials, provider responses, clip
@@ -118,11 +119,54 @@ exact feed parity and ongoing personalization updates remain pending checks.
   No alternative control path was attempted. The user must run the documented
   command in their own Terminal to enter credentials privately.
 - A2 item 1 (real clips/metadata): verified by the second live attempt above.
-  Item 2 (normalized EntertainmentVideo): not implemented by this raw-metadata
-  probe. Item 3 (actual iPhone playback), item 4 (expiry/outage/pagination), exact
+  Item 2 (normalized EntertainmentVideo): now verified for the saved batch by the
+  mobile integration below. Item 3 (actual iPhone playback), item 4 (expiry/outage/pagination), exact
   feed parity and ongoing personalization updates remain untested. Item 5 now
   includes the first failure, successful retrieval and account-owner relevance
   comparison; append later results here.
+
+### Saved-batch simulator integration — November 14, 2026
+
+- Branch codex/adi-instagram-preview builds on the existing probe/prototype.
+  Added a Node/TypeScript normalizer, prepare command and saved_instagram feed
+  adapter. Four private records pass the existing EntertainmentFeedPage v1 schema.
+  IDs are namespaced for this preview, metadata stays cached, ordering is preserved,
+  duplicates are removed and no cookies/headers/provider credentials are copied.
+- Normalized data goes to ignored .local/instagram-probe/feed.v1.json (mode 0600).
+  Metro resolves that file only for an explicitly enabled development iOS bundle;
+  normal runs, web/Android and production resolve an empty tracked catalog.
+  No contract fields, other owners' implementations, shared Python dependencies,
+  API route, cloud service or Atlas database were changed.
+- `npm run ios:instagram`: passed; normalizer prepared four records, Expo started
+  with --localhost and --ios, and the native bundle succeeded (963 modules).
+  `lsof -nP -iTCP:8081 -sTCP:LISTEN` confirmed 127.0.0.1:8081 only. Middleware also
+  rejects non-loopback requests. No LAN/tunnel is used for the personal preview.
+- Read-only one-byte range checks of all four candidate media URLs: HTTP 206,
+  video/mp4, Content-Range present, without Instagram cookies. No media bytes were
+  saved to the repository. This checks URL reachability, not every clip's device
+  playback or a supported expiry/refresh flow.
+- Opened Explore the demo in the iPhone 17 / iOS 27.2 simulator. Observed Instagram
+  media rendering in the shared native player; the fourth clip showed 4/4 and 9s
+  watched, and later local activity showed 12s visible. The lab displayed the saved
+  Instagram switch enabled. The user was also interacting with the simulator;
+  automation did not overwrite their navigation. No claim that each clip or
+  physical-iPhone sustained playback was independently verified.
+- The header says SAVED REELS; The lab can return to synthetic samples. Captions
+  are limited to three visible lines. This is a finite saved batch: no background
+  Instagram login, live pagination, automatic URL renewal or watch feedback.
+  The auth identity in development demo remains synthetic; this is a local
+  user-authorized playback test, not a server-backed private feed or A1 sign-off.
+- `npm run typecheck`, `npm test` (18/18), `npm run contracts:check`: passed.
+  New tests cover normalization/credential exclusion, hostile URLs/invalid dates,
+  finite-batch behavior and private-catalog platform/development gates.
+- `HACKUMASS_INSTAGRAM_PREVIEW=1 npx expo export --platform ios --output-dir
+  /private/tmp/hackumass-instagram-release`: passed. Scanned release artifacts for
+  the actual private provider IDs, creator handles and playback URLs: no matches.
+  Scanned tracked/reviewable untracked files for those values: no matches.
+  `git check-ignore` confirms the normalized feed stays excluded.
+- Remaining: actual iPhone playback, live provider refresh/pagination, signed-link
+  expiry recovery and the three A1 auth/authorization acceptance gaps. Keep the
+  protected API/ownership work ahead of any remotely served per-user provider feed.
 
 ## Delivered
 

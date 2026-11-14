@@ -102,10 +102,17 @@ Separate discovery from playback validation:
 1. Retrieve a small list of real clips and metadata. **Verified:** four Reels
    retrieved through the existing account's authenticated discovery session;
    creator, caption, duration, source URL and candidate video URL fields checked.
-2. Normalize them into EntertainmentVideo objects.
+2. Normalize them into EntertainmentVideo objects. **Verified for the saved
+   batch:** four records pass the shared v1 schema and feed the local iOS preview.
 3. Verify a playable source for each clip on the actual iPhone.
 4. Test expired/unavailable resources and pagination.
 5. Record provider, timestamp, session requirements and results in your status file.
+
+Simulator preview: `npm run ios:instagram`, then Explore the demo → Your feed.
+Instagram playback was observed in the iPhone 17 simulator, including the fourth
+clip with accumulated watch time. All four CDN URLs returned HTTP 206 video/mp4
+without provider cookies. Physical-iPhone verification remains open; do not mark
+item 3 complete from simulator/HTTP checks. The saved batch has no live pagination.
 
 TikTok-Api documents trending.videos; instagrapi documents user_clips, feed helpers,
 and clip downloads. Do not claim access to a personal FYP from a trending response.
