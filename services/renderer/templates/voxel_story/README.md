@@ -1,9 +1,16 @@
-# Voxel causal story — template v2
+# Voxel causal story — template v3 (unvalidated revision)
 
 User requested all three qualities of the supplied reference: a 3D Minecraft-like
 world, causal storytelling and short white captions. This is a runnable local
 authoring template and example, pending creative approval; it is not a new public
 format ID or an automatically integrated production generator.
+
+The v3 direction adds reusable camera-key sampling and opt-in expressions in
+`experiments/voxel-story/src/ShotDirection.ts` and `Acting.ts`. The lake scene
+wires them into all eleven beats while reusing staged narration. See the
+[revision notes](../../experiments/voxel-story/README.md#cinematic-direction-revision--implementation-only).
+Testing, rendering and previews are deferred at the user's request. Historical
+output/review evidence below predates this change; no revised MP4 exists yet.
 
 ## What the reference actually does
 

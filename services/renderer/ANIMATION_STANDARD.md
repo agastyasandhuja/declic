@@ -29,6 +29,8 @@ Reusable inventory:
 | Fish, crates, cube geometry, pixel textures and beams | same model kit | Original procedural geometry; no game extraction |
 | Facing, shortest-angle turn, phased fishing poses and shore paths | `experiments/voxel-story/src/Blocking.mjs` | Generic facing/turn helpers; lake paths and events remain scene-specific |
 | White word captions | `src/PopCaptions.tsx` | Provider timing; responsive size; safe placement can vary by format |
+| Camera key sampling, word cue lookup and lake shot plans | `experiments/voxel-story/src/ShotDirection.ts` | Generic sampling/cues; authored lake coordinates are scene-specific. Added November 14, tests/renders deferred by user. |
+| Opt-in eyebrows/mouth expression rig and timed reactions | `experiments/voxel-story/src/Acting.ts` | Uses ModelKit head coordinates; reaction selection is lake-specific. Added November 14, tests/renders deferred by user. |
 | Connected 2D arm rig, swivel chair and integrated angular motion | `experiments/spin-story/src/Root.tsx`, `Motion.mjs` | Fixed limb lengths, continuous angle, illustrative axial inertia; review new poses before reuse |
 | Civic plaza, ballot and distinct electoral-token transfers | `experiments/election-story/src/World.ts`, `ElectionMath.mjs` | Reuses ModelKit; election state/rules remain topic-specific |
 | Existing physics/biology/payment scene adapters | `src/DecisionScenes.tsx`, `BiologyScenes.tsx`, `PaymentScenes.tsx` and experiments | Reuse mechanisms only when the new facts fit; inspect each new shot |
