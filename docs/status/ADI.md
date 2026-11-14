@@ -1,5 +1,88 @@
 # Adi status
 
+## Earlier refill and per-page pacing — November 14, 2026
+
+The user confirmed the updated phone app has good picture and audio with no black
+screens, reached eight clips, and later loaded a ninth. Clips seven/eight arrived
+slowly; a small retry banner appeared. Native picture recovery is now supported
+by this physical-phone report. Sustained paging and lifecycle acceptance stay open.
+
+### Changes
+
+- Found that the two INSTAGRAM_BUSY retries were shared across an entire traversal
+  of up to four duplicate-only pages. The third pacing deferral could halt a
+  legitimate continuation. The pacing allowance now resets for each page;
+  successful empty-page continuations wait two seconds before the next read.
+  Each window stops at four empty pages or two pacing retries per page.
+  The old phone banner's exact error code was not captured, so this is a verified
+  implementation defect rather than a retrospective upstream-error diagnosis.
+- Metadata refill now starts while the initial short batch is playing and targets
+  eight upcoming records, instead of waiting for the last three. The current clip
+  is preserved; the 100-record window, one active player and one paused native
+  preload remain unchanged. Provider pages are still requested in groups of five.
+- At most two extra transient retries per four-page window handle NETWORK_ERROR,
+  PREVIEW_UNAVAILABLE or INSTAGRAM_UNAVAILABLE, preserving the same cursor.
+  Provider cooldowns up to 30 seconds are respected; longer hints, rate limits,
+  auth/reconnect errors and invalid/stale cursors stop without polling. The backend
+  supplies remaining cooldown time rather than restarting a full delay on each read.
+- Optional domain diagnostics now report only counters and fixed outcomes. The
+  local live factory atomically writes .local/instagram-live/runtime-report.json
+  with mode 0600. It records reads, unique/duplicate counts, pacing deferrals,
+  remaining cooldown and provider-end/repeated-cursor flags. No user/post IDs,
+  URLs, cursors, captions, cookies, keys or raw errors are included, and there is
+  no diagnostics API route. A failed write cannot interrupt the feed. Shared core
+  need not supply this optional callback; its implementation/dependencies were
+  not edited.
+- The user later clarified that clips 11–17 required manual Retry each time,
+  despite fast initial filling and correct picture/audio. This identified a
+  second client policy issue: completing four duplicate-only pages was treated
+  as a terminal error. Added automatic continuation through two additional
+  windows, with two/four-second pauses and the same advanced cursor. A refill
+  stops after at most 12 consecutive empty pages; actual failures/rate limits
+  still propagate immediately after their own bounded policy. No native-player
+  implementation changed. The user also confirmed normal single-clip resume
+  after backgrounding and returning.
+
+### Actual checks and current runtime
+
+- npm test: **46 passed**, including a four-page duplicate run with independent
+  pacing deferrals, bounded temporary-outage retries, respected cooldowns, early
+  refill termination at eight ahead, cancellation and cursor retention. Final
+  cases verify a fresh clip after more than four duplicate pages without manual
+  retry, the 12-page stop and cancellation between automatic windows.
+- Owned live/setup Python unittest suite: **56 passed**, including remaining-delay
+  hints, redacted aggregate metrics and an unwritable-diagnostics failure.
+- Existing experiment suite: **13 passed**. TypeScript and contract checks passed.
+- Current iOS export: **848 modules**, saved-catalog preview disabled, under
+  ignored .local/validation/ios-feed-refill. No dependency/lock changes.
+- Final git diff --check passed, all 20 relative links in the four changed
+  documents resolved, and scans of 222 source / 21 exported files found no actual
+  configured private credentials, app identity or private catalog/session/key
+  values. The existing README title-word collision was reviewed as ordinary text.
+- Restarted this task's API using the existing session. Startup wrote a private
+  zero-count diagnostic snapshot, mode 0600. Expo manifest returned **200**, proxy
+  enabled; public missing/invalid bearer checks were **401 AUTH_REQUIRED/AUTH_INVALID**.
+  The existing QR remains valid. Metro's automatic reload found no connected app,
+  so the user was asked to reopen the experience from that QR for the next test.
+- After reopening, the actual local runtime report recorded nine provider reads,
+  36 normalized items, nine unique items, 27 duplicates and three empty windows;
+  pacing deferrals=0, last_error=null, exhausted=false and no cooldown/reconnect.
+  Nine recent records match the initial clip plus eight-ahead metadata target.
+  These aggregate results confirm successful early refill through the app; the
+  user still needs to verify sustained scrolling beyond nine without manual retry.
+- A later report recorded 31 reads, 124 normalized items, 17 unique records and
+  107 duplicates, with no pacing/provider failure, cooldown, reconnect or feed end.
+  The user confirmed those later additions required manual taps. After the final
+  automatic-window fix, restarted this task's API once using the same saved
+  session to clear test-generation cursors, and requested another no-tap phone
+  test on the same Expo QR. No Instagram password/cookie input was repeated.
+
+Remaining: verify the final automatic-window behavior on the phone without manual
+retry, plus unavailable-item recovery and URL renewal. Picture/audio and
+single-player background/resume are now supported by the user's device report.
+No new provider login or account setting change, shared core edit, Atlas write,
+fallback-to-fixtures substitution or Instagram watch/seen-state write occurred.
+
 ## Phone playback and duplicate-page recovery — November 14, 2026
 
 The user reported that the authenticated live feed initially worked on the real

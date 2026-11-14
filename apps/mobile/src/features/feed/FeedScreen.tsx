@@ -11,7 +11,7 @@ import { ApiError } from '../../lib/api/client';
 import { VisibleWatchTracker, PlaybackStallGuard, FirstFrameGuard } from '../../lib/playback/VisibleWatchTracker';
 import type { FeedSource } from './source';
 import { appendFeedWindow, shouldPrefetchPage, unseenVideos } from './source';
-import { fetchAvailablePage } from './paging';
+import { fetchRefillPage } from './paging';
 import { Button } from '../../components/Button';
 import { theme } from '../../theme';
 
@@ -65,13 +65,13 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload }: {
     const abort = new AbortController(); requestAbort.current = abort;
     pending.current = true; setLoading(true); setPageError(null); setPageNeedsReset(false);
     try {
-      const page = await fetchAvailablePage(source, reset ? [] : videosRef.current, cursor, abort.signal, next => {
+      const page = await fetchRefillPage(source, reset ? [] : videosRef.current, cursor, abort.signal, next => {
         if (request === generation.current && !abort.signal.aborted) setNextCursor(next);
       });
       if (request !== generation.current || abort.signal.aborted) return;
       if (!unseenVideos(reset ? [] : videosRef.current, page.items).length && page.next_cursor) {
         setNextCursor(page.next_cursor);
-        throw new Error('No new clips were available in this window. Keep watching and retry shortly.');
+        throw new Error('Instagram is repeating clips. Tap to continue looking for new Reels.');
       }
       const window = appendFeedWindow(reset ? [] : videosRef.current, page.items, reset ? 0 : selectedIndex.current);
       if (window.removed) { controllerRef.current.setGate({ focused: false }); pendingScrollIndex.current = window.index; }

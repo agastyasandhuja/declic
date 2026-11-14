@@ -155,6 +155,51 @@ class LiveTests(unittest.TestCase):
             self.assertEqual(error.exception.status, 409)
         self.assertEqual(len(provider.calls), 1)
 
+    def test_transient_cooldown_exposes_remaining_seconds_without_new_provider_calls(self):
+        failure = CatalogFailure(503, 'INSTAGRAM_UNAVAILABLE', 'Synthetic network outage')
+        provider = Provider([failure, ProviderPage([reel(1)], None)])
+        catalog = self.catalog(provider)
+        with self.assertRaises(CatalogFailure) as initial:
+            catalog.list_candidates({'user_id': OWNER})
+        self.assertEqual(initial.exception.retry_after, 30)
+        self.time = 7
+        with self.assertRaises(CatalogFailure) as waiting:
+            catalog.list_candidates({'user_id': OWNER})
+        self.assertEqual(waiting.exception.retry_after, 23)
+        self.assertEqual(len(provider.calls), 1)
+        self.time = 30
+        self.assertEqual(len(catalog.list_candidates({'user_id': OWNER})['items']), 1)
+
+    def test_local_runtime_diagnostics_export_only_counts_and_fixed_outcomes(self):
+        snapshots = []
+        provider = Provider([ProviderPage([reel(1)], 'private-provider-cursor'),
+                             ProviderPage([reel(1), reel(2)], None)])
+        catalog = self.catalog(provider, diagnostics=snapshots.append)
+        first = catalog.list_candidates({'user_id': OWNER})
+        catalog.list_candidates({'user_id': OWNER}, first['next_cursor'])
+        report = snapshots[-1]
+        self.assertEqual(report['provider_reads'], 2)
+        self.assertEqual(report['provider_items'], 3)
+        self.assertEqual(report['new_items'], 2)
+        self.assertEqual(report['duplicates'], 1)
+        self.assertEqual(report['end_reason'], 'provider_end')
+        text = json.dumps(report)
+        for forbidden in (OWNER, 'private-provider-cursor', 'cdninstagram', 'caption', 'playback', 'video_id'):
+            self.assertNotIn(forbidden, text)
+        secret_code = 'SYNTHETIC_PRIVATE_ERROR_MUST_NOT_ESCAPE'
+        failing = self.catalog(Provider([CatalogFailure(503, secret_code, secret_code)]), diagnostics=snapshots.append)
+        with self.assertRaises(CatalogFailure):
+            failing.list_candidates({'user_id': OWNER})
+        self.assertEqual(snapshots[-1]['last_error'], 'DEPENDENCY_FAILED')
+        self.assertNotIn(secret_code, json.dumps(snapshots[-1]))
+
+    def test_unwritable_local_diagnostic_does_not_break_feed_or_leave_lock_held(self):
+        def unavailable(value):
+            raise OSError('Synthetic local diagnostic failure')
+        catalog = self.catalog(Provider([ProviderPage([reel(1)], 'next'), ProviderPage([reel(2)], None)]), diagnostics=unavailable)
+        first = catalog.list_candidates({'user_id': OWNER})
+        self.assertEqual(len(catalog.list_candidates({'user_id': OWNER}, first['next_cursor'])['items']), 1)
+
     def test_playback_renews_only_known_owner_assets_and_coalesces_repeat_retries(self):
         provider = Provider([ProviderPage([reel(1)], None)])
         catalog = self.catalog(provider)

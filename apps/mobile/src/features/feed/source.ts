@@ -38,7 +38,7 @@ export function appendFeedWindow(previous: EntertainmentVideo[], incoming: Enter
 export function shouldPrefetchPage({ index, count, hasNext, focused, foreground, loading, hasError }: {
   index: number; count: number; hasNext: boolean; focused: boolean; foreground: boolean; loading: boolean; hasError: boolean;
 }) {
-  return count > 0 && index >= count - 3 && hasNext && focused && foreground && !loading && !hasError;
+  return count > 0 && count - index - 1 < 8 && hasNext && focused && foreground && !loading && !hasError;
 }
 export function createFixtureSource(): FeedSource {
   const items = eligibleVideos(parseFeedPage(catalog).items);
