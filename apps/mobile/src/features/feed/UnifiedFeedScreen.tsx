@@ -311,6 +311,7 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
 
       <FeedHeader
         top={insets.top + 8}
+        onRefresh={current?.kind !== 'quiz' && !loading ? () => void load(true) : undefined}
         muted={preferences.muted}
         fill={fill}
         onFill={video ? () => setFill(value => !value) : undefined}

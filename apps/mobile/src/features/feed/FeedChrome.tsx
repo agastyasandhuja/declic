@@ -5,13 +5,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Brand } from '../../components/Brand';
 import { theme } from '../../theme';
 
-export function FeedHeader({ top, muted, onMute, fill, onFill }: {
-  top: number; muted?: boolean; onMute?(): void; fill?: boolean; onFill?(): void;
+export function FeedHeader({ top, muted, onMute, fill, onFill, onRefresh }: {
+  top: number; muted?: boolean; onMute?(): void; fill?: boolean; onFill?(): void; onRefresh?(): void;
 }) {
   return (
     <View pointerEvents="box-none" style={[styles.header, { top }]}>
       <Brand size={34} />
       <View pointerEvents="box-none" style={styles.headerActions}>
+        {onRefresh && <FeedIconButton round label="Refresh feed" icon="refresh-outline" onPress={onRefresh} />}
         {onFill && <FeedIconButton round label={fill ? 'Fit whole video' : 'Fill screen'} icon={fill ? 'contract-outline' : 'expand-outline'} onPress={onFill} />}
         {onMute && <FeedIconButton round label={muted ? 'Unmute video' : 'Mute video'} icon={muted ? 'volume-mute-outline' : 'volume-high-outline'} onPress={onMute} />}
       </View>
