@@ -86,3 +86,29 @@ partial-page publication. Reads enforce expiry without waiting for TTL deletion.
 Server-only cursor signing material is injected by core and must match across
 replicas. Private cache fields never include raw provider sessions/headers.
 See database/domains/entertainment and the proposed bootstrap decision.
+
+## Optional live account-session demo adapter — November 14, 2026
+
+LiveInstagramCatalog implements the same authenticated domain feed/playback
+routes with unchanged response fields. It is separate from the finite Atlas
+snapshot cache above. A trusted operator binds a private server session to one
+verified app user UUID; no mobile provider-login route or first-caller binding is
+introduced. No raw provider cursor/session is part of a response.
+
+Opaque live cursors bind owner, feed generation, page index and page size. Replays
+return the cached page while retained; changed/expired/evicted generations return
+409 STALE_CURSOR. A fresh page issues at most one provider page request and keeps
+extra provider items for later client pages. Missing/repeated provider continuation
+ends the stream. Empty windows can have a continuation; clients bound traversal
+and offer manual retry rather than polling indefinitely.
+
+Freshly retrieved records use acquisition_mode live and a zoned acquired_at.
+Playback expires_at is conservatively capped to five minutes of metadata freshness;
+this is not a guarantee of the CDN URL lifetime. The owner-bound resolver can
+request fresh metadata only for recently issued IDs. Provider failure remains
+503/410 as appropriate; Instagram connection/checkpoint failures return 409
+INSTAGRAM_NOT_CONNECTED or INSTAGRAM_RECONNECT_REQUIRED, not a Supabase 401.
+The app should retain already-loaded clips and keep the app session intact.
+
+No provider watch/seen-state writes or parity with the native recommendation
+ranking are claimed. See [integration scope and memory/lifecycle bounds](../docs/decisions/adi-live-instagram-feed.md).

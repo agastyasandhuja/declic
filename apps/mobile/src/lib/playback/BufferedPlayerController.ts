@@ -4,7 +4,7 @@ export interface BufferedPlaybackState extends PlaybackState { activeSlot: 0 | 1
 interface Slot { uri: string | null; ready: boolean; version: number; queue: Promise<void>; load: Promise<void> }
 const emptySlot = (): Slot => ({ uri: null, ready: false, version: 0, queue: Promise.resolve(), load: Promise.resolve() });
 
-/** Two bounded media buffers. The standby driver is always paused, never rendered. */
+/** Two bounded media buffers. The standby surface stays mounted but hidden and paused. */
 export class BufferedPlayerController {
   private slots: [Slot, Slot] = [emptySlot(), emptySlot()];
   private active: 0 | 1 = 0;
@@ -50,6 +50,11 @@ export class BufferedPlayerController {
     this.failed = false;
     const match = this.slots.findIndex(slot => slot.uri === uri);
     this.active = (match >= 0 ? match : 1 - this.active) as 0 | 1;
+    if (!force && this.slots[this.active].uri === uri && this.slots[this.active].ready) {
+      this.emit(false); this.reconcile();
+      if (upcoming && upcoming !== uri) void this.load((1 - this.active) as 0 | 1, upcoming);
+      return;
+    }
     this.emit(true);
     this.timer = setTimeout(() => {
       if (requested === this.version && !this.disposed) this.reportError(true);

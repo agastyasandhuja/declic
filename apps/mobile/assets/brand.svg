@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>déclic app mark</title>
+  <style>@font-face{font-family:Syne;src:url('./fonts/Syne.ttf')}text{font-family:Syne,sans-serif;font-weight:800}</style>
+  <rect width="1024" height="1024" rx="280" fill="#9D86FF"/>
+  <text x="512" y="730" text-anchor="middle" font-size="660" fill="#09090B">d</text>
+  <rect x="610" y="205" width="200" height="65" rx="32" transform="rotate(-28 710 237)" fill="#FF6B6B"/>
+</svg>

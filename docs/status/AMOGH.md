@@ -24,6 +24,55 @@ Live access confirmed with Amogh's own access token in `developer_token` mode.
 - `--demo` mode and synthetic demo data so the output shape is viewable with
   no token (clearly labelled "not a live sync").
 
+## Atlas persistence (2026-11-14, live-verified)
+
+Academic profiles and lesson plans can now be stored in the team's MongoDB Atlas
+database (`hackumass` on cluster `hackumass14`, set up by Adi). Local JSON under
+`.local/academics` stays the default and the fallback.
+
+- Collection drafts: `database/domains/academics/manifest.json` (Adi's format):
+  `academic_profiles` (current profile, unique `user_id`),
+  `academic_profile_revisions` (every revision, unique `user_id` + `revision`),
+  `academic_lesson_plans` (current plans, unique `user_id`). Strict validators.
+- Repository: `app/modules/curriculum/atlas_store.py` (`AtlasAcademicStore`).
+  It takes an injected PyMongo Database, filters every query by `user_id`, and
+  refuses a profile or plan whose embedded owner differs.
+- Switch: `store.use_atlas(database)` routes `save_profile`, `load_profile`,
+  `save_plans` and `load_plans` to Atlas. Manual corrections live inside the
+  profile, so they persist through the same path. The demo flag is
+  `run_demo --atlas`, which reads `services/api/.env`.
+- Installer, additive only (never drops; refuses a conflicting validator):
+  `PYTHONPATH=services/api services/api/.venv/bin/python -m app.modules.curriculum.atlas_store --apply --env-file services/api/.env`
+
+Commands actually run (from the repo root, with PyMongo 4.15.5 in services/api/.venv):
+
+- Adi's read-only preflight: `status: completed`, connection verified, replica
+  set and sessions detected, Adi's schemas match, both core migrations present.
+- Installer `--apply`: created all 3 academics collections in `hackumass`.
+- Live round trip (`test_atlas_store.LiveAtlasTests`, with `MONGODB_TEST_URI`):
+  saved and read back a synthetic user's profile and plans, then deleted them.
+  1 test passed.
+- Re-ran the preflight after install: still `completed`. Other collections were
+  untouched.
+- Unit tests: curriculum 52 passed (1 live test skipped without
+  `MONGODB_TEST_URI`), canvas 35 passed.
+
+Not done:
+
+- No real student profile has been written to Atlas yet. That needs the
+  owner's OK, because it puts personal course data in the shared database.
+- The local credential has a broad Atlas role. Deployment should use Adi's
+  proposed `readWrite`-only runtime user.
+
+Handoff to Agastya (his areas):
+
+- Call `store.use_atlas(Database.mongo)` once at API startup.
+- Fold the academics manifest into the ordered migrations.
+- Add `pymongo==4.15.5` (already pinned) and `pypdf` to the shared runtime
+  dependencies.
+- Persist the profile and publish `profile_ready` through the outbox in one
+  transaction.
+
 ## Deep ingestion bug fixes (2026-11-14, live-verified)
 
 Found via a real-Canvas audit that modules/pages/files/calendar were inventoried
@@ -135,7 +184,7 @@ shared backend requirements so PDF extraction works outside the local venv.
   timeouts and 429/503.
 - `python3 -m unittest app.modules.curriculum.tests.test_curriculum` -> 16 pass.
 - Not done here: M4 lesson planning (next, also Gemini); FastAPI routes (core
-  not initialized); Atlas persistence (local JSON stand-in for now); M2 depth
+  not initialized); Atlas persistence (since done, see "Atlas persistence" above); M2 depth
   (modules/files/assignments — most real syllabus bodies are thin); PDF/pptx
   text extraction (upload fallback uses .txt/.md).
 
@@ -193,8 +242,9 @@ Run from `services/api`:
   under "Approved Integrations" for a "+ New Access Token" button.
 - Request to Agastya: initialize the Python manifest/FastAPI core so the canvas
   router can be registered; an HTTP client dependency (e.g. httpx) for M2
-  concurrent ingestion; shared jobs table handler contract; private storage
-  bucket to replace the local `.local/academics` stand-in.
+  concurrent ingestion; shared jobs table handler contract. (The Atlas
+  replacement for the local `.local/academics` profile store is now built; see
+  "Atlas persistence" above. It needs wiring at startup.)
 - Request to Adi: current-user shape / test app user ID to bind the demo token to.
 
 ## Next actions

@@ -1,5 +1,135 @@
 # Adi status
 
+## Expo phone test prepared — November 14, 2026
+
+The user explicitly approved forwarding the app bearer token and personalized
+Reel metadata through Expo's HTTPS tunnel for this iPhone test. Instagram
+passwords/session cookies remain on the Mac. This supersedes the earlier pause
+for this specific authenticated-proxy test; the saved-catalog bundle remains off.
+
+- Verified the isolated Python environment and mobile public configuration exist;
+  no live connection/report was present at the preparation checkpoint. Ports 8000
+  and 8081 were initially free. No package installation was needed.
+- Started `EXPO_NO_TELEMETRY=1 HACKUMASS_PREVIEW_API=1 npm run instagram:mobile --
+  --tunnel --go --port 8081`. The installed CLI uses the Expo tunnel provider by
+  default. Expo Go launch URL/QR were created; no unstable tunnel flag is needed.
+- Public iOS manifest returned **200**; privatePreviewApi is enabled, an iOS bundle
+  URL is advertised, and hostUri matches the allowed HTTPS tunnel origin.
+  Feed proxy returned **503 PREVIEW_UNAVAILABLE** while the backend waits for the
+  local connection. This is transport setup evidence, not live feed acceptance.
+- An ignored local startup helper waits up to 30 minutes for the successful,
+  authenticated connection report, then executes the existing one-process API
+  factory on loopback port 8000 with access logs off. It makes no provider calls
+  while waiting and refuses to replace an existing process occupying that port.
+- QR and startup helpers are ignored under .local/phone-live-test; no credentials,
+  private post URLs or actual tunnel hostname are recorded here. The user runs
+  `npm run instagram:connect` in their own Terminal, then scans the QR and signs
+  into the same app account. Actual pagination/playback verification is pending.
+- Aligned the local branch with the user's renamed remote adi-live-instagram-feed.
+  Future branch pushes use names without codex/ per the user's explicit preference.
+  Documentation-only checkpoint; no application change required a test rerun.
+
+## Live Instagram feed implementation — November 14, 2026
+
+User requested fresh Instagram feed pages instead of the four preloaded Reels.
+**Implementation and synthetic verification are ready; live account pagination
+and physical-phone acceptance are not verified.** The user answered that they
+have not run the new hidden-prompt connection helper yet. No real Instagram
+login/feed/media request or private public-tunnel activation was made by this work.
+
+### Owned implementation and handoff
+
+- Added InstagramReelsProvider: directly playable normalized Reels, fixed
+  discover/connected routes, one pinned SDK request per feed/media call, verified
+  TLS, bounded transport timeouts, no redirects, no automatic login/checkpoints.
+  SDK logs/stdout are suppressed; raw errors/provider state never enter responses.
+- Added LiveInstagramCatalog(owner_user_id, provider): same domain feed/playback
+  interface, owner check before provider access, HMAC app continuations separate
+  from provider cursors, retry caches, deduplication and retained provider-page
+  leftovers. Missing/repeated provider cursors end normally; malformed/dependency
+  failures remain typed errors. Connection failures are 409 rather than app 401.
+  Transient/rate-limit cooldowns retain loaded clips. Known issued IDs can request
+  fresh playback metadata. This does not guarantee a different/working CDN URL.
+- Added local instagram_connection helper: canonical Supabase account binding,
+  hidden Instagram login, allowlisted session/device settings only, ignored 0600
+  connection file in a 0700 directory. No saved passwords/app tokens. Restores the
+  session without login during scrolling; check mode makes at most two feed reads.
+  Owner-only permissions, file owner, size and symlink checks guard restoration.
+- Live memory bounds: 100 pending + 100 recently issued records, 20 page-reference
+  entries, 2048 deduplication IDs, 128 provider-cursor hashes. No Atlas schema or
+  snapshot-cache capacity changed. One process/one explicitly bound demo account;
+  distributed sessions/provider account onboarding remain future work.
+- Existing owned preview factory can compose the live catalog with real app auth;
+  it closes transports on shutdown. Agastya's main.py/core/shared manifest were not
+  edited. His EntertainmentReader protocol differs from the domain service;
+  candidate-model composition remains an explicit owner handoff, not a claimed
+  drop-in integration. Optional runtime dependency request: instagrapi==3.2.12;
+  jsonschema==4.26.0 still needs runtime promotion when mounting Adi's modules.
+- Mobile requests five items per page and prefetches with three or fewer remaining
+  while focused/foregrounded. A rolling 100-record window preserves the current
+  clip and unseen records, evicting only already-passed cards. Page failure keeps
+  loaded videos; duplicate/empty traversal is bounded before manual retry. Native
+  two-slot/one-active playback gates remain in place. A last-card next action loads
+  more instead of resetting a continuing feed. Saved preview remains explicit.
+- Root commands: instagram:connect, instagram:check, instagram:api, instagram:mobile.
+  Exact environment placeholders and [runbook](../ADI_INSTAGRAM_LIVE.md) added.
+  [Decision](../decisions/adi-live-instagram-feed.md) records persistence/interface
+  impact and the still-required specific approval for private Expo tunnel delivery.
+  User's redirect/SMTP demo deferrals remain accepted.
+
+### Commands actually run and results
+
+- `PYTHONPATH=services/api .local/instagram-probe/venv/bin/python -m unittest
+  discover -s services/api/app/modules/entertainment/tests -v`: **19 passed**.
+  Includes synthetic 250-Reel paging, leftover preservation, retry stability,
+  concurrency, owner isolation, stale/tampered cursors, renewal, provider end,
+  reconnect/rate limits, no logged-out fallback, secret redaction/file permissions,
+  real owned router composition and factory shutdown (fake external transports).
+- Existing entertainment experiment suite (`-s
+  services/api/app/modules/entertainment/experiments -p 'test_*.py' -v`): **13 passed**.
+  No actual login/provider call occurs in those tests.
+- `npm test`: **32 passed**, including rolling 250-clip metadata/current-asset
+  preservation, collision/deduplication and prefetch lifecycle gates. First run
+  found a duplicate-ID ordering bug (fixed) and a sandbox socket-bind restriction
+  in the existing synthetic loopback proxy test. Approved loopback rerun passed.
+- `npm run typecheck` and `npm run contracts:check`: **passed**; no shared wire
+  field or generated TypeScript change was needed.
+- From apps/mobile: `CI=1 HACKUMASS_INSTAGRAM_PREVIEW=0 HACKUMASS_PREVIEW_API=0
+  EXPO_NO_TELEMETRY=1 ../../node_modules/.bin/expo export --platform ios --output-dir
+  ../../.local/live-instagram-ios-export`: **passed**, 847 modules. Output ignored.
+- `npm run instagram:connect -- --help`, direct helper --help, and isolated
+  `pip check`: **passed**. No new dependency install or shared lock edit.
+- `git diff --check`, 30 relative documentation links and a scan of 217 reviewable
+  files: **passed**. No actual Atlas credential or saved private Instagram marker
+  matched source/export artifacts; .env, session/catalog paths and iOS export stay
+  ignored. The live connection file has not been created yet.
+
+### Remaining acceptance
+
+Run instagram:connect locally with the user's own credentials, inspect only the
+redacted page/unique counts, then configure/start a reachable authenticated HTTPS
+API and test beyond the original four clips on the phone. The original four-Reel
+report has no later-page evidence. No account session/owner UUID is assumed from
+an email or from the old probe, which deliberately saved no session. Actual CDN
+renewal, sustained phone scrolling, and shared unified-feed composition remain
+open. Preparation checks do not establish those live integrations.
+
+## Demo Supabase scope — November 14, 2026
+
+User explicitly deferred fixing the confirmation redirect and configuring custom
+SMTP for this demo. Accepted flow: confirm the email when delivered, then return
+to the app and sign in manually even if the final localhost page fails. Existing
+confirmed demo accounts can continue signing in; broader signup/email-delivery
+acceptance is deferred. Email confirmation remains enabled.
+
+The preceding read-only dashboard inspection found no Storage buckets, a 50 MB
+per-file upload limit, Site URL http://localhost:3000 with no allowed redirects,
+email signup/confirmation enabled, and custom SMTP off. No Supabase settings,
+credentials or permissions were changed. Priorities remain the private
+lesson-videos bucket and authenticated backend/app integration. Academic source
+Storage remains an Amogh handoff. This update changes documentation only;
+`git diff --check` passed. No code tests were rerun.
+
 ## Hosted Atlas initialized — November 14, 2026
 
 **The shared database foundation is now hosted and verified.** The user selected

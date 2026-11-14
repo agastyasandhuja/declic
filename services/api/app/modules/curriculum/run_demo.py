@@ -142,7 +142,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--user-id", default=None)
     parser.add_argument("--storage-dir", type=Path, default=DEFAULT_STORAGE)
     parser.add_argument("--plan", action="store_true", help="also run M4 Gemini lesson planning")
+    parser.add_argument("--atlas", action="store_true",
+                        help="save profile/plans to MongoDB Atlas (services/api/.env) instead of local JSON")
     args = parser.parse_args(argv)
+
+    if args.atlas:
+        from .atlas_store import connect
+        from .store import use_atlas
+
+        _mongo, database = connect(REPO_ROOT / "services" / "api" / ".env")
+        use_atlas(database)
+        print(f"Storage: MongoDB Atlas database '{database.name}'")
 
     if args.user_id is None:
         args.user_id = ({**read_env_file(CANVAS_ENV), **os.environ}.get("CANVAS_DEV_TOKEN_APP_USER_ID")

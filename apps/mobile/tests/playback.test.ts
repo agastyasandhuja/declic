@@ -35,10 +35,14 @@ import { VisibleWatchTracker } from '../src/lib/playback/VisibleWatchTracker';
 test('the next media buffer is paused and reused; navigation and background silence both slots', async () => {
   const playing = [false, false]; const sources = ['', '']; const loads: string[] = [];
   const drivers = [0, 1].map(slot => ({ play() { playing[slot] = true; assert.ok(playing.filter(Boolean).length <= 1); }, pause() { playing[slot] = false; }, async replaceAsync(uri: string) { sources[slot] = uri; loads.push(uri); } })) as any;
-  const controller = new BufferedPlayerController(drivers, () => {});
+  const states: BufferedPlaybackState[] = [];
+  const controller = new BufferedPlayerController(drivers, state => states.push(state));
   await controller.setSelection('one', 'two'); await Promise.resolve(); await Promise.resolve();
   assert.equal(playing.filter(Boolean).length, 1);
+  states.length = 0;
   await controller.setSelection('two', 'three'); await Promise.resolve(); await Promise.resolve();
+  assert.ok(states.length > 0);
+  assert.equal(states.some(state => state.loading), false, 'a ready preload must not flash a loading state');
   assert.equal(loads.filter(uri => uri === 'two').length, 1);
   assert.equal(sources[playing.findIndex(Boolean)], 'two');
   controller.setGate({ foreground: false }); assert.deepEqual(playing, [false, false]);

@@ -239,3 +239,26 @@ The new [identity setup](../../services/api/app/modules/auth/README.md) and
 [entertainment setup](../../services/api/app/modules/entertainment/README.md) give
 exact isolated API/database test commands and backend dependency requests.
 Physical-iPhone Instagram setup remains paused; no private catalog is tunneled.
+
+## Live Instagram feed — November 14, 2026
+
+The user has requested live account-session retrieval. The new backend adapter
+uses the same authenticated entertainment routes; the old saved four-Reel mode
+remains an explicitly selected fallback. See [live setup](../../docs/ADI_INSTAGRAM_LIVE.md)
+for the local hidden-login helper, backend startup and HTTPS API configuration.
+Forwarding private data through a public tunnel remains subject to the earlier
+specific approval; no public tunnel is enabled automatically by these changes.
+
+From the root, instagram:connect binds a server-only Instagram session to the
+Supabase account, instagram:api starts the local owned factory, and
+instagram:mobile selects the API feed with the saved bundle preview disabled.
+The app still requires a reachable HTTPS API origin and the matching app sign-in.
+Demo mode never receives private feed credentials.
+
+Near-end pagination now runs only while focused/foregrounded, with at most one
+pending page request. A rolling 100-record window evicts only already-passed cards
+and retains the selected asset/unseen cards, allowing sessions beyond 100 clips.
+Empty/duplicate traversal is bounded and offers retry without dropping loaded
+videos. Native player/audio gates remain unchanged. Pure synthetic tests cover a
+250-clip session; actual account pagination and physical-phone acceptance still
+need the local connection/device checks.
