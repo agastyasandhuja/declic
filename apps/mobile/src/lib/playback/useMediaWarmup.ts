@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import { useVideoPlayer } from 'expo-video';
-import { cachedVideoSource } from './MediaCache';
+import { cachedVideoSource, isMediaCacheEnabled } from './MediaCache';
 import { MediaWarmup, type WarmAsset } from './MediaWarmup';
 
 /** An unattached third player warms up to six MP4 starts into Expo's native LRU.
@@ -32,7 +32,7 @@ export function useMediaWarmup(assets: WarmAsset[], enabled: boolean) {
     },
   }), [warmer, alive]);
   const key = JSON.stringify(assets);
-  useEffect(() => { queue.update(JSON.parse(key), enabled && !memoryLimited && Platform.OS !== 'web'); }, [queue, key, enabled, memoryLimited]);
+  useEffect(() => { queue.update(JSON.parse(key), enabled && !memoryLimited && isMediaCacheEnabled() && Platform.OS !== 'web'); }, [queue, key, enabled, memoryLimited]);
   useEffect(() => {
     const memory = AppState.addEventListener('memoryWarning', () => { queue.update([], false); setMemoryLimited(true); });
     const state = AppState.addEventListener('change', value => { if (value !== 'active') queue.update([], false); });

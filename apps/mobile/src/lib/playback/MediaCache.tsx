@@ -19,6 +19,7 @@ const policy = new MediaCachePolicy({
     }
   },
 });
+export function isMediaCacheEnabled() { return caching; }
 export function cachedVideoSource(uri: string | null) { return uri ? { uri, useCaching: caching } : null; }
 
 /** The previous players unmount before another account's cache is prepared.
