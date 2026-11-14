@@ -1,8 +1,12 @@
 """Atlas academic store: owner scoping and revisions, against an in-memory fake
 collection (no network). A live Atlas check runs only when MONGODB_TEST_URI is set."""
+
 import os
 import unittest
+from contextlib import nullcontext
+from copy import deepcopy
 from pathlib import Path
+from types import SimpleNamespace
 
 from app.modules.curriculum import store
 from app.modules.curriculum.atlas_store import AtlasAcademicStore
@@ -15,15 +19,30 @@ class FakeCollection:
     def _match(self, doc, query):
         return all(doc.get(k) == v for k, v in query.items())
 
-    def find_one(self, query):
+    def find_one(self, query, **kwargs):
         return next((dict(d) for d in self.docs if self._match(d, query)), None)
 
-    def replace_one(self, query, doc, upsert=False):
-        self.docs = [d for d in self.docs if not self._match(d, query)]
-        self.docs.append(dict(doc))
+    def replace_one(self, query, doc, upsert=False, **kwargs):
+        matched = sum(self._match(d, query) for d in self.docs)
+        if matched or upsert:
+            self.docs = [d for d in self.docs if not self._match(d, query)]
+            self.docs.append(deepcopy(doc))
+        return SimpleNamespace(matched_count=matched)
+
+    def insert_one(self, doc, **kwargs):
+        self.docs.append(deepcopy(doc))
 
 
 class FakeDatabase(dict):
+    @property
+    def client(self):
+        return self
+
+    def start_session(self):
+        return nullcontext(
+            SimpleNamespace(with_transaction=lambda callback, **kwargs: callback(None))
+        )
+
     def __missing__(self, name):
         self[name] = FakeCollection()
         return self[name]
@@ -77,8 +96,16 @@ class LiveAtlasTests(unittest.TestCase):
         self.addCleanup(client.close)
         db = client[os.environ.get("MONGODB_DATABASE", "hackumass")]
         user = "synthetic-test-user-academics"
-        self.addCleanup(lambda: [db[c].delete_many({"user_id": user}) for c in
-                                 ("academic_profiles", "academic_profile_revisions", "academic_lesson_plans")])
+        self.addCleanup(
+            lambda: [
+                db[c].delete_many({"user_id": user})
+                for c in (
+                    "academic_profiles",
+                    "academic_profile_revisions",
+                    "academic_lesson_plans",
+                )
+            ]
+        )
         s = AtlasAcademicStore(db)
         s.save_profile(user, profile(user, 1))
         s.save_plans(user, [{"user_id": user, "plan_id": "p"}])

@@ -188,6 +188,15 @@
       "title": "Format Id",
       "type": "string"
     },
+    "visual_strategy": {
+      "default": "existing",
+      "enum": [
+        "existing",
+        "semantic_diagram"
+      ],
+      "title": "Visual Strategy",
+      "type": "string"
+    },
     "teaching_approach": {
       "pattern": "^[a-zA-Z0-9_-]{1,100}$",
       "title": "Teaching Approach",

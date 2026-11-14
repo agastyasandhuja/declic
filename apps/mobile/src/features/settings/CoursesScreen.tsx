@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, AppState, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { InstagramConnection } from './InstagramConnection';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, AppState, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Crypto from 'expo-crypto';
@@ -16,11 +17,15 @@ const sample: AcademicProfileView = { courses: [
   { course_id: 'demo-dsa', title: 'Heaps and treaps' }, { course_id: 'demo-dsa', title: 'Linked lists' },
   { course_id: 'demo-prob', title: 'Distributions and Bayes' }, { course_id: 'demo-acct', title: 'Statements and cash flow' },
 ], assessments: [] };
-interface Connection { status: 'connected' | 'disconnected' | 'reconnect_required' | 'error'; institution_origin?: string; last_sync_at?: string | null }
+interface Connection { status: 'connected' | 'disconnected' | 'reconnect_required' | 'error'; institution_origin?: string; last_sync_at?: string | null; job_id?: string }
 export function CoursesScreen() {
   const { mode, api } = useAuth(); const demo = mode === 'preview';
   const [profile, setProfile] = useState<AcademicProfileView | null>(demo ? sample : null);
   const [connection, setConnection] = useState<Connection | null>(null);
+  const [token, setToken] = useState('');
+  const tokenInput = useRef<React.ComponentRef<typeof TextInput>>(null);
+  const [preparation, setPreparation] = useState<{academic_generation_configured: boolean; imports_and_lessons: Record<string, number>; videos: Record<string, number>} | null>(null);
+  const [job, setJob] = useState<{state: string} | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(false); const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null); const [notice, setNotice] = useState<string | null>(null);
@@ -30,27 +35,32 @@ export function CoursesScreen() {
     try {
       const [conn, data] = await Promise.all([api.request<Connection>('/v1/canvas/connection'), api.request<unknown>('/v1/academics/profile').catch(error => { if (error instanceof ApiError && error.status === 404) return null; throw error; })]);
       if (!['connected', 'disconnected', 'reconnect_required', 'error'].includes(conn.status)) throw new Error('Unable to read Canvas status. Please retry.');
-      setConnection(conn); setProfile(data === null ? null : parseAcademicProfile(data));
+      setPreparation(await api.request('/v1/preparation'));
+      setConnection(conn); if (conn.job_id) setJob(await api.request<{state: string}>(`/v1/academics/jobs/${conn.job_id}`)); setProfile(data === null ? null : parseAcademicProfile(data));
     } catch (problem) { setError(problem instanceof Error ? problem.message : 'Unable to load courses. Please retry.'); }
     finally { setLoading(false); }
   }, [api, demo]);
   useEffect(() => { void load(); const listener = AppState.addEventListener('change', state => { if (state === 'active') void load(); }); return () => listener.remove(); }, [load]);
+  useEffect(() => { if (demo || connection?.status !== 'connected') return; const timer = setInterval(() => { if (AppState.currentState === 'active') void load(); }, 10000); return () => clearInterval(timer); }, [demo, connection?.status, load]);
   async function connect() {
     if (demo) { setNotice('Sign in to connect your own Canvas courses. These cards are a sample semester.'); return; }
-    const institution = connection?.institution_origin || process.env.EXPO_PUBLIC_CANVAS_ORIGIN;
-    if (!institution) { setNotice('Canvas sign-in is not available for this app yet. Your video feed is still ready to use.'); return; }
+    if (token.trim().length < 10) { setNotice('Paste your Canvas personal access token below, then save it.'); tokenInput.current?.focus(); return; }
     setBusy(true); setError(null);
     try {
-      const result = await api.request<{ authorization_url: string }>('/v1/canvas/connect', { method: 'POST', body: { institution } });
-      const url = new URL(result.authorization_url);
-      if (url.protocol !== 'https:' || url.origin !== new URL(institution).origin || url.username || url.password) throw new Error('Canvas returned an invalid sign-in link.');
-      await Linking.openURL(url.href); setNotice('Finish signing in to Canvas, then return here and refresh.');
-    } catch (problem) { setError(problem instanceof Error ? problem.message : 'Canvas sign-in failed. Please retry.'); } finally { setBusy(false); }
+      await api.request('/v1/canvas/token', { method: 'POST', body: { token: token.trim() }, headers: { 'Idempotency-Key': Crypto.randomUUID() } });
+      setToken(''); setNotice('Canvas connected. Your courses and lessons are preparing in the background.'); await load();
+    } catch (problem) { setError(problem instanceof Error ? problem.message : 'Canvas connection failed.'); } finally { setBusy(false); }
   }
+
   async function sync() {
     setBusy(true); setError(null);
     try { await api.request('/v1/canvas/sync', { method: 'POST', headers: { 'Idempotency-Key': Crypto.randomUUID() } }); setNotice('Sync requested. Pull to refresh as your courses become ready.'); }
     catch (problem) { setError(problem instanceof Error ? problem.message : 'Sync failed. Please retry.'); } finally { setBusy(false); }
+  }
+  async function retryPreparation() {
+    setBusy(true); setError(null);
+    try { const result = await api.request<{queued_jobs: number}>('/v1/preparation/retry', { method: 'POST', headers: { 'Idempotency-Key': Crypto.randomUUID() } }); setNotice(`${result.queued_jobs} preparation jobs queued for retry.`); await load(); }
+    catch (problem) { setError(problem instanceof Error ? problem.message : 'Unable to retry preparation.'); } finally { setBusy(false); }
   }
   const accents = [theme.colors.accent, theme.colors.coral, theme.colors.success];
   return <SafeAreaView style={s.screen} edges={['top']}><ScrollView refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} tintColor={theme.colors.accent} />} contentContainerStyle={styles.content}>
@@ -59,6 +69,11 @@ export function CoursesScreen() {
     {!demo && loading && <ActivityIndicator color={theme.colors.accent} />}
     {error && <View style={s.card}><Text accessibilityRole="alert" style={styles.error}>{error}</Text><Button title="Retry courses" secondary onPress={() => void load()} /></View>}
     <View style={[s.card, { gap: 12 }]}><Text style={styles.heading}>{connection?.status === 'connected' ? 'Canvas is connected' : connection?.status === 'reconnect_required' ? 'Reconnect Canvas' : 'Make the feed yours.'}</Text><Text style={s.subtitle}>{connection?.status === 'connected' ? 'Refresh to bring in your latest coursework.' : 'Connect Canvas for lessons from your courses. You can keep scrolling while they prepare.'}</Text><Button title={connection?.status === 'connected' ? 'Sync courses' : 'Connect Canvas'} busy={busy} onPress={() => void (connection?.status === 'connected' ? sync() : connect())} /></View>
+    {!demo && connection?.status !== 'connected' && <View style={[s.card, { gap: 12 }]}><Text style={s.subtitle}>In Canvas, open Account → Settings → New Access Token. Paste your token here to connect your courses.</Text><TextInput ref={tokenInput} accessibilityLabel="Canvas personal access token" secureTextEntry autoCapitalize="none" autoCorrect={false} value={token} onChangeText={setToken} placeholder="Canvas personal access token" placeholderTextColor={theme.colors.muted} style={{ color: theme.colors.text, borderColor: theme.colors.elevated, borderWidth: 1, borderRadius: 12, padding: 14 }} /><Button title="Save Canvas token" busy={busy} onPress={() => void connect()} /></View>}
+    {preparation && <View style={[s.card, { gap: 8 }]}><Text style={styles.heading}>Preparing your feed</Text>{!preparation.academic_generation_configured && <Text style={s.subtitle}>Lesson generation is waiting for the demo host to configure Gemini. Your connections stay saved.</Text>}<Text style={s.subtitle}>{Object.entries(preparation.imports_and_lessons).map(([state, count]) => `${count} ${state.replaceAll('_', ' ')}`).join(' · ') || 'Connect Canvas to start preparing lessons.'}</Text><Text style={s.subtitle}>Videos: {Object.entries(preparation.videos).map(([state, count]) => `${count} ${state.replaceAll('_', ' ')}`).join(' · ') || 'Waiting for course topics'}</Text>{((preparation.imports_and_lessons.failed ?? 0) + (preparation.videos.failed ?? 0)) > 0 && <Button title="Retry failed preparation" busy={busy} secondary onPress={() => void retryPreparation()} />}</View>}
+    {job && <Text style={s.subtitle}>Course import: {job.state.replaceAll('_', ' ')}</Text>}
+    {!demo && connection?.status === 'connected' && <Button title="Disconnect Canvas" secondary onPress={() => { void api.request('/v1/canvas/connection', { method: 'DELETE' }).then(() => load()).catch(problem => setError(problem.message)); }} />}
+    {!demo && <InstagramConnection />}
     {notice && <Text accessibilityRole="alert" style={s.subtitle}>{notice}</Text>}
     <View style={styles.section}><Text style={styles.heading}>Your syllabus</Text>{demo && <Text style={styles.badge}>SAMPLE DATA</Text>}</View>
     {profile?.courses.map((course, i) => <View key={course.course_id} style={styles.course}>

@@ -173,6 +173,83 @@
       "title": "Segment",
       "type": "object"
     },
+    "SemanticDiagramPlan": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "comparison",
+            "sequence",
+            "cause_effect"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/SemanticNode"
+          },
+          "maxItems": 4,
+          "minItems": 2,
+          "title": "Nodes",
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/SemanticEdge"
+          },
+          "maxItems": 4,
+          "title": "Edges",
+          "type": "array"
+        }
+      },
+      "required": [
+        "mode",
+        "nodes"
+      ],
+      "title": "SemanticDiagramPlan",
+      "type": "object"
+    },
+    "SemanticEdge": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "maximum": 3,
+          "minimum": 0,
+          "title": "Source",
+          "type": "integer"
+        },
+        "target": {
+          "maximum": 3,
+          "minimum": 0,
+          "title": "Target",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "source",
+        "target"
+      ],
+      "title": "SemanticEdge",
+      "type": "object"
+    },
+    "SemanticNode": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "maxLength": 24,
+          "minLength": 1,
+          "pattern": "^[^\\x00-\\x1f\\x7f]+$",
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "title": "SemanticNode",
+      "type": "object"
+    },
     "Shot": {
       "additionalProperties": false,
       "properties": {
@@ -195,6 +272,17 @@
           ],
           "title": "Kind",
           "type": "string"
+        },
+        "semantic_diagram": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SemanticDiagramPlan"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "diagram_demo": {
           "default": "trace",

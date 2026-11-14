@@ -356,6 +356,38 @@
       }
     }
   },
+  "api_prepared_topics": {
+    "indexes": [
+      {
+        "keys": [
+          "user_id",
+          "topic_id"
+        ],
+        "unique": true
+      }
+    ],
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "properties": {
+          "topic_id": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "user_id": {
+            "bsonType": "string",
+            "maxLength": 128,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "topic_id",
+          "user_id"
+        ]
+      }
+    }
+  },
   "api_processed_events": {
     "indexes": [
       {
@@ -384,6 +416,38 @@
         "required": [
           "consumer",
           "event_id"
+        ]
+      }
+    }
+  },
+  "api_provider_connections": {
+    "indexes": [
+      {
+        "keys": [
+          "user_id",
+          "provider"
+        ],
+        "unique": true
+      }
+    ],
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "properties": {
+          "provider": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "user_id": {
+            "bsonType": "string",
+            "maxLength": 128,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "provider",
+          "user_id"
         ]
       }
     }
@@ -441,6 +505,38 @@
       }
     }
   },
+  "api_quiz_bank": {
+    "indexes": [
+      {
+        "keys": [
+          "user_id",
+          "quiz_id"
+        ],
+        "unique": true
+      }
+    ],
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "properties": {
+          "quiz_id": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "user_id": {
+            "bsonType": "string",
+            "maxLength": 128,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "quiz_id",
+          "user_id"
+        ]
+      }
+    }
+  },
   "api_quiz_instances": {
     "indexes": [
       {
@@ -488,6 +584,38 @@
           "instance_id",
           "data",
           "state",
+          "user_id"
+        ]
+      }
+    }
+  },
+  "api_topic_bindings": {
+    "indexes": [
+      {
+        "keys": [
+          "user_id",
+          "objective_id"
+        ],
+        "unique": true
+      }
+    ],
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "properties": {
+          "objective_id": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "user_id": {
+            "bsonType": "string",
+            "maxLength": 128,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "objective_id",
           "user_id"
         ]
       }

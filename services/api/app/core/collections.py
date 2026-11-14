@@ -12,8 +12,16 @@ idempotency = "api_idempotency"
 jobs = "api_jobs"
 outbox = "api_outbox"
 processed = "api_processed_events"
+connections = "api_provider_connections"
+topics = "api_prepared_topics"
+bindings = "api_topic_bindings"
+quiz_bank = "api_quiz_bank"
 
 KEYS = {
+    connections: ("user_id", "provider"),
+    topics: ("user_id", "topic_id"),
+    bindings: ("user_id", "objective_id"),
+    quiz_bank: ("user_id", "quiz_id"),
     users: ("user_id",),
     sessions: ("session_id",),
     occurrences: ("item_id",),

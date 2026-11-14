@@ -76,6 +76,10 @@ Other streams work against the contracts and their own fixtures.
 
 ## Running the project
 
+For the integrated cloud-backed API, background workers, saved provider connections,
+and phone setup, follow [Run the demo](docs/RUN_DEMO.md).
+
+
 Use Node 24 LTS, run `npm ci`, and follow [the mobile README](apps/mobile/README.md)
 to configure the local .env. `npm start` starts Expo; `npm run ios` opens the iOS
 Simulator; `npm run web` opens the browser preview. **Explore the demo** uses

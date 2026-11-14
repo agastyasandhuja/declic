@@ -92,3 +92,17 @@ single-word pop component (sample 22 feedback). This changes renderer style and
 recipe identity (4.1.0), not the public format IDs, timestamp fields, caption
 payload or feed protocol. Music-led math still has no invented speech captions.
 See `services/renderer/ANIMATION_STANDARD.md` for asset reuse and motion review.
+
+November 14 integrated demo: `SessionRequest.refresh_unseen` is an optional
+boolean, default false. Mobile cold start uses it to preserve the active-time
+ramp while replacing stale unseen reservations; an issued quiz remains required.
+`POST /v1/canvas/token` accepts `{token}` and `Idempotency-Key`, verifies the
+student's personal token and returns a queued job. Instagram connection routes
+accept credentials transiently and store only encrypted provider session state.
+See decision 010. Existing provider tokens never appear in response schemas.
+
+November 14 generic visual support: optional internal `Brief.visual_strategy` and
+`Shot.semantic_diagram` add bounded comparison, sequence and cause/effect reveals
+for abstract topics. Existing visual policies remain the default. Deploy the worker
+and semantic-capable renderer together; no public video/feed field changes are
+required. See [generic semantic diagrams](learning.md#generic-semantic-diagrams-november-14).

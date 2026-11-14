@@ -2,7 +2,7 @@ export class ApiError extends Error {
   constructor(message: string, public status: number, public code: string, public retryable: boolean, public requestId?: string) { super(message); }
 }
 
-export interface RequestOptions extends Omit<RequestInit, 'body'> { body?: unknown }
+export interface RequestOptions extends Omit<RequestInit, 'body'> { body?: unknown; timeoutMs?: number }
 export interface ApiClient { request<T>(path: string, options?: RequestOptions): Promise<T> }
 export interface ApiClientOptions {
   baseUrl: string;
@@ -20,6 +20,7 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized, fetch
   };
   return { async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     if (!baseUrl) throw new ApiError('Add an API URL in local configuration to connect your backend.', 0, 'API_NOT_CONFIGURED', false);
+    const { timeoutMs: requestTimeout, ...fetchOptions } = options;
     let origin: URL;
     try { origin = new URL(baseUrl); } catch { throw new ApiError('Configure a valid HTTPS API origin.', 0, 'INVALID_API_ORIGIN', false); }
     if (origin.protocol !== 'https:' || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash) throw new ApiError('The authenticated API requires an HTTPS origin.', 0, 'INVALID_API_ORIGIN', false);
@@ -37,14 +38,14 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized, fetch
       const abort = () => controller.abort();
       options.signal?.addEventListener('abort', abort, { once: true });
       if (options.signal?.aborted) controller.abort();
-      const timer = setTimeout(abort, timeoutMs);
+      const timer = setTimeout(abort, requestTimeout ?? timeoutMs);
       let response: Response;
       let payload: any;
       try {
         headers.set('Authorization', `Bearer ${token}`);
         // The deadline includes the response body: headers alone are not completion.
         const operation = async () => {
-          const result = await fetcher(url.toString(), { ...options, method, headers, body: options.body === undefined ? undefined : JSON.stringify(options.body), signal: controller.signal, redirect: 'error' });
+          const result = await fetcher(url.toString(), { ...fetchOptions, method, headers, body: options.body === undefined ? undefined : JSON.stringify(options.body), signal: controller.signal, redirect: 'error' });
           const body = result.status === 204 ? null : await result.json().catch(() => null);
           return { result, body };
         };

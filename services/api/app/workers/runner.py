@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass
+from threading import Event, Thread
 
 from app.workers.queue import JobQueue
 
@@ -38,11 +39,29 @@ class Worker:
             job["input_ref"],
             lambda: self.queue.heartbeat(job["job_id"], job["lease_token"]),
         )
+        stop, lost = Event(), Event()
+
+        def maintain_lease():
+            while not stop.wait(20):
+                try:
+                    if not context.heartbeat():
+                        lost.set()
+                        return
+                except Exception:
+                    lost.set()
+                    return
+
+        heartbeat_thread = Thread(target=maintain_lease, daemon=True)
+        heartbeat_thread.start()
         try:
             result = self.handlers[job["job_type"]](context)
         except Exception:
             # Provider exceptions often contain URLs/headers/prompts: persist a code only.
             self.queue.fail(job["job_id"], job["lease_token"])
         else:
-            self.queue.finish(job["job_id"], job["lease_token"], result)
+            if not lost.is_set():
+                self.queue.finish(job["job_id"], job["lease_token"], result)
+        finally:
+            stop.set()
+            heartbeat_thread.join(timeout=2)
         return True

@@ -190,3 +190,14 @@ def test_progress_is_neutral_until_graded(client, clock):
     assert all(
         i["mastery_estimate"] is None for i in client.get("/v1/learning/progress").json()["items"]
     )
+
+
+def test_fresh_unseen_page_preserves_active_session_and_pending_quiz(client, clock):
+    session = client.post('/v1/feed/sessions', json={}).json()
+    first = client.get('/v1/feed', params={'session_id': session['session_id']}).json()
+    video = first['items'][0]
+    watch(client, clock, session['session_id'], video, seconds=10)
+    refreshed = client.post('/v1/feed/sessions', json={'refresh_unseen': True}).json()
+    assert refreshed['session_id'] == session['session_id']
+    assert refreshed['active_view_seconds'] == 10
+    assert refreshed['recommendation_revision'] > first['recommendation_revision']

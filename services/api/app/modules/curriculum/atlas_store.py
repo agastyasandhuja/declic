@@ -6,7 +6,8 @@ so one user can never read or overwrite another user's academic data.
 
 Install the collections (additive, never drops anything):
 
-    PYTHONPATH=services/api python -m app.modules.curriculum.atlas_store --apply --env-file services/api/.env
+    PYTHONPATH=services/api python -m app.modules.curriculum.atlas_store --apply
+        --env-file services/api/.env
 """
 
 from __future__ import annotations
@@ -14,15 +15,28 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from datetime import datetime, timezone
+from copy import deepcopy
+from datetime import UTC, datetime
 from pathlib import Path
 
-MANIFEST = Path(__file__).resolve().parents[5] / "database" / "domains" / "academics" / "manifest.json"
-PROFILES, REVISIONS, PLANS = "academic_profiles", "academic_profile_revisions", "academic_lesson_plans"
+from pymongo.errors import DuplicateKeyError
+from pymongo.read_concern import ReadConcern
+from pymongo.write_concern import WriteConcern
+
+from .corrections import RevisionConflict
+
+MANIFEST = (
+    Path(__file__).resolve().parents[5] / "database" / "domains" / "academics" / "manifest.json"
+)
+PROFILES, REVISIONS, PLANS = (
+    "academic_profiles",
+    "academic_profile_revisions",
+    "academic_lesson_plans",
+)
 
 
 def _now():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class AtlasAcademicStore:
@@ -39,16 +53,65 @@ class AtlasAcademicStore:
     def latest_revision(self, user_id: str) -> int:
         return (self.load_profile(user_id) or {}).get("revision", 0)
 
-    def save_profile(self, user_id: str, profile: dict) -> None:
-        """Store a revision snapshot and make it the user's current profile."""
+    def save_profile(self, user_id: str, profile: dict, *, publication_guard=None) -> None:
+        """Atomically append an immutable snapshot and advance exactly one revision.
+
+        Model work happens before this transaction. Competing imports/corrections
+        cannot replace the winner, and retrying an identical committed snapshot is
+        safe after an ambiguous connection failure.
+        """
         _require(user_id)
         if profile.get("user_id") != user_id:
             raise PermissionError("profile owner mismatch")
-        doc = {"schema_version": "1", "user_id": user_id, "revision": int(profile["revision"]),
-               "profile": profile, "updated_at": _now()}
-        self._db[REVISIONS].replace_one({"user_id": user_id, "revision": doc["revision"]},
-                                        dict(doc), upsert=True)
-        self._db[PROFILES].replace_one({"user_id": user_id}, dict(doc), upsert=True)
+        revision = profile.get("revision")
+        if not isinstance(revision, int) or isinstance(revision, bool) or revision < 1:
+            raise ValueError("profile revision must be a positive integer")
+        snapshot = deepcopy(profile)
+        plans = snapshot.get("_plans", [])
+        if any(
+            plan.get("user_id") != user_id or plan.get("profile_revision") != revision
+            for plan in plans
+        ):
+            raise PermissionError("profile plans must belong to the same owner and revision")
+        doc = {
+            "schema_version": "1",
+            "user_id": user_id,
+            "revision": revision,
+            "profile": snapshot,
+            "updated_at": _now(),
+        }
+
+        def publish(session):
+            current = self._db[PROFILES].find_one({"user_id": user_id}, session=session)
+            if current and current["profile"].get("user_id") != user_id:
+                raise PermissionError("profile owner mismatch")
+            if current and current["revision"] == revision and current["profile"] == snapshot:
+                return
+            if (current["revision"] if current else 0) != revision - 1:
+                raise RevisionConflict("profile changed during preparation; retry")
+            if publication_guard is not None and not publication_guard():
+                raise PermissionError("import no longer authorized")
+            if current is None:
+                self._db[PROFILES].insert_one(dict(doc), session=session)
+            else:
+                result = self._db[PROFILES].replace_one(
+                    {"user_id": user_id, "revision": revision - 1}, dict(doc), session=session
+                )
+                if result.matched_count != 1:
+                    raise RevisionConflict("profile changed during preparation; retry")
+            self._db[REVISIONS].insert_one(dict(doc), session=session)
+
+        try:
+            with self._db.client.start_session() as session:
+                session.with_transaction(
+                    publish,
+                    read_concern=ReadConcern("snapshot"),
+                    write_concern=WriteConcern("majority"),
+                )
+        except DuplicateKeyError:
+            # Initial-profile races and a conflicting immutable snapshot must
+            # never silently overwrite another completed import.
+            raise RevisionConflict("profile revision already exists; retry") from None
 
     def save_plans(self, user_id: str, plans: list[dict]) -> None:
         _require(user_id)
@@ -57,7 +120,8 @@ class AtlasAcademicStore:
         self._db[PLANS].replace_one(
             {"user_id": user_id},
             {"schema_version": "1", "user_id": user_id, "plans": plans, "updated_at": _now()},
-            upsert=True)
+            upsert=True,
+        )
 
     def load_plans(self, user_id: str) -> list[dict]:
         _require(user_id)
@@ -77,15 +141,20 @@ def apply_academic_drafts(database) -> list[str]:
     for spec in manifest["collections"]:
         existing = list(database.list_collections(filter={"name": spec["name"]}))
         if not existing:
-            database.create_collection(spec["name"], validator=spec["validator"],
-                                       validationLevel="strict", validationAction="error")
+            database.create_collection(
+                spec["name"],
+                validator=spec["validator"],
+                validationLevel="strict",
+                validationAction="error",
+            )
             created.append(spec["name"])
         elif existing[0]["options"].get("validator") != spec["validator"]:
             raise RuntimeError(f"{spec['name']}: existing validator differs; plan a migration.")
         for index in spec["indexes"]:
             database[spec["name"]].create_index(
                 [tuple(key) for key in index["keys"]],
-                **{k: v for k, v in index.items() if k != "keys"})
+                **{k: v for k, v in index.items() if k != "keys"},
+            )
     return created
 
 
@@ -116,7 +185,9 @@ def connect(env_file: Path | None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--apply", action="store_true", help="create missing academics collections/indexes")
+    parser.add_argument(
+        "--apply", action="store_true", help="create missing academics collections/indexes"
+    )
     parser.add_argument("--env-file", type=Path, default=Path("services/api/.env"))
     args = parser.parse_args()
     if not args.apply:
@@ -124,4 +195,7 @@ if __name__ == "__main__":
     client, database = connect(args.env_file)
     with client:
         created = apply_academic_drafts(database)
-    print(f"academics drafts applied to '{database.name}'; created: {created or 'none (already present)'}")
+    print(
+        f"academics drafts applied to '{database.name}'; "
+        f"created: {created or 'none (already present)'}"
+    )

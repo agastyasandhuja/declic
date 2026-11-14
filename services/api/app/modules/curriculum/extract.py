@@ -138,9 +138,17 @@ def build_profile(
     courses, units, assessments, warnings = [], [], [], []
     total_usage = {"prompt_tokens": 0, "candidates_tokens": 0}
 
+    from concurrent.futures import ThreadPoolExecutor
+
+    fingerprints = {cid: _course_fingerprint(resolver, cid) for cid in course_ids}
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        outcomes = {cid: pool.submit(extract_course, cid, resolver, client)
+                    for cid in course_ids
+                    if not (prev_courses.get(cid, {}).get("sources_fingerprint") == fingerprints[cid]
+                            and prev_courses.get(cid, {}).get("import_status") in {"ready", "partial"})}
     for course_id in course_ids:
         info = _course_info(resolver, course_id)
-        fingerprint = _course_fingerprint(resolver, course_id)
+        fingerprint = fingerprints[course_id]
         prior = prev_courses.get(course_id)
         if (prior and prior.get("sources_fingerprint") == fingerprint
                 and prior.get("import_status") in {"ready", "partial"}):
@@ -150,7 +158,7 @@ def build_profile(
             warnings.append(f"{course_id}: reused unchanged sources (no re-extraction)")
             continue
         try:
-            outcome = extract_course(course_id, resolver, client)
+            outcome = outcomes[course_id].result()
         except CanvasAuthError:
             raise
         except Exception as err:  # noqa: BLE001 — isolate one course's failure

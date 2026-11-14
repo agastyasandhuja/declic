@@ -70,9 +70,12 @@ class PlaybackEvents:
         duration = item["video"].get("duration_seconds")
         if not control_event and duration and payload.position_ms > duration * 1000 + 1000:
             raise APIError(422, "INVALID_PROGRESS", "Position exceeds video duration")
+        looped = bool(duration and data["position_ms"] >= duration * 1000 - 4000
+                      and payload.position_ms <= 4000
+                      and payload.visible_watch_ms >= data["reported_watch_ms"])
         if not control_event and (
             payload.visible_watch_ms < data["reported_watch_ms"]
-            or payload.position_ms < data["position_ms"]
+            or (payload.position_ms < data["position_ms"] and not looped)
         ):
             raise APIError(422, "NON_MONOTONIC_PROGRESS", "Playback progress must be monotonic")
         if kind == "app_foregrounded":

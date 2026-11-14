@@ -1,6 +1,11 @@
 {
   "additionalProperties": false,
   "properties": {
+    "refresh_unseen": {
+      "default": false,
+      "title": "Refresh Unseen",
+      "type": "boolean"
+    },
     "resume_session_id": {
       "anyOf": [
         {

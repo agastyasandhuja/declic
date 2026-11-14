@@ -10,6 +10,7 @@ import math
 import os
 import re
 from urllib.parse import urlsplit
+from threading import RLock
 
 from .service import CatalogFailure, normalized_items
 
@@ -20,17 +21,22 @@ class ProviderPage:
     next_cursor: str | None
 
 
+_quiet_lock = RLock()
+
+
 @contextlib.contextmanager
 def quiet_instagram():
-    # SDK diagnostics can contain cookies, authorization headers and raw responses.
-    previous = logging.root.manager.disable
-    logging.disable(logging.CRITICAL)
-    try:
-        with open(os.devnull, 'w') as sink:
-            with contextlib.redirect_stdout(sink), contextlib.redirect_stderr(sink):
-                yield
-    finally:
-        logging.disable(previous)
+    # The pinned SDK prints provider payloads. Serialize process-global capture
+    # so concurrent login/refresh calls cannot restore a closed stream.
+    with _quiet_lock:
+        previous = logging.root.manager.disable
+        logging.disable(logging.CRITICAL)
+        try:
+            with open(os.devnull, 'w') as sink:
+                with contextlib.redirect_stdout(sink), contextlib.redirect_stderr(sink):
+                    yield
+        finally:
+            logging.disable(previous)
 
 
 def make_instagram_client(settings=None):

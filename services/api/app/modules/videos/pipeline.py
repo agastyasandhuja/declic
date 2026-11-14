@@ -78,13 +78,16 @@ def generation_recipe(*, fixture=False, custom_scene=False):
             if (ROOT / ".local/video-assets" / name).is_file()
         },
         "scene_api": "trusted-trace-2" if custom_scene else "authored-trace-1",
-        "renderer_image": os.getenv("VIDEO_RENDER_IMAGE", "hackumass-renderer:reference-v8-captions"),
+        "renderer_image": os.getenv(
+            "VIDEO_RENDER_IMAGE", "hackumass-renderer:reference-v9-semantic"
+        ),
         "renderer_source": digest(
             {
                 name: sha256(ROOT / "services/renderer" / name)
                 for name in (
                     "src/Root.tsx",
                     "src/ReferenceLesson.tsx",
+                    "src/SemanticDiagram.tsx",
                     "src/PopCaptions.tsx",
                     "src/SpaceScene.tsx",
                     "src/SpaceScenesV3.tsx",
@@ -144,6 +147,7 @@ def generate(
     scene_feedback=None,
     storyboard_feedback=None,
     storyboard_override=None,
+    _frozen_recipe=None,
 ):
     if brief.format_id == "math_explainer":
         from .math_video import generate_math
@@ -204,7 +208,11 @@ def generate(
     required_roles = ["peter", "stewie"] if brief.format_id == "dialogue_gameplay" else ["narrator"]
     if any(not voices[role] for role in required_roles):
         raise ProviderError("MISSING_VOICE_CONFIGURATION")
-    recipe = generation_recipe(fixture=fixture, custom_scene=custom_scene)
+    recipe = (
+        dict(_frozen_recipe)
+        if _frozen_recipe is not None
+        else generation_recipe(fixture=fixture, custom_scene=custom_scene)
+    )
     reference = brief.presentation in {"reference_v2", "reference_v3"}
     if reference and custom_scene:
         raise ValueError("Reference templates use authored scenes; custom_scene requires guided_v1")
@@ -214,7 +222,7 @@ def generate(
             "gameplay" if reference and brief.format_id == "dialogue_gameplay" else "concept_only"
         )
     prompt_name = "reference-prompt.txt" if reference else "prompt.txt"
-    if storyboard_feedback:
+    if storyboard_feedback and _frozen_recipe is None:
         recipe["editorial_feedback"] = digest(storyboard_feedback)
     key = brief.generation_key(recipe)
     atomic_json(
@@ -436,6 +444,7 @@ def generate(
                 deadline=deadline,
                 scene_feedback=scene_feedback,
                 storyboard_feedback=storyboard_feedback,
+                _frozen_recipe=recipe,
             )
         raise ValueError(
             f"NARRATION_DURATION_REVIEW: {duration:.2f} seconds; {issues}; revise script"
@@ -555,6 +564,7 @@ def generate(
         else [],
         "trace_kind": brief.trace_kind,
         "presentation": brief.presentation,
+        "visual_strategy": brief.visual_strategy,
         "shots": shots,
         "images": images,
         "installment_example": brief.installment_example.model_dump()
@@ -650,6 +660,7 @@ def generate(
                 check_cancelled=check_cancelled,
                 stage=stage,
                 deadline=deadline,
+                _frozen_recipe=recipe,
                 storyboard_feedback=json.dumps(
                     {
                         "previous": board.model_dump(),

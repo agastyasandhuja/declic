@@ -21,7 +21,7 @@ Supabase Storage for documents/media. Existing v1 wire contracts stay unchanged.
 | Atlas connection and ordered database changes | Agastya | Domain-owned collection/validator/index drafts |
 
 Every domain should have its own README with run instructions, a public interface,
-synthetic fixtures, and meaningful tests. There is no root executable yet.
+synthetic fixtures, and meaningful tests. The integrated launcher is `scripts/run-demo.py`; see [RUN_DEMO.md](RUN_DEMO.md).
 Pin dependencies and commit the corresponding lockfile when initializing runtimes.
 
 ## Bootstrap order
