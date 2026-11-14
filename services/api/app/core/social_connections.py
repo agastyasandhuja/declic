@@ -2,6 +2,7 @@
 
 import time
 from datetime import timedelta
+from typing import Literal
 
 from fastapi import APIRouter, Response
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
@@ -13,13 +14,13 @@ from app.core.time import iso, new_id, utc_now
 from app.modules.entertainment.instagram import (
     InstagramReelsProvider,
     make_instagram_client,
-    quiet_instagram,
 )
 from app.modules.entertainment.instagram_connection import (
     LOGIN_ERRORS,
     SESSION_FIELDS,
     device_settings,
 )
+from app.modules.entertainment.instagram_login import login_interactively
 from app.modules.entertainment.pagination import batch_revision
 from app.modules.entertainment.service import CatalogFailure, normalized_items, playable
 from app.workers.queue import enqueue
@@ -29,7 +30,8 @@ class Login(BaseModel):
     model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
     username: str = Field(min_length=1, max_length=30, pattern=r"^[A-Za-z0-9_.]+$")
     password: SecretStr = Field(min_length=1, max_length=1024)
-    verification_code: SecretStr | None = Field(default=None, min_length=6, max_length=10)
+    verification_code: SecretStr | None = Field(default=None, min_length=6, max_length=6)
+    verification_method: Literal["totp"] = "totp"
 
 
 class SocialConnections:
@@ -73,29 +75,53 @@ class SocialConnections:
             if previous and previous.get("sealed")
             else {}
         )
-        client = make_instagram_client(saved.get("session"))
+        # Fresh credential submission must not silently reuse a different account.
+        client = make_instagram_client(
+            device_settings(saved["session"]) if saved.get("session") else None
+        )
         provider = InstagramReelsProvider(client)
-        try:
-            with quiet_instagram():
-                client.login(
-                    body.username,
-                    body.password.get_secret_value(),
-                    relogin=True,
-                    verification_code=body.verification_code.get_secret_value()
-                    if body.verification_code
-                    else "",
+
+        def read_code(_prompt):
+            if "sms" in _prompt.casefold():
+                raise APIError(
+                    409,
+                    "INSTAGRAM_LOCAL_VERIFICATION_REQUIRED",
+                    "Complete SMS verification through the local interactive "
+                    "or browser-session helper.",
                 )
-            session = {
-                key: value for key, value in client.get_settings().items() if key in SESSION_FIELDS
-            }
+            if body.verification_code is None:
+                raise APIError(
+                    409,
+                    "INSTAGRAM_TWO_FACTOR_REQUIRED",
+                    "Instagram requested two-factor verification. Enter a current code and retry "
+                    "manually, or connect through the local browser-session helper.",
+                )
+            return body.verification_code.get_secret_value()
+
+        try:
+            verified = login_interactively(
+                client,
+                body.username,
+                body.password.get_secret_value(),
+                {},
+                read_code=read_code,
+                choose_method=lambda _prompt: body.verification_method,
+                expected_username=body.username,
+                allowed_methods={"totp"},
+            )
+            session = {key: value for key, value in verified.items() if key in SESSION_FIELDS}
             sealed = self.vault.seal(owner, "instagram", {"session": session, "cursor": None})
         except Exception as error:
-            code, message = LOGIN_ERRORS.get(
-                type(error).__name__,
-                (
-                    "INSTAGRAM_LOGIN_FAILED",
-                    "Instagram login failed. Check the official app before retrying.",
-                ),
+            code, message = (
+                (error.code, error.message)
+                if isinstance(error, (APIError, CatalogFailure))
+                else LOGIN_ERRORS.get(
+                    type(error).__name__,
+                    (
+                        "INSTAGRAM_LOGIN_FAILED",
+                        "Instagram login failed. Check the official app before retrying.",
+                    ),
+                )
             )
             device = self.vault.seal(
                 owner, "instagram", {"session": device_settings(client.get_settings())}
@@ -193,7 +219,9 @@ class SocialConnections:
             return {"state": "cooldown"}
         version = row.get("refresh_version", 0)
         saved = self.vault.open(owner, "instagram", row["sealed"])
-        provider = InstagramReelsProvider(make_instagram_client(saved["session"]))
+        provider = InstagramReelsProvider(
+            make_instagram_client(saved["session"]), surface=saved.get("surface", "discover")
+        )
         try:
             page = provider.read_page(saved.get("cursor"))
             session = {
@@ -230,7 +258,13 @@ class SocialConnections:
         if not context.heartbeat():
             raise RuntimeError("Lease lost")
         sealed = self.vault.seal(
-            owner, "instagram", {"session": session, "cursor": page.next_cursor}
+            owner,
+            "instagram",
+            {
+                "session": session,
+                "cursor": page.next_cursor,
+                "surface": saved.get("surface", "discover"),
+            },
         )
 
         def publish(tx):

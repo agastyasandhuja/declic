@@ -108,7 +108,7 @@ def _call(function, *args, **kwargs):
         return function(*args, **kwargs)
 
 
-def _complete_two_factor(client, error, report, read_code, choose_method):
+def _complete_two_factor(client, error, report, read_code, choose_method, allowed_methods=None):
     report['two_factor_requested'] = True
     # Use the current server-issued context, never start a second password login.
     sources = [vars(error), getattr(client, 'last_json', {})]
@@ -131,6 +131,9 @@ def _complete_two_factor(client, error, report, read_code, choose_method):
         if choice not in {'sms', 'totp'}:
             raise CatalogFailure(409, 'INSTAGRAM_TWO_FACTOR_CANCELLED', 'No verification method selected. No code was submitted.')
         method = choice
+    if allowed_methods is not None and method not in allowed_methods:
+        raise CatalogFailure(409, 'INSTAGRAM_LOCAL_VERIFICATION_REQUIRED',
+                             'Complete SMS verification through the local interactive or browser-session helper. No SMS or code submission was sent by this attempt.')
     report['two_factor_method'] = method
     _call(client.bloks_two_step_verification_entrypoint, context)
     _call(client.bloks_two_step_verification_method_picker, context)
@@ -168,7 +171,8 @@ def _verified_settings(client, report, expected_username=None):
     return _call(client.get_settings)
 
 
-def login_interactively(client, username, password, report, *, read_code=None, choose_method=None):
+def login_interactively(client, username, password, report, *, read_code=None,
+                        choose_method=None, expected_username=None, allowed_methods=None):
     """One SDK login; only a returned account-2FA challenge may prompt for a code."""
     report.update(connection_method='password', two_factor_requested=False,
                   two_factor_code_submitted=False, session_verified=False)
@@ -179,10 +183,10 @@ def login_interactively(client, username, password, report, *, read_code=None, c
             if type(error).__name__ != 'TwoFactorRequired':
                 raise
             accepted = _complete_two_factor(client, error, report,
-                                            read_code or getpass.getpass, choose_method or input)
+                                            read_code or getpass.getpass, choose_method or input, allowed_methods)
         if not accepted or not client.user_id:
             raise CatalogFailure(409, 'INSTAGRAM_LOGIN_REJECTED', 'Instagram did not return an authenticated session. Review the account locally.')
-        return _verified_settings(client, report)
+        return _verified_settings(client, report, expected_username=expected_username)
 
 
 def login_with_browser_session(client, username, session_id, report):
