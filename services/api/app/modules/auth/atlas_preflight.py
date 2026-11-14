@@ -87,6 +87,22 @@ class IntentionalRollback(Exception):
     pass
 
 
+def database_error_category(error):
+    if error.code == 18:
+        return 'AUTH_FAILED'
+    if error.code == 13:
+        return 'ACCESS_DENIED'
+    # Atlas wraps several distinct failures in 8000. Inspect known phrases only
+    # in memory; never copy the provider message/details into the public report.
+    if error.code == 8000:
+        message = str(error).lower()
+        if any(phrase in message for phrase in ('authentication failed', 'bad auth', 'authenticationfailed')):
+            return 'AUTH_FAILED'
+        if any(phrase in message for phrase in ('not authorized', 'not allowed to do action', 'unauthorized')):
+            return 'ACCESS_DENIED'
+    return 'DATABASE_OPERATION_FAILED'
+
+
 def transaction_probe(client, database, report):
     name = '_adi_atlas_probe_' + uuid4().hex
     report['probe_collection'] = name  # nonsecret identifier for cleanup if interrupted
@@ -149,7 +165,7 @@ def preflight(uri, database_name, *, local=False, write_test=False, apply_owned_
     except ServerSelectionTimeoutError:
         report.update(status='failed', error_code='CONNECTION_UNAVAILABLE')
     except OperationFailure as error:
-        report.update(status='failed', error_code={18: 'AUTH_FAILED', 13: 'ACCESS_DENIED'}.get(error.code, 'DATABASE_OPERATION_FAILED'))
+        report.update(status='failed', error_code=database_error_category(error))
     except (PyMongoError, ValueError, TypeError):
         report.update(status='failed', error_code='DATABASE_CONFIGURATION_OR_OPERATION_FAILED')
     except Exception:

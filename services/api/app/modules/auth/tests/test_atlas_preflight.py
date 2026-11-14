@@ -9,7 +9,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from pymongo import MongoClient
-from pymongo.errors import ServerSelectionTimeoutError
+from pymongo.errors import OperationFailure, ServerSelectionTimeoutError
 
 from app.modules.auth import atlas_preflight as check
 from app.modules.auth.database_setup import apply_domain_drafts
@@ -48,6 +48,24 @@ class ConfigurationTests(unittest.TestCase):
             self.assertNotIn(secret, output.getvalue() + report.read_text())
             self.assertEqual(report.stat().st_mode & 0o777, 0o600)
             self.assertEqual(json.loads(report.read_text())['error_code'], 'CONNECTION_UNAVAILABLE')
+
+    def test_atlas_8000_classifies_credentials_and_permissions_without_leaking_details(self):
+        secret = 'DO_NOT_EXPORT_CREDENTIAL'
+        for message, expected in (
+            (f'bad auth : authentication failed {secret}', 'AUTH_FAILED'),
+            (f'not allowed to do action {secret}', 'ACCESS_DENIED'),
+            (f'unknown Atlas operation {secret}', 'DATABASE_OPERATION_FAILED'),
+        ):
+            with self.subTest(expected=expected), tempfile.TemporaryDirectory() as folder:
+                report = Path(folder) / 'report.json'
+                output = io.StringIO()
+                with patch.dict(os.environ, {'MONGODB_URI': f'mongodb+srv://synthetic:{secret}@cluster.example.mongodb.net/'}, clear=True), \
+                     patch('sys.argv', ['atlas_preflight', '--report', str(report)]), \
+                     patch.object(check, 'MongoClient', side_effect=OperationFailure(message, code=8000)), \
+                     contextlib.redirect_stdout(output):
+                    self.assertEqual(check.main(), 1)
+                self.assertEqual(json.loads(report.read_text())['error_code'], expected)
+                self.assertNotIn(secret, output.getvalue() + report.read_text())
 
 
 @unittest.skipUnless(os.getenv('MONGODB_TEST_URI'), 'Set a disposable local replica-set URI.')

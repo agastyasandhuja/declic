@@ -167,3 +167,14 @@ request until education/credit access is available.
 - [Atlas database users](https://www.mongodb.com/docs/atlas/security-add-mongodb-users/)
 - [Project IP access list](https://www.mongodb.com/docs/atlas/security/ip-access-list/)
 - [Validator update permission](https://www.mongodb.com/docs/compass/connect/required-access/)
+
+
+## Authentication diagnostic follow-up
+
+Atlas can wrap authentication and permission errors in server code 8000. The
+preflight now distinguishes known authentication phrases (AUTH_FAILED) from
+permission phrases (ACCESS_DENIED), keeping all raw messages/credentials private.
+The first hosted check reached Atlas but authentication was rejected before any
+schema work. Re-enter the database-user credential locally; missing migrations
+cannot explain that pre-authentication failure. A working hosted connection has
+not yet been verified.

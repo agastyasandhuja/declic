@@ -1,5 +1,37 @@
 # Adi status
 
+## Hosted Atlas authentication diagnostic — November 14, 2026
+
+The user proceeded with a Free cluster after credits were unavailable and ran the
+local hidden-password setup helper. Server-only configuration was saved in the
+ignored services/api/.env; no credential values are included here.
+
+- One read-only authenticated ping reproduced a live Atlas **8000 authentication
+  rejection** before any schema inspection or migration. The saved hostname/user
+  match the user's screenshot, database matches `hackumass`, a password is present
+  and it is not the placeholder. This confirms a credential/authentication issue;
+  the exact cause (wrong password, nonexistent/changed database user, etc.) still
+  requires correcting the database-user credential. No raw provider message,
+  URI or password was displayed.
+- Corrected the preflight classifier: Atlas 8000 messages matching authentication
+  failure map to AUTH_FAILED; permission failures map to ACCESS_DENIED; other
+  8000 failures stay generic. Classification inspects fixed phrases only in
+  memory and never exports the provider payload.
+- Prepared an ignored, local-only --replace-password helper path. It updates only
+  the URI for the same selected cluster/user, preserves other .env settings,
+  URL-encodes the entered password and writes mode 0600 atomically. The actual
+  saved credential was **not changed** by the agent. The user must enter it in
+  their own Terminal. No password reset or Atlas access change was performed.
+- Seven focused auth/configuration tests passed, including the new 8000
+  credential-vs-permission regression with credential redaction. Standalone local
+  helper checks passed for URL encoding, owner-only permissions, preservation of
+  unrelated settings, default overwrite protection and refusing a different
+  target. `git diff --check` passed. Existing MongoDB integration checks were not
+  rerun for this classification-only change; no local test server was started.
+- Hosted connection remains unsuccessful. No collections, records, indexes or
+  migrations were written by the diagnosis. Next: user re-enters the correct
+  database-user password locally, then the helper runs the read-only check again.
+
 ## Atlas provisioning preparation — November 14, 2026
 
 User direction: Adi may handle shared cloud provisioning while preserving teammate
