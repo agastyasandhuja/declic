@@ -3,6 +3,7 @@ from collections import OrderedDict, deque
 from copy import deepcopy
 from datetime import datetime, timezone
 import hashlib
+import math
 import secrets
 from threading import Lock
 import time
@@ -50,7 +51,9 @@ class LiveInstagramCatalog:
         self._unavailable()
         now = self.monotonic()
         if now < self.next_fetch_at:
-            raise CatalogFailure(503, 'INSTAGRAM_BUSY', 'More Reels are warming up. Keep watching and retry shortly.')
+            failure = CatalogFailure(503, 'INSTAGRAM_BUSY', 'More Reels are warming up. Keep watching and retry shortly.')
+            failure.retry_after = max(1, math.ceil(self.next_fetch_at - now))
+            raise failure
         self.next_fetch_at = now + self.minimum_interval
         try:
             return call()
