@@ -57,7 +57,7 @@ def main():
         "--security-opt",
         "no-new-privileges",
         "--cpus",
-        "2",
+        "4",
         "--memory",
         "3g",
         "--pids-limit",
