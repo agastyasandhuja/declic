@@ -2,7 +2,7 @@
 export class VisibleWatchTracker {
   totalMs = 0;
   private previous: { positionMs: number; nowMs: number; eligible: boolean } | null = null;
-  sample(positionMs: number, nowMs: number, eligible: boolean, durationMs?: number) {
+  sample(positionMs: number, nowMs: number, eligible: boolean, durationMs?: number, rate = 1) {
     const previous = this.previous;
     this.previous = { positionMs, nowMs, eligible };
     if (!previous || !eligible || !previous.eligible || !Number.isFinite(positionMs)) return this.totalMs;
@@ -10,7 +10,7 @@ export class VisibleWatchTracker {
     if (wall <= 0 || wall > 1500) return this.totalMs;
     let movement = positionMs - previous.positionMs;
     if (movement < 0 && durationMs && previous.positionMs >= durationMs - 1500 && positionMs < 1500) movement = durationMs - previous.positionMs + positionMs;
-    if (movement > 0 && movement <= wall * 1.5 + 100) this.totalMs += Math.min(wall, movement);
+    if (movement > 0 && movement <= wall * Math.max(1, Math.min(2, rate)) * 1.5 + 100) this.totalMs += Math.min(wall, movement);
     return this.totalMs;
   }
 }

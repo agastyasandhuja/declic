@@ -151,3 +151,18 @@ test('a stalled stale preload cannot block a newer clip on the free slot', async
   assert.deepEqual(replacements, ['first', 'slow-preload', 'new-selection']);
   controller.dispose();
 });
+
+test('adjacent buffer readiness is published without granting its audio or resetting the active selection', async () => {
+  let state!: BufferedPlaybackState; const playing = [false, false];
+  const drivers = [0, 1].map(slot => ({ play() { playing[slot] = true; assert.ok(playing.filter(Boolean).length <= 1); }, pause() { playing[slot] = false; }, async replaceAsync() {} })) as any;
+  const controller = new BufferedPlayerController(drivers, value => { state = value; });
+  await controller.setSelection('one'); const selection = state.selection;
+  controller.preload('two'); await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+  assert.equal(state.selection, selection); assert.equal(state.sourceUri, 'one');
+  assert.deepEqual(state.buffers?.[1 - state.activeSlot], { uri: 'two', ready: true });
+  assert.equal(playing[1 - state.activeSlot], false);
+  await controller.setSelection('two');
+  assert.deepEqual(state.buffers?.[1 - state.activeSlot], { uri: 'one', ready: true });
+  assert.equal(playing[1 - state.activeSlot], false);
+  controller.dispose();
+});
