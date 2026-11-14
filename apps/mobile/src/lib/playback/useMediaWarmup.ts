@@ -34,9 +34,10 @@ export function useMediaWarmup(assets: WarmAsset[], enabled: boolean) {
   const key = JSON.stringify(assets);
   useEffect(() => { queue.update(JSON.parse(key), enabled && !memoryLimited && isMediaCacheEnabled() && Platform.OS !== 'web'); }, [queue, key, enabled, memoryLimited]);
   useEffect(() => {
+    const playback = warmer.addListener('playingChange', event => { if (event.isPlaying && alive.current) { warmer.muted = true; warmer.pause(); } });
     const memory = AppState.addEventListener('memoryWarning', () => { queue.update([], false); setMemoryLimited(true); });
     const state = AppState.addEventListener('change', value => { if (value !== 'active') queue.update([], false); });
-    return () => { memory.remove(); state.remove(); };
-  }, [queue]);
+    return () => { playback.remove(); memory.remove(); state.remove(); };
+  }, [queue, warmer, alive]);
   useLayoutEffect(() => { alive.current = true; return () => { queue.dispose(); alive.current = false; }; }, [queue, alive]);
 }

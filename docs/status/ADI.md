@@ -1493,7 +1493,7 @@ Installed Expo Video 58.0.14 source was checked for caching, bufferedPosition,
 replaceAsync cancellation, and the no-active-players cache-management restriction.
 
 Validation: Node 24 `npm run typecheck --workspace @hackumass/mobile` passes;
-`npm test --workspace @hackumass/mobile`: **83 passed** (including local loopback
+`npm test --workspace @hackumass/mobile`: **84 passed** (including local loopback
 proxy fixtures). New tests cover bounded/serial warmup, cancellation, expiry/HLS,
 current/next buffer preservation, account/API cache isolation/expiry, warmup to
 sheet request adoption, cache failure fallback, haptic edge triggering, comments
@@ -1501,3 +1501,13 @@ watch gating, and compact counts. `git diff --check` passes. No provider/model
 calls were made for these tests. Native buffering/haptics and updated layout
 still require the follow-up build/device check; version 9 remains installed until
 that build succeeds.
+
+The subsequent physical v9 report exposed a real Expo iOS rate-setter hazard:
+`playbackRate` writes `AVPlayer.rate` and starts a paused player. The old controller
+wrote both slots and the screens unmuted both. The fix applies rate only to the
+allowed active slot, centrally mutes/pauses standby on every transition, keeps
+paused/background/error/disposed paths silent, and fences late native playing
+callbacks. The always-muted warmer also pauses unexpected native play callbacks.
+A regression uses a fake rate setter that actually starts playback and checks
+hold, release, pause, slot promotion, late callbacks, mute and disposal. This
+fix is included before the v10 build; physical double-audio retest remains pending.

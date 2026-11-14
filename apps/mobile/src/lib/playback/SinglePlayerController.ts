@@ -1,4 +1,4 @@
-export interface PlayerDriver { play(): void; pause(): void; replaceAsync(uri: string): Promise<void>; seekTo?(seconds: number): void; setRate?(rate: number): void }
+export interface PlayerDriver { play(): void; pause(): void; replaceAsync(uri: string): Promise<void>; seekTo?(seconds: number): void; setRate?(rate: number): void; setMuted?(muted: boolean): void }
 export interface PlaybackState { loading: boolean; ready: boolean; error: string | null }
 export interface PlaybackGate { foreground: boolean; focused: boolean; manuallyPaused: boolean }
 

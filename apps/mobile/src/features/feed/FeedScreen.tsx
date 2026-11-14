@@ -60,7 +60,7 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
   const watch = useRef(new VisibleWatchTracker()); const selectedIndex = useRef(index); selectedIndex.current = index;
   const firstPlayer = useVideoPlayer(null, setupPlayer); const secondPlayer = useVideoPlayer(null, setupPlayer);
   const controller = useMemo(() => {
-    const driver = (instance: VideoPlayer): PlayerDriver => ({ play: () => instance.play(), pause: () => instance.pause(), setRate: rate => { instance.playbackRate = rate; }, seekTo: seconds => { instance.currentTime = seconds; }, replaceAsync: uri => instance.replaceAsync(cachedVideoSource(uri)) });
+    const driver = (instance: VideoPlayer): PlayerDriver => ({ play: () => instance.play(), pause: () => instance.pause(), setRate: rate => { if (instance.playbackRate !== rate) instance.playbackRate = rate; }, setMuted: muted => { instance.muted = muted; }, seekTo: seconds => { instance.currentTime = seconds; }, replaceAsync: uri => instance.replaceAsync(cachedVideoSource(uri)) });
     return new BufferedPlayerController([driver(firstPlayer), driver(secondPlayer)], setPlayback);
   }, [firstPlayer, secondPlayer]);
   const controllerRef = useRef(controller); controllerRef.current = controller;
@@ -135,7 +135,11 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
     recovery.current.observe(video?.video_id ?? null, focused && foreground && viewable);
     controller.setGate({ focused: focused && viewable && !!video && !needsPlaybackRefresh(video.playback.expires_at) && retryingVideo.current !== video.video_id, foreground, manuallyPaused: paused || gesturePlaybackBlocked });
   }, [controller, focused, foreground, viewable, paused, gesturePlaybackBlocked, video?.video_id, video?.playback.expires_at]);
-  useEffect(() => { firstPlayer.muted = muted; secondPlayer.muted = muted; }, [firstPlayer, secondPlayer, muted]);
+  useLayoutEffect(() => { controller.setMuted(muted); }, [controller, muted]);
+  useEffect(() => {
+    const listeners = [firstPlayer, secondPlayer].map((p, slot) => p.addListener('playingChange', event => { if (event.isPlaying) controller.enforcePlaybackOwner(slot as 0 | 1); }));
+    return () => listeners.forEach(listener => listener.remove());
+  }, [controller, firstPlayer, secondPlayer]);
   useEffect(() => {
     setNative({ owner: player, status: player.status, isPlaying: player.playing });
     const status = player.addListener('statusChange', event => setNative(value => value.owner === player ? { ...value, status: event.status } : value));

@@ -61,7 +61,7 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
   const watch = useRef(new VisibleWatchTracker()); const answerKey = useRef(Crypto.randomUUID()); const submittedAnswer = useRef<string | null>(null);
   const setup = (p: VideoPlayer) => { p.loop = true; p.staysActiveInBackground = false; p.audioMixingMode = 'doNotMix'; p.bufferOptions = { preferredForwardBufferDuration: 5, waitsToMinimizeStalling: false }; };
   const first = useVideoPlayer(null, setup); const second = useVideoPlayer(null, setup);
-  const controller = useMemo(() => new BufferedPlayerController([first, second].map(p => ({ play: () => p.play(), pause: () => p.pause(), setRate: (rate: number) => { p.playbackRate = rate; }, seekTo: (seconds: number) => { p.currentTime = seconds; }, replaceAsync: (uri: string | null) => p.replaceAsync(cachedVideoSource(uri)) })) as [PlayerDriver, PlayerDriver], setPlayback), [first, second]);
+  const controller = useMemo(() => new BufferedPlayerController([first, second].map(p => ({ play: () => p.play(), pause: () => p.pause(), setRate: (rate: number) => { if (p.playbackRate !== rate) p.playbackRate = rate; }, setMuted: (muted: boolean) => { p.muted = muted; }, seekTo: (seconds: number) => { p.currentTime = seconds; }, replaceAsync: (uri: string | null) => p.replaceAsync(cachedVideoSource(uri)) })) as [PlayerDriver, PlayerDriver], setPlayback), [first, second]);
   const player = playback.activeSlot === 0 ? first : second;
   const visibility = useRef({ focused, foreground }); visibility.current = { focused, foreground };
   const current = items[index]; itemRef.current = current;
@@ -145,7 +145,11 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
     recovery.current.observe(video ? current!.item_id : null, focused && foreground);
     controller.setGate({ focused: focused && !!video && !needsPlaybackRefresh(video.playback.expires_at) && retryingVideo.current !== current?.item_id, foreground, manuallyPaused: paused || playbackBlocked });
   }, [controller, focused, foreground, paused, playbackBlocked, current?.item_id, video?.playback.expires_at, !!video]);
-  useEffect(() => { first.muted = preferences.muted; second.muted = preferences.muted; }, [first, second, preferences.muted]);
+  useLayoutEffect(() => { controller.setMuted(preferences.muted); }, [controller, preferences.muted]);
+  useEffect(() => {
+    const listeners = [first, second].map((p, slot) => p.addListener('playingChange', event => { if (event.isPlaying) controller.enforcePlaybackOwner(slot as 0 | 1); }));
+    return () => listeners.forEach(listener => listener.remove());
+  }, [controller, first, second]);
   useEffect(() => { const subscription = AppState.addEventListener('change', state => { const active = state === 'active'; if (!active) interaction.reset(); visibility.current.foreground = active; const selected = itemRef.current; const stale = selected && selected.kind !== 'quiz' && needsPlaybackRefresh(selected.video.playback.expires_at); controller.setGate({ foreground: active, ...(active && stale ? { focused: false } : {}) }); setForeground(active); emit(active ? 'app_foregrounded' : 'app_backgrounded', player.currentTime * 1000, watch.current.totalMs); if (active) emit('playback_started', player.currentTime * 1000, watch.current.totalMs); void flush(); }); return () => subscription.remove(); }, [controller, player, emit, flush]);
   useEffect(() => {
     resumeSeek.current.clear(); setProgress({ position: 0, duration: 0 });
