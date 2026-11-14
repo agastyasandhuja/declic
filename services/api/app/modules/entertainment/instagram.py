@@ -158,6 +158,11 @@ class InstagramReelsProvider:
                 with quiet_instagram():
                     item = normalize_reel(extract_media_v1(row), now)
                 if item:
+                    # SDK models default absent counts to zero; retain the raw
+                    # provider's missing/hidden semantics before projection.
+                    item['like_count'] = (None if row.get('like_and_view_counts_disabled')
+                                          else _engagement_count(row.get('like_count')))
+                    item['comment_count'] = _engagement_count(row.get('comment_count'))
                     result.append(item)
             except Exception:
                 # One malformed/ad/non-video item must not discard a valid page.

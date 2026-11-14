@@ -1,11 +1,12 @@
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 from jsonschema.exceptions import ValidationError
 
 from app.core.integration import FeedEntertainmentReader
-from app.modules.entertainment.instagram import normalize_reel
+from app.modules.entertainment.instagram import InstagramReelsProvider, normalize_reel
 from app.modules.entertainment.service import normalized_items
 
 
@@ -70,3 +71,22 @@ def test_old_records_remain_valid_but_invalid_wire_counts_are_rejected():
     for invalid in (-1, True, "33000", 9007199254740992):
         with pytest.raises(ValidationError):
             normalized_items([{**item, "like_count": invalid}])
+
+
+def test_sdk_default_zero_does_not_fabricate_missing_or_hidden_provider_counts():
+    provider = InstagramReelsProvider(SimpleNamespace())
+    with patch(
+        "instagrapi.extractors.extract_media_v1",
+        return_value=media(
+            like_count=0,
+            comment_count=0,
+        ),
+    ):
+        item = provider._normalize([{}])[0]
+        assert item["like_count"] is None and item["comment_count"] is None
+        item = provider._normalize(
+            [{"like_count": 33000, "comment_count": 12, "like_and_view_counts_disabled": True}]
+        )[0]
+        assert item["like_count"] is None and item["comment_count"] == 12
+        item = provider._normalize([{"like_count": 0, "comment_count": 0}])[0]
+        assert item["like_count"] == 0 and item["comment_count"] == 0

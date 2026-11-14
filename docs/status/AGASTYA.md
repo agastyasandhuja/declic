@@ -1756,7 +1756,7 @@ through the allowlisted catalog and unified feed. Optional nullable integer fiel
 remain compatible. Safe Instagram CDN thumbnails populate the existing field
 for adjacent-card presentation. No provider write or extra per-Reel request is added.
 
-Validation: 40 focused metadata/provider tests passed; generated contracts match
+Validation: 41 focused metadata/provider tests passed; generated contracts match
 and `git diff --check` passed. Ruff passes for the new test and feed projection;
 existing entertainment modules retain their pre-existing import/line-length lint.
 Live metadata awaits the next normal catalog refresh and phone UI integration.
