@@ -24,6 +24,25 @@ Live access confirmed with Amogh's own access token in `developer_token` mode.
 - `--demo` mode and synthetic demo data so the output shape is viewable with
   no token (clearly labelled "not a live sync").
 
+## M5 — mobile academic components (2026-11-14)
+
+- Built the academics feature UI in packages/mobile-academics (React Native +
+  TypeScript): CanvasConnection, ImportProgress, CourseList, CourseProfile
+  (review + edit), composed in AcademicsScreen. Exported from src/index.ts.
+- Dependency-injected: components take an AcademicsApiClient, Identity and theme
+  as props. NO navigation container, NO auth store, NO root workspace config or
+  lockfile (all Adi's). react/react-native are peer deps. Zero overlap with Adi.
+- UI guarantees match the backend: courses ordered by real-time urgency; dates
+  shown honestly (no invented time; unknown reads "No date"); suggested practice
+  distinct from exam coverage; a student date correction is marked user_confirmed.
+- FakeAcademicsApiClient + fixtures let the UI run standalone before the backend
+  routes exist. AcademicsApiClient interface maps to the academic contract routes.
+- Pure view-model logic unit-tested and RUN (node --experimental-strip-types):
+  7 tests pass. React components are typed wrappers, not runtime-verified until
+  Adi's Expo app hosts them (reported as such, not claimed working).
+- Handoff to Adi: import AcademicsScreen, pass a real api client + identity +
+  theme, mount at a route he owns.
+
 ## M2 slice + real-time prioritization (2026-11-14, live-verified)
 
 - `canvas/assignments.py`: read-only fetch of the student's assignments with
