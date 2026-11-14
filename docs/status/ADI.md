@@ -1,5 +1,80 @@
 # Adi status
 
+## Merge handoff and Instagram client rejection — November 14, 2026
+
+Before diagnosis, the working tree was clean at 253892c on
+adi-live-instagram-feed. `git push origin adi-live-instagram-feed` returned
+"Everything up-to-date". Commit ancestry checks against the published heads
+confirmed that this branch includes adi-mobile-prototype, adi-private-phone-feed
+and adi-atlas-readiness. Agastya can merge the live branch as Adi's accumulated
+source handoff; no branch switch or merge was performed here.
+
+### Latest provider evidence
+
+- The user reported INSTAGRAM_CLIENT_REJECTED after the local 2FA prompt.
+  The redacted report identifies ClientNeedsUpgradeError during instagram_login:
+  authenticated=false, zero pages and no ready connection file.
+- A newer report at 2026-11-14T20:18:19.466424+00:00 has the same failure and
+  device_profile_reused=true. The helper preserved the device identity, but the
+  newer attempt still did not create a usable session. The user said they would
+  retry with a current 2FA code; report data does not establish whether Instagram
+  accepted that code or which internal login request failed.
+- Installed instagrapi 3.2.12 raises this type for an HTTP 400 response with
+  error_type=needs_upgrade. Its login includes CAA, supported two-factor handling,
+  explicit server-directed legacy fallback and follow-up initialization. The
+  fixed report deliberately does not retain raw responses or endpoint traces,
+  so the precise upstream cause remains unresolved. This is not evidence of a
+  wrong app password or an Atlas setup failure.
+- Read public PyPI metadata: current release is 3.2.13, uploaded November 14.
+  Compared its wheel in memory after verifying the published SHA-256. Only
+  mixins/graphql.py and mixins/note.py differ among existing Python modules;
+  auth.py, private.py and config.py match the installed version. No package was
+  installed and no login fix was established by that comparison.
+- Reviewed the upstream [login migration guidance](https://github.com/subzeroid/instagrapi/blob/master/docs/usage-guide/login-migration.md).
+  A needs_upgrade error alone does not identify every underlying login failure.
+  No automatic login/checkpoint attempt, cookie import or provider request was
+  made by the agent. Successful live paging and physical-phone playback remain
+  unverified; keep fixture/cached fallback modes explicit.
+
+### Adi's remaining work after the team merge
+
+1. Mount Amogh's AcademicsScreen in app-owned navigation and implement its
+   AcademicsApiClient wrapper using the shared authenticated client. Current
+   featureRegistry is empty and CoursesScreen is still a synthetic preview.
+   Amogh's published branch at 5f5c3ba already contains the mobile components and
+   AtlasAcademicStore with a reported hosted synthetic round trip. Do not rebuild
+   that persistence; older statements below about its absence are historical.
+2. Integrate the unified session/feed/events routes and render entertainment,
+   study and quiz occurrences. Activate the quiz gate only when reached, handle
+   submit/recovery without duplicate grading, unlock on any accepted answer, and
+   discard unseen old-revision items. Send actual visible playback events through
+   the shared API instead of only retaining local diagnostics. Backend ranking
+   remains Agastya's; his published mobile-learning package has no component yet.
+3. With Agastya, assemble the real identity/entertainment/academic adapters in
+   shared core and confirm one authenticated API origin reachable from the phone.
+   Confirm private generated-video Storage publication/signing and scope checks;
+   local rendered files alone do not establish app playback. Dedicated Atlas
+   readWrite runtime access and deployment egress remain configuration work.
+4. Complete the physical-phone acceptance: confirmed-account login, persisted
+   session after restart, logout/private-state clearing, invalid-login/offline
+   recovery, sustained swipe playback, one audible player, background/resume and
+   unavailable-item recovery. Repeat against the merged mixed-feed/quiz flow.
+5. Resolve the Instagram login experiment separately, then measure later pages
+   adding unique Reels beyond the original four and real URL renewal. Keep the
+   rest of the demo usable while this provider dependency is unavailable.
+6. Rehearse a reproducible demo with prepared playable learning assets, an
+   explicitly labeled entertainment fallback, confirmed demo accounts, exact
+   start commands and the final phone/API connection. Email redirect polish and
+   custom SMTP remain explicitly deferred by the user.
+
+This follow-up changes status documentation only. No code tests were rerun;
+the previous 31 setup/live and 13 experiment tests remain the last test evidence.
+`git diff --check` and all six local status-document link checks passed; the
+actual app UUID/email are absent from this document.
+No shared implementation, database configuration/data or provider session was
+modified. Teammate branch inspection used Git reads/fetch only; their reported
+live results were not independently rerun here.
+
 ## Local login diagnostics and device continuity — November 14, 2026
 
 The user's first live setup attempt ended with CONNECTION_FAILED after the app
