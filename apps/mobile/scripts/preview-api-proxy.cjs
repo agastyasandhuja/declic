@@ -29,7 +29,10 @@ function previewApiProxy(next, port = 8000) {
       });
       result.on('end', () => {
         if (response.writableEnded || response.destroyed) return;
-        response.writeHead(result.statusCode ?? 502, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+        const outgoing = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
+        const retryAfter = result.headers['retry-after'];
+        if (typeof retryAfter === 'string' && /^\d{1,3}$/.test(retryAfter)) outgoing['Retry-After'] = String(Math.min(300, Number(retryAfter)));
+        response.writeHead(result.statusCode ?? 502, outgoing);
         response.end(Buffer.concat(chunks));
       });
       result.on('error', () => fail(503, 'PREVIEW_UNAVAILABLE', 'Preview response was interrupted. Retry.', true));

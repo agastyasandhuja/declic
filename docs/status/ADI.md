@@ -1,5 +1,68 @@
 # Adi status
 
+## Phone playback and duplicate-page recovery — November 14, 2026
+
+The user reported that the authenticated live feed initially worked on the real
+iPhone and reached six clips, then intermittently showed video information with
+audio but a black picture. This establishes retrieval beyond four through Expo;
+it does not satisfy sustained visual playback, lifecycle or recovery acceptance.
+
+### Diagnosis and owned changes
+
+- A bounded read-only SDK probe restored the existing session without logging in:
+  three provider pages contained respectively 4, 0 and 1 new unique normalized
+  Reels (5 total), each with a nonrepeating continuation cursor. Two sampled CDN
+  HEAD requests returned **200 video/mp4**, no redirects. No URLs, post IDs,
+  captions, cookies or media bytes were printed/saved. This confirms duplicate-only
+  windows occur and sampled CDN reachability; it does not prove native decoding.
+- Mobile previously treated replaceAsync completion as visual readiness and did
+  not observe first-frame rendering. The selected source is now tagged with a
+  controller generation and URI; only its loaded player mounts a keyed VideoView.
+  Clipped-subview removal is disabled for this bounded list. Loading stays visible
+  until onFirstFrameRender for the current generation. A 12-second foreground
+  first-frame guard catches audio advancing without a picture and offers retry,
+  skip and reload. Native events from the prior player cannot update the new
+  owner's observed status. Visible watch time requires an actual rendered frame.
+- The existing post-load stall guard now survives native status-event churn;
+  background/pause still reset it. One active player and one paused preload
+  remain the bounds. The actual iPhone rendering repair is pending verification.
+- Immediate traversal of empty/duplicate windows could hit the backend's two-second
+  request pacing and halt prefetch. Added numeric Retry-After hints on pacing,
+  forwarding only that allowlisted header through the development proxy. The API
+  client exposes a bounded optional retryAfterMs without retrying requests itself.
+- Feed traversal now checkpoints successful cursor progress before a later request
+  can fail, waits for pacing, and retries only INSTAGRAM_BUSY twice. It visits at
+  most four empty windows; rate limits/auth errors are not polled. Background or
+  navigation aborts active waits, and a pending page resumes on return. Loaded
+  clips and the current selection remain available. No wire fields changed.
+
+### Checks actually run
+
+- npm test: **40 passed** on the final run with local socket access. The initial sandbox invocation
+  passed 38 and failed the proxy test only on listen EPERM; the authorized rerun
+  passed all 39; final cursor-failure/cancellation coverage brings the total to 40.
+  New cases cover audio-only first-frame timeout, source generations,
+  duplicate-page cursor retention, bounded pacing, cancellation and retry-header
+  propagation without provider cookies.
+- npm run typecheck and npm run contracts:check: **passed**.
+- Owned entertainment setup/live unittest suite: **53 passed**, including pacing
+  hints and retry-stable continuation through a duplicate-only provider page.
+- Expo iOS export with saved-catalog preview disabled: **passed, 848 modules**,
+  under ignored .local/validation/ios-frame-recovery. Final TypeScript/export checks
+  include the watch-time frame gate. No dependency/lockfile changed.
+- git diff --check passed; all 19 relative links in the three changed documents
+  resolved. Scanned 222 source files and 21 exported files: no configured private
+  credentials, current session/key values, personal app identity or private catalog
+  values matched. One existing README title-word collision was reviewed as text.
+- Restarted only this task's local API and Expo processes, reusing the ready session.
+  The fresh iOS manifest is **200**, private proxy enabled; public missing/invalid
+  bearer checks returned **401 AUTH_REQUIRED/AUTH_INVALID**. A fresh QR is local
+  and ignored. No provider login, cookie recopy, Atlas write or shared-core edit.
+
+Remaining: full app reload on the phone, picture plus audio beyond six clips,
+one background/resume and retry/skip recovery. Unit tests and HTTP HEAD responses
+do not establish that the intermittent native black-picture issue is resolved.
+
 ## Instagram connection repair — November 14, 2026
 
 The user clarified that the SMS arrived only on an occasional attempt, so it

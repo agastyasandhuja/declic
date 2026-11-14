@@ -59,3 +59,14 @@ test('normalized path escapes, userinfo origins and malformed error fields are r
   assert.equal(requests, 0);
   await assert.rejects(createApiClient(options).request('/v1/me'), (error: ApiError) => error.message === 'Request failed (503).' && error.retryable);
 });
+
+test('retry hints are bounded metadata and never trigger hidden API retries', async () => {
+  for (const [header, expected] of [['2', 2000], ['999', 300000], ['invalid', undefined], ['-1', undefined]] as const) {
+    let calls = 0;
+    const api = createApiClient({ baseUrl: 'https://api.example.test', getAccessToken: async () => 'synthetic', onUnauthorized() { assert.fail('not an auth error'); }, fetcher: async () => {
+      calls++; return Response.json({ error: { code: 'INSTAGRAM_BUSY', retryable: true } }, { status: 503, headers: { 'Retry-After': header } });
+    } });
+    await assert.rejects(api.request('/v1/entertainment/feed'), (error: ApiError) => error.retryAfterMs === expected && error.code === 'INSTAGRAM_BUSY');
+    assert.equal(calls, 1);
+  }
+});

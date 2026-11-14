@@ -1,5 +1,5 @@
 export class ApiError extends Error {
-  constructor(message: string, public status: number, public code: string, public retryable: boolean, public requestId?: string) { super(message); }
+  constructor(message: string, public status: number, public code: string, public retryable: boolean, public requestId?: string, public retryAfterMs?: number) { super(message); }
 }
 
 export interface RequestOptions extends Omit<RequestInit, 'body'> { body?: unknown }
@@ -70,7 +70,9 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized, fetch
       if (response.status === 204) return undefined as T;
       if (!response.ok) {
         const detail = payload?.error;
-        throw new ApiError(typeof detail?.message === 'string' ? detail.message : `Request failed (${response.status}).`, response.status, typeof detail?.code === 'string' ? detail.code : 'REQUEST_FAILED', typeof detail?.retryable === 'boolean' ? detail.retryable : response.status >= 500, typeof detail?.request_id === 'string' ? detail.request_id : undefined);
+        const retryAfter = response.headers?.get('Retry-After');
+        const retryAfterMs = retryAfter && /^\d{1,3}$/.test(retryAfter) ? Math.min(300000, Number(retryAfter) * 1000) : undefined;
+        throw new ApiError(typeof detail?.message === 'string' ? detail.message : `Request failed (${response.status}).`, response.status, typeof detail?.code === 'string' ? detail.code : 'REQUEST_FAILED', typeof detail?.retryable === 'boolean' ? detail.retryable : response.status >= 500, typeof detail?.request_id === 'string' ? detail.request_id : undefined, retryAfterMs);
       }
       if (payload === null) throw new ApiError('The server returned an unreadable response.', response.status, 'INVALID_RESPONSE', true);
       return payload as T;

@@ -8,9 +8,10 @@ import type { EntertainmentVideo } from '../../contracts/generated';
 import { BufferedPlayerController, type BufferedPlaybackState } from '../../lib/playback/BufferedPlayerController';
 import type { PlayerDriver } from '../../lib/playback/SinglePlayerController';
 import { ApiError } from '../../lib/api/client';
-import { VisibleWatchTracker, PlaybackStallGuard } from '../../lib/playback/VisibleWatchTracker';
+import { VisibleWatchTracker, PlaybackStallGuard, FirstFrameGuard } from '../../lib/playback/VisibleWatchTracker';
 import type { FeedSource } from './source';
 import { appendFeedWindow, shouldPrefetchPage, unseenVideos } from './source';
+import { fetchAvailablePage } from './paging';
 import { Button } from '../../components/Button';
 import { theme } from '../../theme';
 
@@ -30,11 +31,15 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload }: {
   const [muted, setMuted] = useState(Platform.OS === 'web'); const [foreground, setForeground] = useState(AppState.currentState === 'active');
   const [retry, setRetry] = useState(0);
   const appliedRetry = useRef(0);
-  const [playback, setPlayback] = useState<BufferedPlaybackState>({ loading: true, ready: false, error: null, activeSlot: 0, timedOut: false });
+  const [playback, setPlayback] = useState<BufferedPlaybackState>({ loading: true, ready: false, error: null, activeSlot: 0, timedOut: false, sourceUri: null, selection: 0 });
+  const [renderedSelection, setRenderedSelection] = useState<number | null>(null);
+  const firstFrame = useRef(new FirstFrameGuard()); const stalled = useRef(new PlaybackStallGuard());
+  const selectionRef = useRef(playback.selection); selectionRef.current = playback.selection;
   const [watchMs, setWatchMs] = useState(0); const list = useRef<FlatList<EntertainmentVideo>>(null);
   const videosRef = useRef(videos); videosRef.current = videos;
   const pendingScrollIndex = useRef<number | null>(null);
   const pending = useRef(false); const generation = useRef(0); const requestAbort = useRef<AbortController | null>(null);
+  const resumePageOnFocus = useRef(false);
   const onEventRef = useRef(onEvent); onEventRef.current = onEvent;
   const watch = useRef(new VisibleWatchTracker()); const selectedIndex = useRef(index); selectedIndex.current = index;
   const firstPlayer = useVideoPlayer(null, setupPlayer); const secondPlayer = useVideoPlayer(null, setupPlayer);
@@ -47,6 +52,9 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload }: {
   const [observedNative, setNative] = useState({ owner: player, status: player.status, isPlaying: player.playing });
   const native = observedNative.owner === player ? observedNative : { status: player.status, isPlaying: player.playing };
   const video = videos[index];
+  const selectedUri = brokenClip && index === 0 ? 'https://storage.googleapis.com/gtv-videos-bucket/sample/missing-demo-clip.mp4' : video?.playback.url;
+  const sourceReady = playback.ready && playback.sourceUri === selectedUri;
+  const frameRendered = renderedSelection === playback.selection;
   const focusGate = useRef(focused && foreground); focusGate.current = focused && foreground;
   const current = useRef({ video, player }); current.current = { video, player };
 
@@ -57,15 +65,10 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload }: {
     const abort = new AbortController(); requestAbort.current = abort;
     pending.current = true; setLoading(true); setPageError(null); setPageNeedsReset(false);
     try {
-      let page = await source.getPage(cursor, abort.signal);
-      // Bounded recovery through empty/expired windows, preserving opaque server cursors.
-      for (let skipped = 0; unseenVideos(reset ? [] : videosRef.current, page.items).length === 0 && page.next_cursor && skipped < 3; skipped++) {
-        if (request !== generation.current || abort.signal.aborted) return;
-        if (page.next_cursor === cursor) throw new Error('The feed repeated a page. Reload to recover.');
-        cursor = page.next_cursor; page = await source.getPage(cursor, abort.signal);
-      }
+      const page = await fetchAvailablePage(source, reset ? [] : videosRef.current, cursor, abort.signal, next => {
+        if (request === generation.current && !abort.signal.aborted) setNextCursor(next);
+      });
       if (request !== generation.current || abort.signal.aborted) return;
-      if (cursor && page.next_cursor === cursor) throw new Error('The feed repeated a page. Reload to recover.');
       if (!unseenVideos(reset ? [] : videosRef.current, page.items).length && page.next_cursor) {
         setNextCursor(page.next_cursor);
         throw new Error('No new clips were available in this window. Keep watching and retry shortly.');
@@ -80,6 +83,14 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload }: {
     finally { if (request === generation.current) { pending.current = false; setLoading(false); } }
   }, [source]);
   useEffect(() => { void fetchPage(null, true); return () => { generation.current++; requestAbort.current?.abort(); }; }, [fetchPage]);
+  useEffect(() => {
+    if (!focused || !foreground) {
+      if (pending.current) { resumePageOnFocus.current = true; requestAbort.current?.abort(); }
+    } else if (resumePageOnFocus.current && !loading) {
+      resumePageOnFocus.current = false;
+      void fetchPage(nextCursor, !videosRef.current.length && !nextCursor);
+    }
+  }, [focused, foreground, loading, nextCursor, fetchPage]);
   useLayoutEffect(() => {
     if (pendingScrollIndex.current !== null && height > 0 && videos.length) {
       list.current?.scrollToOffset({ offset: pendingScrollIndex.current * height, animated: false });
@@ -103,11 +114,11 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload }: {
   useEffect(() => { firstPlayer.muted = muted; secondPlayer.muted = muted; }, [firstPlayer, secondPlayer, muted]);
   useEffect(() => {
     setNative({ owner: player, status: player.status, isPlaying: player.playing });
-    const status = player.addListener('statusChange', event => setNative(value => ({ ...value, status: event.status })));
-    const playing = player.addListener('playingChange', event => setNative(value => ({ ...value, isPlaying: event.isPlaying })));
+    const status = player.addListener('statusChange', event => setNative(value => value.owner === player ? { ...value, status: event.status } : value));
+    const playing = player.addListener('playingChange', event => setNative(value => value.owner === player ? { ...value, isPlaying: event.isPlaying } : value));
     return () => { status.remove(); playing.remove(); };
   }, [player]);
-  useEffect(() => { watch.current = new VisibleWatchTracker(); setWatchMs(0); setPaused(false); }, [video?.video_id]);
+  useEffect(() => { watch.current = new VisibleWatchTracker(); stalled.current = new PlaybackStallGuard(); setWatchMs(0); setPaused(false); }, [video?.video_id]);
   useEffect(() => {
     controller.setGate({ focused: !!video && focusGate.current && viewable });
     if (!video) return;
@@ -132,21 +143,30 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload }: {
     return () => { cancelled = true; };
   }, [controller, source, video?.video_id, video?.playback.url, video?.playback.expires_at, retry, brokenClip]);
   useEffect(() => { if (playback.ready) controller.preload(videos[index + 1]?.playback.url); }, [controller, playback.ready, videos[index + 1]?.playback.url]);
-  useEffect(() => { if (native.status === 'error' && playback.ready) controller.reportError(); }, [native.status, playback.ready, controller]);
+  useEffect(() => { if (native.status === 'error' && sourceReady) controller.reportError(); }, [native.status, sourceReady, controller]);
   useEffect(() => {
-    const eligible = focused && foreground && viewable && native.isPlaying && native.status === 'readyToPlay' && playback.ready && !paused;
+    const enabled = !!video && sourceReady && focused && foreground && viewable && !paused;
+    firstFrame.current.sample(playback.selection, frameRendered, Date.now(), enabled);
+    const timer = setInterval(() => {
+      if (firstFrame.current.sample(playback.selection, frameRendered, Date.now(), enabled)) controller.reportError(true);
+    }, 250);
+    return () => clearInterval(timer);
+  }, [controller, video?.video_id, playback.selection, sourceReady, frameRendered, focused, foreground, viewable, paused]);
+  useEffect(() => {
+    const eligible = focused && foreground && viewable && native.isPlaying && native.status === 'readyToPlay' && sourceReady && frameRendered && !paused;
     watch.current.sample(player.currentTime * 1000, Date.now(), false);
     if (!video) return;
-    const stall = new PlaybackStallGuard();
+    const enabled = focused && foreground && viewable && sourceReady && !paused;
+    stalled.current.sample(player.currentTime * 1000, Date.now(), enabled);
     const timer = setInterval(() => {
       const position = Math.max(0, Math.round(player.currentTime * 1000));
-      if (stall.sample(position, Date.now(), focused && foreground && viewable && playback.ready && !paused)) controller.reportError(true);
+      if (stalled.current.sample(position, Date.now(), enabled)) controller.reportError(true);
       const total = watch.current.sample(position, Date.now(), eligible, player.duration * 1000);
       setWatchMs(total);
       if (eligible) onEventRef.current({ video_id: video.video_id, event_type: 'playback_progress', position_ms: position, visible_watch_ms: Math.round(total) });
     }, 500);
     return () => clearInterval(timer);
-  }, [focused, foreground, viewable, native.isPlaying, native.status, playback.ready, paused, video?.video_id, player]);
+  }, [focused, foreground, viewable, native.isPlaying, native.status, playback.ready, sourceReady, frameRendered, paused, video?.video_id, player]);
   useEffect(() => { if (playback.error && video) onEventRef.current({ video_id: video.video_id, event_type: 'playback_failed', position_ms: Math.round(player.currentTime * 1000), visible_watch_ms: Math.round(watch.current.totalMs) }); }, [playback.error, video?.video_id, player]);
   const recordSkip = useRef(() => {});
   recordSkip.current = () => {
@@ -179,17 +199,19 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload }: {
     else { recordSkip.current(); onReload(); }
   }
   return <View testID="feed-screen" style={styles.root} onLayout={event => { if (event.nativeEvent.layout.height > 0) setHeight(event.nativeEvent.layout.height); }}>
-    {videos.length > 0 && height > 0 ? <FlatList ref={list} data={videos} keyExtractor={item => item.video_id} pagingEnabled snapToInterval={height} decelerationRate="fast" showsVerticalScrollIndicator={false}
+    {videos.length > 0 && height > 0 ? <FlatList ref={list} data={videos} extraData={index} removeClippedSubviews={false} keyExtractor={item => item.video_id} pagingEnabled snapToInterval={height} decelerationRate="fast" showsVerticalScrollIndicator={false}
       initialNumToRender={2} maxToRenderPerBatch={2} windowSize={3} getItemLayout={(_, position) => ({ length: height, offset: height * position, index: position })}
       viewabilityConfig={{ itemVisiblePercentThreshold: 80 }} onViewableItemsChanged={onViewable}
       renderItem={({ item, index: cardIndex }) => <View style={{ height, backgroundColor: '#101A11' }}>
-        {cardIndex === index && <VideoView testID="active-video" style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]} player={player} contentFit="cover" nativeControls={false} allowsPictureInPicture={false} />}
+        {cardIndex === index && sourceReady && <VideoView key={`surface-${playback.selection}`} testID="active-video" style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]} player={player} contentFit="cover" nativeControls={false} allowsPictureInPicture={false} onFirstFrameRender={() => {
+          if (selectionRef.current === playback.selection) setRenderedSelection(playback.selection);
+        }} />}
         <LinearGradient pointerEvents="none" colors={['#00000070', 'transparent', '#00000018', '#000000E8']} locations={[0, 0.35, 0.55, 1]} style={StyleSheet.absoluteFill} />
         {cardIndex === index && <Pressable accessibilityRole="button" accessibilityLabel={paused ? 'Play video' : 'Pause video'} testID="toggle-playback" onPress={() => setPaused(value => !value)} style={styles.touchArea}>
           {paused && !playback.error && <View style={styles.pauseIcon}><Ionicons name="play" size={38} color="white" /></View>}
         </Pressable>}
-        {cardIndex === index && (playback.loading || (native.status === 'loading' && !native.isPlaying)) && !playback.error && <View pointerEvents="none" style={styles.center}><ActivityIndicator color={theme.colors.accent} size="large" /><Text style={styles.loadingText}>Finding your flow…</Text></View>}
-        {cardIndex === index && playback.error && <View style={styles.center}><View style={styles.errorCard}><Ionicons name="cloud-offline-outline" size={30} color={theme.colors.accent} /><Text style={styles.errorTitle}>A small interruption.</Text><Text style={styles.errorText}>{playback.error}</Text><Button title={playback.timedOut ? 'Reload feed' : 'Retry clip'} onPress={() => playback.timedOut ? onReload() : void retryVideo()} /><Button title="Skip clip" secondary onPress={skip} /></View></View>}
+        {cardIndex === index && (!sourceReady || !frameRendered || (native.status === 'loading' && !native.isPlaying)) && !playback.error && <View pointerEvents="none" style={styles.center}><ActivityIndicator color={theme.colors.accent} size="large" /><Text style={styles.loadingText}>Finding your flow…</Text></View>}
+        {cardIndex === index && playback.error && <View style={styles.center}><View style={styles.errorCard}><Ionicons name="cloud-offline-outline" size={30} color={theme.colors.accent} /><Text style={styles.errorTitle}>A small interruption.</Text><Text style={styles.errorText}>{playback.error}</Text><Button title="Retry clip" onPress={() => void retryVideo()} /><Button title="Skip clip" secondary onPress={skip} />{playback.timedOut && <Button title="Reload feed" secondary onPress={onReload} />}</View></View>}
         <View pointerEvents="box-none" style={[styles.description, { bottom: 27 }]}><View style={styles.tag}><Ionicons name="film-outline" size={11} color={theme.colors.accent} /><Text style={styles.tagText}>{source.mode === 'fixture' ? 'SAMPLE CLIP' : item.provider.toUpperCase()}</Text></View><Text style={styles.caption} numberOfLines={3}>{item.caption}</Text><Text style={styles.creator}>{item.creator.display_name ?? item.creator.handle ?? 'Video creator'}</Text>
           {(item.source_url || item.creator.attribution_url) && <Pressable accessibilityRole="link" accessibilityLabel="Open original video source" onPress={() => { void Linking.openURL(item.source_url ?? item.creator.attribution_url!).catch(() => setPageError('Unable to open the source link.')); }}><Text style={styles.hint}>View original ↗</Text></Pressable>}
           <Text style={styles.hint}>Swipe up. Stay curious.</Text>

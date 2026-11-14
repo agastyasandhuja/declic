@@ -9,7 +9,7 @@ test('preview transport forwards only app auth to loopback and rejects cookies, 
   const upstream = createServer((request, response) => {
     calls++; assert.equal(request.headers.cookie, undefined); assert.equal(request.headers.authorization, 'Bearer synthetic');
     if (request.url === '/v1/me') { response.writeHead(302, { Location: 'https://other.example.test' }); response.end(); }
-    else { response.setHeader('content-type', 'application/json'); response.end('{"items":[]}'); }
+    else { response.setHeader('content-type', 'application/json'); response.setHeader('Retry-After', '2'); response.setHeader('Set-Cookie', 'never-forward=secret'); response.end('{"items":[]}'); }
   });
   await new Promise<void>(resolve => upstream.listen(0, '127.0.0.1', resolve));
   const proxy = createServer(previewApiProxy((_request: unknown, response: any) => { response.writeHead(404); response.end(); }, (upstream.address() as AddressInfo).port));
@@ -18,6 +18,7 @@ test('preview transport forwards only app auth to loopback and rejects cookies, 
   try {
     const headers = { Authorization: 'Bearer synthetic', Cookie: 'provider-cookie=DO_NOT_FORWARD' };
     const feed = await fetch(`${origin}/v1/entertainment/feed`, { headers }); assert.equal(feed.status, 200); assert.equal(feed.headers.get('cache-control'), 'no-store');
+    assert.equal(feed.headers.get('retry-after'), '2'); assert.equal(feed.headers.get('set-cookie'), null);
     assert.equal((await fetch(`${origin}/v1/me`, { headers })).status, 503);
     assert.equal((await fetch(`${origin}/v1/me`, { headers, method: 'POST' })).status, 405);
     assert.equal((await fetch(`${origin}/v1/admin`, { headers })).status, 404);
