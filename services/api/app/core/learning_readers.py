@@ -28,8 +28,9 @@ class BoundVideoReader(FeedVideoReader):
         )
         originals = {row["objective_id"]: row["topic_id"] for row in bindings}
         videos = self.service.repository.list_videos(user_id, list(set(originals.values())))
+        signed = self._sign_owned(videos) if videos else {}
         return [
-            self._project(user_id, {**video, "objective_id": objective})
+            self._project(user_id, {**video, "objective_id": objective}, signed)
             for objective, topic in originals.items()
             for video in videos
             if video["objective_id"] == topic
@@ -44,4 +45,6 @@ class BoundVideoReader(FeedVideoReader):
         video = self.service.repository.video(video_id, user_id)
         if not binding or not video or binding["topic_id"] != video["objective_id"]:
             return None
-        return self._project(user_id, {**video, "objective_id": objective_id})
+        return self._project(
+            user_id, {**video, "objective_id": objective_id}, self._sign_owned([video])
+        )

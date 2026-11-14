@@ -9,7 +9,7 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import Lock
-from urllib.parse import quote, urlsplit
+from urllib.parse import quote, unquote, urlsplit
 
 import httpx
 
@@ -133,10 +133,70 @@ class SupabaseVideoStorage:
             raise ValueError("Unexpected signed URL")
         url = self.url + "/storage/v1" + signed
         with self._cache_lock:
-            if len(self._signed_cache) >= 512:
+            if len(self._signed_cache) >= 1024:
                 self._signed_cache.pop(next(iter(self._signed_cache)))
             self._signed_cache[key] = (time.monotonic() + 120, url)
         return url
+
+
+    def signed_urls(self, keys):
+        """Batch already-authorized asset paths; this cache never grants ownership."""
+        keys = list(dict.fromkeys(keys))
+        if len(keys) > 600:
+            raise ValueError("At most 200 videos may be signed per catalog request")
+        started = time.monotonic()
+        with self._cache_lock:
+            result = {
+                key: self._signed_cache[key][1]
+                for key in keys
+                if key in self._signed_cache and self._signed_cache[key][0] > started
+            }
+        missing = [key for key in keys if key not in result]
+        if not missing:
+            return result
+        # Refresh siblings too: a slow request must not age cached URLs past
+        # their advertised client lease. Fully cached batches make no request.
+        missing = keys
+        data = request_json(
+            self.client,
+            "POST",
+            f"{self.url}/storage/v1/object/sign/{self.bucket}",
+            headers=self.headers,
+            json={"expiresIn": 900, "paths": missing},
+        )
+        if not isinstance(data, list) or len(data) != len(missing):
+            raise ProviderError("STORAGE_SIGN_FAILED", True)
+        fresh = {}
+        for row in data:
+            if not isinstance(row, dict):
+                raise ProviderError("STORAGE_SIGN_FAILED", True)
+            key, signed = row.get("path"), row.get("signedURL")
+            if (
+                not isinstance(key, str)
+                or key not in missing
+                or key in fresh
+                or row.get("error")
+                or not isinstance(signed, str)
+            ):
+                raise ProviderError("STORAGE_SIGN_FAILED", True)
+            parsed = urlsplit(signed)
+            if (
+                parsed.scheme
+                or parsed.netloc
+                or parsed.fragment
+                or unquote(parsed.path) != f"/object/sign/{self.bucket}/{key}"
+            ):
+                raise ProviderError("STORAGE_SIGN_FAILED", True)
+            fresh[key] = self.url + "/storage/v1" + signed
+        with self._cache_lock:
+            for key, url in fresh.items():
+                if key not in self._signed_cache and len(self._signed_cache) >= 1024:
+                    self._signed_cache.pop(next(iter(self._signed_cache)))
+                # 900s signatures, <=120s reuse, and a 600s client lease leave
+                # >=180s headroom. Start before the request, not after its latency.
+                self._signed_cache[key] = (started + 120, url)
+        result.update(fresh)
+        return result
 
 
 def publish_validated_variant(

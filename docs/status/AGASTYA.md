@@ -1609,3 +1609,26 @@ disconnecting. The remaining reported work is feed repetition and loading latenc
 those optimizations are in separate reviewed branches. The live account has no
 persisted quiz attempt yet, so backend grading remains covered by integration
 tests rather than claimed as a completed live submission.
+
+### 2026-11-14 — publication retries and feed URL signing
+
+- Private publication retries reuse a completed manifest only when owner, queued
+  recipe, generation key, storyboard and published artifact digests match. Existing
+  content/frame/media review gates still run; incomplete or mutated artifacts fail
+  without repeating paid generation. Attempts remain bounded.
+- Supabase upload errors distinguish embedded HTTP 413 size rejection and access
+  denial from retryable transport/verification failures. Only explicit duplicate-key
+  responses proceed to byte verification.
+- Owner-filtered feed queries sign unique video/thumbnail/caption paths in one
+  bounded request, reused across course bindings. Fully cached batches make no
+  signing request. Signatures last 900 seconds, cache reuse lasts 120 seconds, and
+  playback advertises 600 seconds. Mixed cache batches refresh together so request
+  latency cannot age a cached sibling beyond its client lease. Cache stays bounded.
+- Batch response shape follows the official Supabase createSignedUrls endpoint and
+  installed storage-js implementation; paths/bucket/origin are validated before
+  caching: https://supabase.com/docs/reference/javascript/storage-from-createsignedurls.
+- Validation: root API venv pytest on test_video_batch_signing.py,
+  test_bound_video_reader.py, and video test_publication_retry.py,
+  test_auto_publication.py, test_delivery.py, test_job_allowlist.py, test_retry.py:
+  **65 passed**. Ruff on changed implementation/tests: **passed**. These are
+  synthetic/mocked checks; no paid generation or provider login was performed.
