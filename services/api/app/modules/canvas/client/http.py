@@ -53,6 +53,24 @@ def _same_origin(url: str, origin: str) -> bool:
     return a.scheme == "https" and a.scheme == b.scheme and a.netloc.lower() == b.netloc
 
 
+# Hosts Canvas serves file bytes from. A file download 302-redirects from the
+# institution origin to one of these (a pre-signed URL that carries its own
+# verifier), so downloads must be allowed to follow the hop — but only here, and
+# only after the bearer token has been stripped (see _FileDownloadRedirects).
+_FILE_HOSTS = re.compile(
+    r"(?:^|\.)(?:instructure\.com|instructuremedia\.com|canvas-user-content\.com"
+    r"|canvasusercontent\.com|inscloudgate\.net|instructure\.net|amazonaws\.com)$",
+    re.I,
+)
+
+
+def _file_host_allowed(url: str, origin: str) -> bool:
+    host = (urlsplit(url).hostname or "").lower()
+    if not host or urlsplit(url).scheme != "https":
+        return False
+    return host == (urlsplit(origin).hostname or "").lower() or bool(_FILE_HOSTS.search(host))
+
+
 class _SameOriginRedirects(urllib.request.HTTPRedirectHandler):
     def __init__(self, origin: str) -> None:
         self._origin = origin
@@ -61,6 +79,45 @@ class _SameOriginRedirects(urllib.request.HTTPRedirectHandler):
         if not _same_origin(newurl, self._origin):
             return None  # surfaces as the 3xx response; token is not forwarded
         return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+class _FileDownloadRedirects(urllib.request.HTTPRedirectHandler):
+    """Follow a file download's redirect to a Canvas file/CDN host, but only to an
+    allowed host, and strip Authorization once the request leaves the institution
+    origin so the bearer token is never sent to the file host (AGENTS.md)."""
+
+    def __init__(self, origin: str) -> None:
+        self._origin = origin
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not _file_host_allowed(newurl, self._origin):
+            return None
+        new = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new is not None and not _same_origin(newurl, self._origin):
+            new.remove_header("Authorization")
+        return new
+
+
+def file_download_transport(origin: str, *, max_bytes: int) -> Transport:
+    opener = urllib.request.build_opener(_FileDownloadRedirects(origin))
+
+    def send(url: str, headers: Mapping[str, str], timeout: float) -> Response:
+        def read(response):
+            data = response.read(max_bytes + 1)
+            if len(data) > max_bytes:
+                raise CanvasError("Canvas file exceeded the byte limit")
+            return data
+
+        request = urllib.request.Request(url, headers=dict(headers), method="GET")
+        try:
+            with opener.open(request, timeout=timeout) as raw:
+                return Response(raw.status, {k.lower(): v for k, v in raw.headers.items()}, read(raw))
+        except urllib.error.HTTPError as err:
+            return Response(err.code, {k.lower(): v for k, v in err.headers.items()}, read(err))
+        except urllib.error.URLError:
+            raise CanvasError("network error downloading Canvas file") from None
+
+    return send
 
 
 def urllib_transport(origin: str, *, max_bytes: int = 16 * 1024 * 1024) -> Transport:
@@ -120,11 +177,40 @@ class CanvasClient:
         return f"{self._origin}{path}{query}"
 
     def download(self, url: str, max_bytes: int) -> bytes:
-        transport = self._download_transport or urllib_transport(self._origin, max_bytes=max_bytes)
-        response = self._send(url, transport=transport, accept="application/octet-stream")
-        if len(response.body) > max_bytes:
-            raise CanvasError("Canvas file exceeded the byte limit")
-        return response.body
+        """Download a student-visible Canvas file's bytes.
+
+        The file url is either on the institution origin (sent with the token,
+        then redirects to a file host) or an already pre-signed file-host url
+        (fetched with NO token). The token is only ever sent to the institution
+        origin; off-origin hops are allowed only to Canvas file hosts and carry
+        no Authorization header.
+        """
+        if not _file_host_allowed(url, self._origin):
+            raise CanvasError("refusing file download outside allowed Canvas hosts")
+        same_origin = _same_origin(url, self._origin)
+        transport = self._download_transport or file_download_transport(self._origin, max_bytes=max_bytes)
+        headers = {"Accept": "application/octet-stream"}
+        if same_origin:
+            headers["Authorization"] = f"Bearer {self._token.reveal()}"
+
+        status, response = 0, None
+        for attempt in range(1, self._max_attempts + 1):
+            response = transport(url, headers, self._timeout)
+            status = response.status
+            throttled = status == 403 and b"Rate Limit Exceeded" in response.body
+            if (status in _RETRYABLE or throttled) and attempt < self._max_attempts:
+                self._sleep(min(2.0 ** attempt, 30.0))
+                continue
+            break
+        if 200 <= status < 300:
+            if len(response.body) > max_bytes:
+                raise CanvasError("Canvas file exceeded the byte limit")
+            return response.body
+        if status == 401:
+            raise CanvasAuthError("Canvas rejected the credential (401) for a file download", 401)
+        if status in (403, 404):
+            raise CanvasUnavailable(f"Canvas returned {status} for a file download", status)
+        raise CanvasError(f"Canvas returned {status} for a file download", status)
 
     def _send(self, url: str, *, transport: Transport | None = None,
               accept: str = "application/json") -> Response:

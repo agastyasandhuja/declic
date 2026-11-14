@@ -32,6 +32,22 @@ def _sid(*parts: str) -> str:
     return hashlib.sha256("\x1f".join(parts).encode()).hexdigest()[:12]
 
 
+def _course_fingerprint(resolver: Resolver, course_id: str) -> str:
+    """A stable signature of a course's sources for reimport dedup. Uses each
+    source's content hash when known, else its Canvas updated_at, plus assignment
+    due dates (they drive assessments). If nothing changed, the signature is the
+    same and the prior extraction can be reused instead of re-calling Gemini."""
+    parts = []
+    for source in resolver.sources_for_course(course_id):
+        stamp = source.content_hash or getattr(source, "updated_at", None) or ""
+        parts.append(f"{source.source_id}:{stamp}")
+    getter = getattr(resolver, "assignments_for_course", None)
+    if getter:
+        for assignment in getter(course_id):
+            parts.append(f"a:{assignment.external_id}:{assignment.due_at}")
+    return hashlib.sha256("\x1f".join(sorted(parts)).encode()).hexdigest()[:16]
+
+
 def extract_course(
     course_id: str, resolver: Resolver, client: GeminiClient
 ) -> dict:
@@ -106,11 +122,33 @@ def build_profile(
     profile_id = f"prof_{_sid(user_id)}"
     generated_at = datetime.now(timezone.utc).isoformat()
 
+    # Reimport dedup: reuse the prior extraction for a course whose sources are
+    # unchanged, so Gemini is not re-run on identical material.
+    from .store import load_profile
+
+    previous = load_profile(storage_dir, user_id) or {}
+    prev_courses = {c["course_id"]: c for c in previous.get("courses", [])}
+    prev_units: dict[str, list] = {}
+    for unit in previous.get("units", []):
+        prev_units.setdefault(unit["course_id"], []).append(unit)
+    prev_assessments: dict[str, list] = {}
+    for item in previous.get("assessments", []):
+        prev_assessments.setdefault(item["course_id"], []).append(item)
+
     courses, units, assessments, warnings = [], [], [], []
     total_usage = {"prompt_tokens": 0, "candidates_tokens": 0}
 
     for course_id in course_ids:
         info = _course_info(resolver, course_id)
+        fingerprint = _course_fingerprint(resolver, course_id)
+        prior = prev_courses.get(course_id)
+        if (prior and prior.get("sources_fingerprint") == fingerprint
+                and prior.get("import_status") in {"ready", "partial"}):
+            courses.append({**prior, "sources_fingerprint": fingerprint})
+            units.extend(prev_units.get(course_id, []))
+            assessments.extend(prev_assessments.get(course_id, []))
+            warnings.append(f"{course_id}: reused unchanged sources (no re-extraction)")
+            continue
         try:
             outcome = extract_course(course_id, resolver, client)
         except CanvasAuthError:
@@ -118,7 +156,8 @@ def build_profile(
         except Exception as err:  # noqa: BLE001 — isolate one course's failure
             warnings.append(f"course {course_id}: extraction failed ({type(err).__name__})")
             if not info.get("external_course_id"):
-                courses.append({"course_id": course_id, "import_status": "error", "title": None, **info})
+                courses.append({"course_id": course_id, "import_status": "error", "title": None,
+                                "sources_fingerprint": fingerprint, **info})
                 continue
             outcome = {
                 "import_status": "partial", "warnings": [],
@@ -134,13 +173,15 @@ def build_profile(
 
         extraction = outcome["extraction"]
         if extraction is None:
-            courses.append({"course_id": course_id, "import_status": outcome["import_status"], "title": None, **info})
+            courses.append({"course_id": course_id, "import_status": outcome["import_status"],
+                            "title": None, "sources_fingerprint": fingerprint, **info})
             continue
 
         courses.append(
             {
                 "course_id": course_id,
                 "import_status": outcome["import_status"],
+                "sources_fingerprint": fingerprint,
                 "title": extraction["course_title"],
                 "term": extraction["term"],
                 "timezone": extraction["timezone"],

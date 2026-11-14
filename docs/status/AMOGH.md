@@ -24,6 +24,34 @@ Live access confirmed with Amogh's own access token in `developer_token` mode.
 - `--demo` mode and synthetic demo data so the output shape is viewable with
   no token (clearly labelled "not a live sync").
 
+## Deep ingestion bug fixes (2026-11-14, live-verified)
+
+Found via a real-Canvas audit that modules/pages/files/calendar were inventoried
+but file CONTENT never reached Gemini. Two bugs fixed:
+
+- File download was blocked: Canvas serves file bytes via cross-origin redirects
+  (CDN -> canvas-user-content.com -> inscloudgate.net). The strict same-origin
+  guard refused them. Fixed `CanvasClient.download` to FOLLOW redirects only to
+  allowed Canvas file hosts and STRIP the bearer token on any off-origin hop
+  (token never leaves the institution origin). Security tests added (test_download).
+- PDF text extraction needed `pypdf` (not installed) -> PDFs yielded no text.
+  Installed pypdf (local venv for now). `_file_text` degrades gracefully if absent.
+
+Verified LIVE: all 6 sampled MATH233 practice-exam PDFs download + extract real
+text (e.g. "Exam 2 ... Nov 10, 7-9pm"); MATH233 (no syllabus) now extracts 5
+units + 3 exams from its PDFs. PPTX extraction already worked (stdlib).
+
+Also added reimport DEDUP: per-course source fingerprint (content hash / Canvas
+updated_at + assignment due dates); an unchanged course reuses its prior
+extraction instead of re-calling Gemini (test_dedup). Manual corrections already
+survive reimport (corrections.py).
+
+Tests: 46 curriculum + 35 canvas + 7 UI = 88 pass (run curriculum/canvas with a
+Python env that has pypdf).
+
+DEPENDENCY REQUEST to Agastya (owns the Python manifest): add `pypdf` to the
+shared backend requirements so PDF extraction works outside the local venv.
+
 ## M5 — mobile academic components (2026-11-14)
 
 - Built the academics feature UI in packages/mobile-academics (React Native +
