@@ -68,6 +68,9 @@ export class BufferedPlayerController {
     this.emit(false); this.reconcile();
     if (upcoming && upcoming !== uri) void this.load((1 - this.active) as 0 | 1, upcoming);
   }
+  seekTo(seconds: number) {
+    if (!this.disposed && Number.isFinite(seconds) && seconds >= 0) this.drivers[this.active].seekTo?.(seconds);
+  }
   reportError(timedOut = false) {
     if (this.disposed) return;
     this.failed = true; clearTimeout(this.timer); this.drivers.forEach(driver => driver.pause());
