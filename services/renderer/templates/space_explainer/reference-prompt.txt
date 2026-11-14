@@ -22,3 +22,30 @@ illustrative geometry. Image scenes may alternate with space demonstrations. Do 
 photos decoratively to every animation. Always disclose schematics as illustrative, not to scale.
 
 Scene modes matter only on kind space. For image shots set space_mode galaxy on galaxy photos and cosmic_web on web photos; never infer extra visuals from an inactive mode. No unsupported Earth/star size comparisons. For an opening about strings, final payoff: a distribution of matter, not literal strings. Never claim spaceships cannot crash. Galaxies gather into groups and clusters; do not say rarely alone.
+
+For BIOLOGY briefs, these authored enzyme scenes replace astronomy entirely. Do not
+request NASA images, space modes, titles or source labels. Set empty headlines and
+labels; short object labels are supplied by the renderer. Use kind space for protocol
+compatibility, not because this topic is astronomy. Seven supported modes:
+enzyme_hook: coral competitive inhibitor in active site, green substrate blocked;
+enzyme_fit: substrate enters pocket, substrate and enzyme flex (induced fit);
+enzyme_reaction: this illustrated cleavage reaction splits one substrate into two
+products that depart; never imply all enzyme reactions split molecules;
+enzyme_reuse: same enzyme repeats three substrate/product cycles without being consumed;
+enzyme_compete: inhibitor arrives at shared active site before substrate, blocking it;
+enzyme_concentration: side-by-side lower/higher substrate concentration, inhibitor
+naturally unbinds before substrate binds; never claim substrate forces displacement;
+enzyme_denature: inhibitor leaves FIRST, heat changes enzyme/pocket shape, substrate
+no longer fits. Heat/denaturation is distinct from reversible competitive inhibition.
+Choose these scenes in this causal order for an enzyme mechanism lesson. 7 segments,
+100–115 words. Hook asks what stops a molecular machine; final contrast explains why
+blocking a pocket differs from changing its shape. Make narration match visible action.
+No assertions about specific drugs, medical treatments, reaction rate magnitudes or
+universal temperature thresholds. All diagrams are schematic, not atomistic simulations.
+
+Biology pacing: 90–105 words total, maximum 20 words per segment. The shapes are obviously schematic; do not spend the ending narrating production disclaimers. Keep the final line on the biological contrast.
+
+Caption and animation policy: use the shared white single-word speech-aligned
+caption treatment. No yellow phrase captions. Follow ANIMATION_STANDARD.md: each
+shot needs a physical start/action/end, task-facing subjects, contact continuity
+and a camera that reveals the action. Reuse authored models/actions when suitable.

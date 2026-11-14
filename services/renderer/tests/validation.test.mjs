@@ -120,3 +120,77 @@ test('minimal math accepts a 21-second timeline but spoken clips still require 3
  fs.writeFileSync(path.join(root,'lesson.json'),JSON.stringify(lesson));manifest();
  assert.throws(()=>validatePack(root),/Invalid lesson/);
 });
+
+const geometryLesson=(a=3,b=4)=>({
+ format_id:'math_explainer',presentation:'reference_v3',frame_count:660,custom_scene:false,minimal_math:true,
+ math:{kind:'pythagorean_rearrangement',a,b,c_squared:a*a+b*b,outer_side:a+b,triangle_area:a*b/2,
+  areas:{a_squared:a*a,b_squared:b*b},stages:[
+   {kind:'triangle',start:0,end:3},{kind:'assemble',start:3,end:6},
+   {kind:'c_square',start:6,end:9},{kind:'rearrange',start:9,end:14},
+   {kind:'area_sum',start:14,end:18},{kind:'identity',start:18,end:22}]}
+});
+const writeLesson=(root,manifest,lesson)=>{
+ fs.writeFileSync(path.join(root,'lesson.json'),JSON.stringify(lesson));manifest();
+};
+test('geometry accepts unequal, equal, and extreme bounded legs without assuming an integer hypotenuse',t=>{
+ const {root,manifest}=pack(t);
+ for(const [a,b] of [[3,4],[2,5],[1,9],[9,1],[1,1],[9,9]]) {
+  writeLesson(root,manifest,geometryLesson(a,b));
+  const m=validatePack(root).math;
+  assert.equal(m.outer_side**2-4*m.triangle_area,m.c_squared);
+ }
+});
+const geometryFailures={
+ 'zero side':l=>{l.math.a=0},
+ 'oversized side':l=>{l.math.b=10},
+ 'coerced side':l=>{l.math.a='3'},
+ 'missing square area':l=>{delete l.math.areas},
+ 'wrong hypotenuse area':l=>{l.math.c_squared=24},
+ 'wrong outer square':l=>{l.math.outer_side=8},
+ 'wrong triangle area':l=>{l.math.triangle_area=5},
+ 'swapped square areas':l=>{l.math.areas={a_squared:16,b_squared:9}},
+ 'unknown topic':l=>{l.math.kind='arbitrary_geometry'},
+ 'extended proof duration':l=>{l.frame_count=690},
+ 'custom generated scene':l=>{l.custom_scene=true},
+ 'missing stages':l=>{delete l.math.stages},
+ 'missing endpoint':l=>{l.math.stages.pop()},
+ 'unknown stage':l=>{l.math.stages[2].kind='new_scene'},
+ 'stage gap':l=>{l.math.stages[3].start=10},
+ 'stage overlap':l=>{l.math.stages[3].start=8},
+ 'out of order':l=>{[l.math.stages[2],l.math.stages[3]]=[l.math.stages[3],l.math.stages[2]]},
+ 'early final frame':l=>{l.math.stages[5].end=21},
+};
+for(const [name,mutate] of Object.entries(geometryFailures))test('geometry rejects '+name,t=>{
+ const {root,manifest}=pack(t),lesson=geometryLesson();mutate(lesson);writeLesson(root,manifest,lesson);
+ assert.throws(()=>validatePack(root),/geometry|math|Reference/);
+});
+
+const paymentLesson=()=>{
+ const lesson=referenceLesson();
+ lesson.format_id='visual_explainer';lesson.presentation='reference_v3';
+ lesson.installment_example={unit_price:120,installments:4,purchases:3};
+ const scenes=['price_tag','split_payment','stack_purchases','payment_calendar','total_cost','receipt'];
+ lesson.shots.forEach((s,i)=>{s.kind='diagram';s.motion_scene=scenes[i]});
+ return lesson;
+};
+test('payment scenes require an independently divisible installment example',t=>{
+ const {root,manifest}=pack(t);writeLesson(root,manifest,paymentLesson());
+ assert.equal(validatePack(root).installment_example.unit_price/4,30);
+});
+const paymentFailures={
+ 'fractional installment amount':l=>{l.installment_example.unit_price=121},
+ 'zero installments':l=>{l.installment_example.installments=0},
+ 'too many installments':l=>{l.installment_example.installments=13},
+ 'too many purchases':l=>{l.installment_example.purchases=6},
+ 'negative purchases':l=>{l.installment_example.purchases=-1},
+ 'coerced price':l=>{l.installment_example.unit_price='120'},
+ 'nonfinite price':l=>{l.installment_example.unit_price=NaN},
+ 'missing example':l=>{delete l.installment_example},
+ 'wrong format':l=>{l.format_id='dialogue_gameplay'},
+ 'unknown motion scene':l=>{l.shots[0].motion_scene='execute_script'},
+ 'motion assigned to kinetic shot':l=>{l.shots[0].kind='kinetic'},
+};
+for(const [name,mutate] of Object.entries(paymentFailures))test('payment scenes reject '+name,t=>{
+ const {root,manifest}=pack(t),lesson=paymentLesson();mutate(lesson);writeLesson(root,manifest,lesson);
+ assert.throws(()=>validatePack(root),/payment|motion/);
+});

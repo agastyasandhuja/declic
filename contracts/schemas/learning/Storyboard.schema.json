@@ -206,6 +206,26 @@
           "title": "Diagram Demo",
           "type": "string"
         },
+        "motion_scene": {
+          "default": "none",
+          "enum": [
+            "none",
+            "price_tag",
+            "split_payment",
+            "stack_purchases",
+            "payment_calendar",
+            "total_cost",
+            "choice_balance",
+            "receipt",
+            "ticket_purchase",
+            "ticket_loss",
+            "future_choice",
+            "time_loss",
+            "decision_reset"
+          ],
+          "title": "Motion Scene",
+          "type": "string"
+        },
         "asset_ids": {
           "items": {
             "pattern": "^[a-zA-Z0-9_-]{1,100}$",
@@ -268,7 +288,14 @@
             "light_travel",
             "lookback",
             "scale_ladder",
-            "gravity"
+            "gravity",
+            "enzyme_hook",
+            "enzyme_fit",
+            "enzyme_reaction",
+            "enzyme_reuse",
+            "enzyme_compete",
+            "enzyme_concentration",
+            "enzyme_denature"
           ],
           "title": "Space Mode",
           "type": "string"

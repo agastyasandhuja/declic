@@ -44,6 +44,13 @@ def generation_recipe(*, fixture=False, custom_scene=False):
             }
         ),
         "custom_scene": custom_scene,
+        "voice_revisions": {}
+        if fixture
+        else {
+            role: os.getenv(f"ELEVENLABS_{role.upper()}_VOICE_REVISION", "")
+            for role in ("peter", "stewie", "narrator")
+            if os.getenv(f"ELEVENLABS_{role.upper()}_VOICE_REVISION")
+        },
         "engagement_policy": POLICY_VERSION,
         "timing_source": digest(
             {
@@ -51,10 +58,12 @@ def generation_recipe(*, fixture=False, custom_scene=False):
                 for name in (
                     "engagement.py",
                     "narration/timing.py",
+                    "narration/service.py",
                     "pipeline.py",
                     "images.py",
                     "music.py",
                     "math_video.py",
+                    "motion_review.py",
                     "models.py",
                     "generation/providers.py",
                 )
@@ -62,23 +71,28 @@ def generation_recipe(*, fixture=False, custom_scene=False):
         ),
         "background_mode": background_mode,
         "system_prompt": digest([STORYBOARD_SYSTEM, REFERENCE_SYSTEM]),
-        "template": "3.0.0",
+        "template": "4.1.0",
         "source_assets": {
             name: sha256(ROOT / ".local/video-assets" / name)
             for name in ("parkour.mp4", "peter.png", "stewie.png", "stewie-standing-v2.png")
             if (ROOT / ".local/video-assets" / name).is_file()
         },
         "scene_api": "trusted-trace-2" if custom_scene else "authored-trace-1",
-        "renderer_image": os.getenv("VIDEO_RENDER_IMAGE", "hackumass-renderer:0.1"),
+        "renderer_image": os.getenv("VIDEO_RENDER_IMAGE", "hackumass-renderer:reference-v8-captions"),
         "renderer_source": digest(
             {
                 name: sha256(ROOT / "services/renderer" / name)
                 for name in (
                     "src/Root.tsx",
                     "src/ReferenceLesson.tsx",
+                    "src/PopCaptions.tsx",
                     "src/SpaceScene.tsx",
                     "src/SpaceScenesV3.tsx",
                     "src/MathLesson.tsx",
+                    "src/PythagoreanLesson.tsx",
+                    "src/BiologyScenes.tsx",
+                    "src/PaymentScenes.tsx",
+                    "src/DecisionScenes.tsx",
                     "render.mjs",
                     "validate.mjs",
                     "package-lock.json",
@@ -111,6 +125,8 @@ def artifact_digests(work):
         "output/frame-01.png",
         "output/quality.json",
     ]
+    if (work / "output/CREDITS.txt").is_file():
+        paths.append("output/CREDITS.txt")
     return {name: sha256(work / name) for name in paths}
 
 
@@ -127,6 +143,7 @@ def generate(
     deadline=None,
     scene_feedback=None,
     storyboard_feedback=None,
+    storyboard_override=None,
 ):
     if brief.format_id == "math_explainer":
         from .math_video import generate_math
@@ -170,6 +187,7 @@ def generate(
         None
         if fixture
         else Claude(
+            cache_dir=work / "model-cache",
             charge=charge,
             diagnostic=lambda value: atomic_json(
                 work / f"claude-validation-{budget['turns']:02d}.json", value
@@ -211,28 +229,48 @@ def generate(
             "prompt": recipe["prompts"][f"{brief.format_id}/{prompt_name}"],
             "system_prompt": recipe["system_prompt"],
             "engagement_policy": recipe["engagement_policy"],
-            "editorial_feedback": storyboard_feedback,
+            "editorial_feedback": None,
         }
     )
-    if board_path.exists() and json.loads((work / "storyboard-key.json").read_text()) == board_key:
+    if storyboard_override is not None:
+        authored = Storyboard.model_validate(storyboard_override).validate_for(
+            brief, require_engagement=True
+        )
+        atomic_json(board_path, authored.model_dump())
+        atomic_json(work / "storyboard-key.json", board_key)
+        atomic_json(
+            work / "editorial-corrections.json",
+            {
+                "source": "explicit_local_storyboard",
+                "storyboard_digest": digest(authored.model_dump()),
+                "verification": "Live content/frame gates still required; not fixture mode.",
+            },
+        )
+    if (
+        not storyboard_feedback
+        and board_path.exists()
+        and json.loads((work / "storyboard-key.json").read_text()) == board_key
+    ):
         board = Storyboard.model_validate_json(board_path.read_text()).validate_for(
             brief, require_engagement=True
         )
         if not fixture:
             review_path = work / "content-review.json"
-            cached_review = json.loads(review_path.read_text()) if review_path.exists() else {}
-            if (
-                cached_review.get("storyboard_digest") != digest(board.model_dump())
-                or not cached_review.get("passed")
-                or cached_review.get("issues")
-            ):
-                review = claude.review(brief, board)
-                atomic_json(
-                    review_path,
-                    {**review.model_dump(), "storyboard_digest": digest(board.model_dump())},
-                )
-                if not review.passed or review.issues:
-                    raise ProviderError("CONTENT_REVIEW_REQUIRED")
+            # Revalidate the exact brief/model/prompt as well as the script. The
+            # provider cache avoids an HTTP call when ALL these inputs match.
+            review = claude.review(brief, board)
+            atomic_json(
+                review_path,
+                {
+                    **review.model_dump(),
+                    "storyboard_digest": digest(board.model_dump()),
+                    "brief_digest": digest(brief.teaching_payload()),
+                    "model": recipe["claude"],
+                },
+            )
+            if not review.passed or review.issues:
+                raise ProviderError("CONTENT_REVIEW_REQUIRED")
+
     else:
         if fixture:
             fixture_name = f"{brief.format_id}.json"
@@ -244,6 +282,11 @@ def generate(
                     and brief.format_id == "visual_explainer"
                 ):
                     fixture_name = "reference-linked-list-visual_explainer.json"
+            fixture_name = {
+                "sunk-cost-future-choice": "new-sunk-cost-dialogue.json",
+                "enzyme-competitive-inhibition": "revised-enzyme-animation.json",
+                "installments-vs-price": "new-installments-animation.json",
+            }.get(brief.objective_id, fixture_name)
             board = Storyboard.model_validate_json(
                 (ROOT / "fixtures/learning" / fixture_name).read_text()
             ).validate_for(brief, require_engagement=True)
@@ -337,6 +380,20 @@ def generate(
     issues = timing_issues(teaching_beats) if not reference else []
     if reference and segments[0]["end"] > 6:
         issues.append("Shorten the opening to finish within six measured seconds")
+    semantic = brief.installment_example or any(
+        shot.space_mode.startswith("enzyme_") and shot.kind == "space" for shot in board.shots
+    )
+    if brief.format_id == "dialogue_gameplay" and any(
+        s.motion_scene != "none" for s in board.shots
+    ):
+        semantic = True
+    if semantic:
+        issues.extend(
+            f"Shorten {segment['id']} from {segment['end'] - segment['start']:.1f}s to at most 8s. "
+            "Keep one idea per shot and remove duplicate qualifications."
+            for segment in segments
+            if segment["end"] - segment["start"] > 8
+        )
     if not 30 <= duration <= 60 or issues:
         if not fixture and budget["duration_repairs"] < 2:
             budget["duration_repairs"] += 1
@@ -500,6 +557,9 @@ def generate(
         "presentation": brief.presentation,
         "shots": shots,
         "images": images,
+        "installment_example": brief.installment_example.model_dump()
+        if brief.installment_example
+        else None,
         "captions": captions,
         "segments": segments,
         "teaching_beats": teaching_beats,
@@ -559,13 +619,49 @@ def generate(
             {
                 **review.model_dump(),
                 "lesson_digest": digest(lesson),
+                "renderer_source": recipe["renderer_source"],
+                "frames_digest": digest(
+                    {
+                        i["file"]: sha256(work / "preview-frames" / i["file"])
+                        for i in json.loads((work / "preview-frames/frame-index.json").read_text())
+                    }
+                ),
                 "model": claude.model,
                 "scope": "sampled_frames",
             },
         )
         atomic_json(work / "provider-usage.json", claude.usage)
         if not review.passed or review.issues:
-            raise ProviderError("RENDER_REVIEW_REQUIRED")
+            if review.repair_scope != "storyboard":
+                # Authored geometry defects need an implementation repair. Rewording
+                # speech cannot fix a moving label or a path intersection.
+                raise ProviderError("SCENE_IMPLEMENTATION_REVIEW_REQUIRED")
+            if budget["scene_repairs"] >= 2:
+                raise ProviderError("RENDER_REVIEW_REQUIRED")
+            budget["scene_repairs"] += 1
+            atomic_json(budget_path, budget)
+            return generate(
+                brief,
+                work,
+                fixture=fixture,
+                preview=preview,
+                custom_scene=custom_scene,
+                render_video=render_video,
+                check_cancelled=check_cancelled,
+                stage=stage,
+                deadline=deadline,
+                storyboard_feedback=json.dumps(
+                    {
+                        "previous": board.model_dump(),
+                        "render_issues": review.issues,
+                        "instruction": (
+                            "Repair timestamped defects with supported scenes and concise speech. "
+                            "Preserve correct facts/lines. Avoid titles, sources and prose cards. "
+                            "Labels cannot change renderer geometry; report unresolved defects."
+                        ),
+                    }
+                ),
+            )
     stage("rendering")
     while True:
         try:
@@ -607,6 +703,31 @@ def generate(
                     ],
                 },
             )
+    credits = [
+        "AI-generated narration and authored schematic animation. Human aesthetic review pending."
+    ]
+    for image in images.values():
+        credits.append(
+            " | ".join(
+                str(v)
+                for v in (
+                    image.get("creator", "Source"),
+                    image.get("source_url", image.get("url", "")),
+                    image.get("license", ""),
+                    image.get("license_url", ""),
+                )
+            )
+        )
+    credit_text = "\n".join(credits) + "\n"
+    (work / "CREDITS.txt").write_text(credit_text)
+    if render_video:
+        (work / "output/CREDITS.txt").write_text(credit_text)
+    motion_inspection = None
+    if render_video:
+        from .motion_review import stage_motion_review
+
+        stage("staging_motion_inspection")
+        motion_inspection = stage_motion_review(work, lesson)
     stage("validating")
     checkpoint()
     manifest = {
@@ -617,6 +738,7 @@ def generate(
         "owner_user_id": brief.owner_user_id,
         "status": "validating",
         "quality": report,
+        "motion_inspection": motion_inspection,
         "teaching_checks": {
             "policy": "reference-cinematic-2" if reference else POLICY_VERSION,
             "structure": "passed",

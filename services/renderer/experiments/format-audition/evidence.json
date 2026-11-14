@@ -1,0 +1,21 @@
+{
+  "additional_primary_sources": {
+    "curiosity": [
+      "https://openstax.org/books/university-physics-volume-1/pages/16-5-interference-of-waves",
+      "https://openstax.org/books/physics/pages/14-4-sound-interference-and-resonance"
+    ],
+    "myth": [
+      "https://openstax.org/books/university-physics-volume-1/pages/3-5-free-fall"
+    ],
+    "predict": [
+      "https://openstax.org/books/university-physics-volume-1/pages/3-5-free-fall"
+    ],
+    "variable": [
+      "https://openstax.org/books/university-physics-volume-1/pages/15-4-pendulums"
+    ],
+    "inside": [
+      "https://openstax.org/books/physics/pages/19-2-series-circuits"
+    ]
+  },
+  "verification": "Read primary source text on 2026-11-14. Exact arithmetic and Python list-copy example were executed locally. Synthetic graphs and fictional settings are not real-world data."
+}

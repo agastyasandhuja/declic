@@ -44,13 +44,15 @@ export function validatePack(root) {
   let end=0;
   for(const [i,s] of lesson.shots.entries()) {
    if(!['image','diagram','kinetic','space'].includes(s.kind)||!['push','pull','pan_left','pan_right','orbit','drift'].includes(s.camera)
-     ||!['starfield','galaxy','cosmic_web','cosmic_sheet','cosmic_overview','filament_detail','solar_system','nebula','light_travel','lookback','scale_ladder','gravity'].includes(s.space_mode)
+     ||!['starfield','galaxy','cosmic_web','cosmic_sheet','cosmic_overview','filament_detail','solar_system','nebula','light_travel','lookback','scale_ladder','gravity','enzyme_hook','enzyme_fit','enzyme_reaction','enzyme_reuse','enzyme_compete','enzyme_concentration','enzyme_denature'].includes(s.space_mode)
      ||![s.start,s.end].every(Number.isFinite)||s.start!==end||s.end<=s.start||s.end>lesson.frame_count/30
      ||s.segment_id!==lesson.segments[i].id||s.start!==lesson.segments[i].start
      ||typeof s.headline!=='string'||s.headline.length>52||!Array.isArray(s.labels)||s.labels.length>5
      ||s.labels.some(l=>typeof l!=='string'||l.length>24)||!Array.isArray(s.asset_ids)||s.asset_ids.length>2
      ||s.asset_ids.some(id=>!Object.hasOwn(lesson.images||{},id))
      ||(s.kind==='image'&&!s.asset_ids.length)||(s.kind==='space'&&lesson.format_id!=='space_explainer'))throw Error('Invalid shot timeline/content');
+   if(s.motion_scene!==undefined&&(!['none','price_tag','split_payment','stack_purchases','payment_calendar','total_cost','choice_balance','receipt','ticket_purchase','ticket_loss','future_choice','time_loss','decision_reset'].includes(s.motion_scene)||(s.motion_scene!=='none'&&s.kind!=='diagram')))throw Error('Invalid motion scene');
+   if(['price_tag','split_payment','stack_purchases','payment_calendar','total_cost','choice_balance','receipt'].includes(s.motion_scene)&&!lesson.installment_example)throw Error('Missing payment example');
    if(s.diagram_demo!==undefined&&!['trace','broken_first_link'].includes(s.diagram_demo))throw Error('Invalid diagram demonstration');
    end=s.end;
   }
@@ -69,7 +71,17 @@ export function validatePack(root) {
   if(!/^[a-zA-Z0-9_-]+\.(wav|mp4|png|jpg)$/.test(asset)||!manifest.files.some(f=>f.path===`assets/${asset}`))throw Error('Unstaged asset');
  }
  if(lesson.review_frames!==undefined&&(!Array.isArray(lesson.review_frames)||lesson.review_frames.length>40||lesson.review_frames.some(f=>!Number.isInteger(f)||f<0||f>=lesson.frame_count)))throw Error('Invalid review frames');
- if(lesson.format_id==='math_explainer') {
+ if(lesson.installment_example) {
+  const {unit_price:u,installments:n,purchases:q}=lesson.installment_example;
+  if(lesson.format_id!=='visual_explainer'||![u,n,q].every(Number.isInteger)||u<4||u>10000||n<2||n>4||q<1||q>3||u%n)throw Error('Invalid payment arithmetic');
+ }
+ if(lesson.format_id==='math_explainer'&&lesson.math?.kind==='pythagorean_rearrangement') {
+  const m=lesson.math,{a,b}=m;
+  if(![a,b].every(v=>Number.isInteger(v)&&v>=1&&v<=9)||m.c_squared!==a*a+b*b||m.outer_side!==a+b||m.triangle_area!==a*b/2||m.areas?.a_squared!==a*a||m.areas?.b_squared!==b*b||lesson.custom_scene||lesson.presentation!=='reference_v3'||lesson.frame_count!==660)throw Error('Invalid geometry arithmetic');
+  const stages=[['triangle',0,3],['assemble',3,6],['c_square',6,9],['rearrange',9,14],['area_sum',14,18],['identity',18,22]];
+  if(!Array.isArray(m.stages)||m.stages.length!==stages.length||m.stages.some((v,i)=>v.kind!==stages[i][0]||v.start!==stages[i][1]||v.end!==stages[i][2]))throw Error('Invalid geometry stages');
+ } else if(lesson.format_id==='math_explainer') {
+  if(lesson.math?.kind&&lesson.math.kind!=='matrix_multiplication')throw Error('Unknown math plan');
   const {a,b,cells}=lesson.math||{};
   const valid=m=>Array.isArray(m)&&m.length>=2&&m.length<=3&&m.every(r=>Array.isArray(r)&&r.length>=2&&r.length<=3&&r.length===m[0].length&&r.every(v=>Number.isInteger(v)&&Math.abs(v)<=9));
   if(!valid(a)||!valid(b)||a[0].length!==b.length||!Array.isArray(cells)||cells.length!==a.length*b[0].length||lesson.custom_scene||lesson.presentation!=='reference_v3')throw Error('Invalid math plan');

@@ -1,5 +1,6 @@
 import React from 'react';
 import {AbsoluteFill,Audio,staticFile,useCurrentFrame} from 'remotion';
+import {PythagoreanLesson} from './PythagoreanLesson';
 const clamp=(n:number)=>Math.max(0,Math.min(1,n));
 const smooth=(n:number)=>{n=clamp(n);return n*n*(3-2*n)};
 const mix=(a:number,b:number,p:number)=>a+(b-a)*p;
@@ -9,7 +10,7 @@ const Brackets=({x,y,w,h}:any)=><path d={`M${x+20} ${y} H${x} V${y+h} H${x+20} M
 
 // Minimal motion grammar: highlight → copy factors → products → sum → result cell.
 // Narration, explanatory captions and credits belong outside this visual canvas.
-export const MathLesson=({lesson}:{lesson:any})=>{
+const MatrixLesson=({lesson}:{lesson:any})=>{
  const t=useCurrentFrame()/30,{a,b,cells}=lesson.math;
  const cell=cells.find((c:any)=>c.start<=t&&t<c.end),done=t>=cells.at(-1).end;
  const active=cell||cells[t<cells[0].start?0:cells.length-1];
@@ -70,3 +71,7 @@ export const MathLesson=({lesson}:{lesson:any})=>{
  <Audio src={staticFile(lesson.audio_file)}/>
  </AbsoluteFill>;
 };
+
+export const MathLesson=({lesson}:{lesson:any})=>lesson.math.kind==='pythagorean_rearrangement'
+ ? <PythagoreanLesson lesson={lesson}/>
+ : <MatrixLesson lesson={lesson}/>;

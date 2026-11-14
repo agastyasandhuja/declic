@@ -4,6 +4,12 @@ formats, then the specific revisions in decision 006. Retrieval-card pauses rema
 in guided_v1 only. Gameplay and modest 1.08× dialogue pacing are explicit user
 preferences here, not claims that distraction or faster speech improves learning.
 
+The next research pass, covering AI creator workflows, current research and a
+minimal visual production rubric, is in
+[AI short-form creator workflows](AI_SHORT_FORM_CREATOR_RESEARCH.md). Its proposed
+rules are design inputs, not a claim that every rule has been implemented or that
+the resulting videos have demonstrated engagement gains.
+
 # Research-informed video generation
 
 November 14, 2026. Scope: the existing linked-list generator and renderer.

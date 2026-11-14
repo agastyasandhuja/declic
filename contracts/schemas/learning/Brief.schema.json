@@ -21,6 +21,36 @@
       ],
       "title": "Fact",
       "type": "object"
+    },
+    "InstallmentExample": {
+      "additionalProperties": false,
+      "properties": {
+        "unit_price": {
+          "maximum": 10000,
+          "minimum": 4,
+          "title": "Unit Price",
+          "type": "integer"
+        },
+        "installments": {
+          "maximum": 4,
+          "minimum": 2,
+          "title": "Installments",
+          "type": "integer"
+        },
+        "purchases": {
+          "maximum": 3,
+          "minimum": 1,
+          "title": "Purchases",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "unit_price",
+        "installments",
+        "purchases"
+      ],
+      "title": "InstallmentExample",
+      "type": "object"
     }
   },
   "additionalProperties": false,
@@ -196,6 +226,45 @@
       "default": "3.0.0",
       "title": "Template Version",
       "type": "string"
+    },
+    "math_topic": {
+      "default": "matrix_multiplication",
+      "enum": [
+        "matrix_multiplication",
+        "pythagorean_rearrangement"
+      ],
+      "title": "Math Topic",
+      "type": "string"
+    },
+    "pythagorean_sides": {
+      "anyOf": [
+        {
+          "items": {
+            "maximum": 9,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Pythagorean Sides"
+    },
+    "installment_example": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/InstallmentExample"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "matrix_a": {
       "items": {

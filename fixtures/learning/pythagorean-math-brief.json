@@ -1,0 +1,30 @@
+{
+  "schema_version": "1",
+  "brief_id": "math-pythagorean-area-demo",
+  "lesson_request_id": "synthetic-request",
+  "objective_id": "pythagorean-area-rearrangement",
+  "title": "Why a² + b² = c²",
+  "learning_goal": "See why rearranging four congruent right triangles proves a²+b²=c²",
+  "subject": "mathematics",
+  "level": "high_school",
+  "language": "en",
+  "notation": "Euclidean geometry and square areas",
+  "assumed_knowledge": ["Area of a square", "Right triangles"],
+  "must_cover": ["same_area", "identity"],
+  "must_not_claim": ["The identity applies to triangles without a right angle"],
+  "approved_facts": [
+    {"fact_id": "same_area", "statement": "Rearranging four congruent right triangles inside the same square preserves the remaining area when both endpoint arrangements tile without overlaps."},
+    {"fact_id": "identity", "statement": "A right triangle with leg lengths a and b and hypotenuse c satisfies a²+b²=c². For a=3 and b=4, the square areas are 9,16,25 and c=5."}
+  ],
+  "input_values": [],
+  "format_id": "math_explainer",
+  "teaching_approach": "visual_story",
+  "target_duration_seconds": 22,
+  "scope": "shared_generic_candidate",
+  "owner_user_id": null,
+  "template_version": "3.1.0",
+  "presentation": "reference_v3",
+  "trace_kind": "none",
+  "math_topic": "pythagorean_rearrangement",
+  "pythagorean_sides": [3,4]
+}

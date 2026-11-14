@@ -1,0 +1,236 @@
+{
+  "id": "spinning-chair",
+  "title": "Office figure skating",
+  "template": "cartoon-angular-momentum-v1",
+  "voice": {
+    "name": "Charlie",
+    "id": "IKne3meq5aSn9XLyUdCD"
+  },
+  "objective": "Explain conservation of angular momentum under negligible external torque; connect decreasing moment of inertia to increasing angular speed, muscular work to added kinetic energy, and floor contact to braking torque.",
+  "sources": [
+    "https://openstax.org/books/university-physics-volume-1/pages/11-3-conservation-of-angular-momentum",
+    "https://www.sfu.ca/physics/demos/demos-experiments/stool-weights-burnaby.html"
+  ],
+  "beats": [
+    {
+      "scene": "hook",
+      "text": "He gives his chair one push. Then tucks his arms in. Suddenly, office figure skating.",
+      "camera": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "pause": 0.18
+    },
+    {
+      "scene": "above",
+      "text": "Rewind. Watch from above.",
+      "camera": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "pause": 0.18
+    },
+    {
+      "scene": "isolated",
+      "text": "Once his feet leave the floor, external torque is small. Angular momentum stays nearly constant.",
+      "camera": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "pause": 0.18
+    },
+    {
+      "scene": "inward",
+      "text": "Pulling mass toward the axis lowers his moment of inertia.",
+      "camera": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "pause": 0.18
+    },
+    {
+      "scene": "faster",
+      "text": "Same angular momentum, smaller inertia: faster spin.",
+      "camera": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "pause": 0.18
+    },
+    {
+      "scene": "outward",
+      "text": "Spread his arms again, and he slows down.",
+      "camera": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "pause": 0.18
+    },
+    {
+      "scene": "double",
+      "text": "Halve the total moment of inertia, and the spin rate doubles.",
+      "camera": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "pause": 0.18
+    },
+    {
+      "scene": "energy",
+      "text": "But the extra kinetic energy is not free. His muscles do work pulling inward.",
+      "camera": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "pause": 0.18
+    },
+    {
+      "scene": "brake",
+      "text": "Touch the floor, and friction applies an external torque. Now angular momentum decreases.",
+      "camera": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "pause": 0.18
+    },
+    {
+      "scene": "outro",
+      "text": "Arms control the speed. The floor supplies the brakes.",
+      "camera": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "pause": 0.18
+    }
+  ]
+}

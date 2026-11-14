@@ -1,0 +1,34 @@
+{
+  "id": "versus",
+  "number": 10,
+  "name": "A versus B",
+  "version": "audition-1",
+  "grammar": "Two competitors \u2192 same target \u2192 different work \u2192 precondition",
+  "status": "awaiting_user_review",
+  "limitation": "Counts binary partition decisions, not all comparisons of a particular binary-search implementation.",
+  "editable_inputs": [
+    "lines",
+    "labels",
+    "evidence"
+  ],
+  "fixture": "../catalog.py#versus",
+  "component": "../src/Root.tsx#Search",
+  "duration_range_seconds": [
+    20,
+    45
+  ],
+  "output": "720x1280, 30fps, H.264/AAC audition",
+  "required_assets": [
+    "four timestamp-aligned speech segments"
+  ],
+  "qa_checks": [
+    "facts match script",
+    "visual states match claims",
+    "caption timing bounds",
+    "no clipped mobile text",
+    "real thinking hold where needed",
+    "human format review"
+  ],
+  "promotion": "User selects keep/potential/pass; future parameterization and production integration remain separate.",
+  "parameterization_limit": "The teaching mechanism and numerical geometry are currently authored for this sample. Changing topic or numbers requires updating/verifying the component, not only labels."
+}

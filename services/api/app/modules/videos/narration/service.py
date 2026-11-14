@@ -1,4 +1,5 @@
 import json
+import os
 import wave
 from pathlib import Path
 
@@ -8,17 +9,29 @@ from .timing import alignment_words
 
 
 def synthesize(segment, brief, provider, voice_id, cache: Path, fixture=False):
+    semantic = bool(brief.installment_example) or brief.format_id == "space_explainer"
+    # Fixed editorial tempo, never an automatic way to squeeze an overlong script.
+    speed = (
+        1.08
+        if brief.presentation == "reference_v3" and brief.format_id == "dialogue_gameplay"
+        else 1.0
+    )
+    if brief.presentation == "reference_v3" and semantic:
+        speed = 1.12
     identity = {
         "text": segment.spoken_text,
         "voice": voice_id,
         "model": getattr(provider, "model", "fixture-say"),
         "scope": brief.scope,
         "owner": brief.owner_user_id,
-        "settings": "dialogue-1.08-v2"
-        if brief.presentation == "reference_v3" and brief.format_id == "dialogue_gameplay"
-        else "v1",
+        "settings": f"tempo-{speed}-v3",
         "fixture": fixture,
     }
+    # IVC sample edits retain the voice ID. Version their audio separately so
+    # an improved clone cannot silently reuse speech from the previous samples.
+    revision = os.getenv(f"ELEVENLABS_{segment.speaker_role.upper()}_VOICE_REVISION", "")
+    if revision and not fixture:
+        identity["voice_revision"] = revision
     key = digest(identity)
     folder = cache / key
     folder.mkdir(parents=True, exist_ok=True)
@@ -34,7 +47,6 @@ def synthesize(segment, brief, provider, voice_id, cache: Path, fixture=False):
     else:
         raw = folder / "provider.mp3"
         response = provider.synthesize(segment.spoken_text, voice_id, raw)
-    speed = 1.08 if identity["settings"] == "dialogue-1.08-v2" else 1.0
     run(
         [
             "ffmpeg",

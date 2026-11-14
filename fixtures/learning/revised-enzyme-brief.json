@@ -1,0 +1,67 @@
+{
+  "schema_version": "1",
+  "brief_id": "enzyme-competitive-inhibition",
+  "lesson_request_id": "synthetic-request",
+  "objective_id": "enzyme-competitive-inhibition",
+  "title": "Blocked, not broken",
+  "learning_goal": "Distinguish reversible competitive inhibition from enzyme denaturation through a visual reaction cycle.",
+  "subject": "biology",
+  "level": "high_school",
+  "language": "en",
+  "notation": "plain language",
+  "assumed_knowledge": [],
+  "must_cover": [
+    "binding",
+    "reaction",
+    "reuse",
+    "competitive",
+    "concentration",
+    "denature"
+  ],
+  "must_not_claim": [
+    "All enzyme reactions split one substrate into two products.",
+    "Substrate forcibly removes a bound inhibitor.",
+    "All inhibition is competitive or reversible.",
+    "The animation is an atomistic simulation.",
+    "This is confirmed exam content."
+  ],
+  "approved_facts": [
+    {
+      "fact_id": "binding",
+      "statement": "A substrate binds at an enzyme active site. In induced fit, binding involves dynamic conformational changes in both enzyme and substrate."
+    },
+    {
+      "fact_id": "reaction",
+      "statement": "Enzymes lower activation energy. In a schematic cleavage reaction, one substrate can be converted to two products, which leave the enzyme; other enzyme reactions may join or modify substrates."
+    },
+    {
+      "fact_id": "reuse",
+      "statement": "An enzyme returns to its original state after a catalytic reaction and can catalyze subsequent reactions; it is not consumed as a reactant."
+    },
+    {
+      "fact_id": "competitive",
+      "statement": "In classical reversible competitive inhibition, an inhibitor occupies the active site and excludes substrate binding while it is bound, without requiring denaturation."
+    },
+    {
+      "fact_id": "concentration",
+      "statement": "At a fixed concentration of a reversible competitive inhibitor, increasing substrate concentration can reduce inhibition because substrate and inhibitor compete for binding to free enzyme. A substrate does not need to forcibly displace a bound inhibitor."
+    },
+    {
+      "fact_id": "denature",
+      "statement": "High temperature can denature a protein enzyme, changing its structure and impairing its function. This is distinct from reversible occupation of an intact active site."
+    },
+    {
+      "fact_id": "schematic",
+      "statement": "The molecular shapes, trajectories, relative sizes and timing in this animation are schematic teaching illustrations, not atomistic molecular simulations."
+    }
+  ],
+  "input_values": [],
+  "format_id": "space_explainer",
+  "teaching_approach": "causal_mechanism",
+  "target_duration_seconds": 42,
+  "scope": "shared_generic_candidate",
+  "owner_user_id": null,
+  "template_version": "3.1.0",
+  "presentation": "reference_v3",
+  "trace_kind": "none"
+}

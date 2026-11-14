@@ -29,6 +29,18 @@ class Fact(Record):
     statement: Text
 
 
+class InstallmentExample(Record):
+    unit_price: int = Field(ge=4, le=10000, strict=True)
+    installments: int = Field(ge=2, le=4, strict=True)
+    purchases: int = Field(ge=1, le=3, strict=True)
+
+    @model_validator(mode="after")
+    def whole_payments(self):
+        if self.unit_price % self.installments:
+            raise ValueError("Example must have equal whole-dollar installments")
+        return self
+
+
 class Brief(Record):
     schema_version: Literal["1"] = "1"
     brief_id: Identifier
@@ -53,6 +65,13 @@ class Brief(Record):
     scope: Literal["private", "shared_generic_candidate"] = "private"
     owner_user_id: Identifier | None = None
     template_version: str = "3.0.0"
+    math_topic: Literal["matrix_multiplication", "pythagorean_rearrangement"] = (
+        "matrix_multiplication"
+    )
+    pythagorean_sides: list[Annotated[int, Field(strict=True, ge=1, le=9)]] | None = Field(
+        default=None, min_length=2, max_length=2
+    )
+    installment_example: InstallmentExample | None = None
     matrix_a: list[list[int]] = Field(default_factory=list, max_length=3)
     matrix_b: list[list[int]] = Field(default_factory=list, max_length=3)
 
@@ -63,8 +82,15 @@ class Brief(Record):
         if self.format_id == "math_explainer":
             if self.trace_kind != "none" or self.presentation != "reference_v3":
                 raise ValueError("Math template requires reference_v3 and trace_kind none")
+            if self.math_topic == "pythagorean_rearrangement":
+                if self.pythagorean_sides is None or self.matrix_a or self.matrix_b:
+                    raise ValueError("Pythagorean math needs two sides and no matrices")
+            elif self.pythagorean_sides is not None:
+                raise ValueError("Matrix math cannot contain Pythagorean sides")
             a, b = self.matrix_a, self.matrix_b
-            if not a or not b or not 2 <= len(a) <= 3 or not 2 <= len(b) <= 3:
+            if self.math_topic == "matrix_multiplication" and (
+                not a or not b or not 2 <= len(a) <= 3 or not 2 <= len(b) <= 3
+            ):
                 raise ValueError("Provide two bounded matrices")
             if any(
                 len(row) != len(m[0])
@@ -72,12 +98,21 @@ class Brief(Record):
                 or any(isinstance(v, bool) or not -9 <= v <= 9 for v in row)
                 for m in (a, b)
                 for row in m
-            ) or len(a[0]) != len(b):
+            ) or (a and len(a[0]) != len(b)):
                 raise ValueError(
                     "Matrices must be rectangular, compatible and contain integers -9..9"
                 )
-        elif self.matrix_a or self.matrix_b:
+        elif (
+            self.matrix_a
+            or self.matrix_b
+            or self.pythagorean_sides is not None
+            or self.math_topic != "matrix_multiplication"
+        ):
             raise ValueError("Matrices require the math template")
+        if self.installment_example and (
+            self.format_id != "visual_explainer" or self.trace_kind != "none"
+        ):
+            raise ValueError("Installment example requires the visual template without a trace")
         if self.trace_kind == "linked_list_reverse" and len(self.input_values) < 2:
             raise ValueError("Linked-list trace requires at least two nodes")
         if self.scope == "private" and not self.owner_user_id:
@@ -140,6 +175,21 @@ class Shot(Record):
         description="For an opening misconception ONLY, broken_first_link shows "
         "the first link severed before saving; trace shows the real verified algorithm.",
     )
+    motion_scene: Literal[
+        "none",
+        "price_tag",
+        "split_payment",
+        "stack_purchases",
+        "payment_calendar",
+        "total_cost",
+        "choice_balance",
+        "receipt",
+        "ticket_purchase",
+        "ticket_loss",
+        "future_choice",
+        "time_loss",
+        "decision_reset",
+    ] = "none"
     asset_ids: list[Identifier] = Field(default_factory=list, max_length=2)
     headline: Annotated[str, Field(max_length=52)] = ""
     labels: list[Annotated[str, Field(min_length=1, max_length=24)]] = Field(
@@ -160,6 +210,13 @@ class Shot(Record):
         "lookback",
         "scale_ladder",
         "gravity",
+        "enzyme_hook",
+        "enzyme_fit",
+        "enzyme_reaction",
+        "enzyme_reuse",
+        "enzyme_compete",
+        "enzyme_concentration",
+        "enzyme_denature",
     ] = "galaxy"
     fact_ids: list[Identifier] = Field(min_length=1, max_length=6)
 
@@ -282,7 +339,10 @@ class Storyboard(Record):
                 raise ValueError(
                     "Space template requires at least four spatial shots and two space modes"
                 )
-            if len([a for a in self.image_requests if a.provider == "nasa"]) < 2:
+            if (
+                not all(s.space_mode.startswith("enzyme_") for s in spatial)
+                and len([a for a in self.image_requests if a.provider == "nasa"]) < 2
+            ):
                 raise ValueError(
                     "Space template requires at least two relevant NASA image requests"
                 )
@@ -306,8 +366,54 @@ class Storyboard(Record):
             raise ValueError("Use natural spoken language: say next pointer, never dot next")
         if len(self.segments[0].spoken_text.split()) > 14:
             raise ValueError("Open mid-thought with a concrete hook, at most fourteen words")
+        if brief.installment_example:
+            supported = {
+                "price_tag",
+                "split_payment",
+                "stack_purchases",
+                "payment_calendar",
+                "total_cost",
+                "choice_balance",
+                "receipt",
+            }
+            if len({s.motion_scene for s in self.shots}) < 4 or any(
+                s.motion_scene not in supported or s.kind != "diagram" for s in self.shots
+            ):
+                raise ValueError("Installment story requires four distinct supported motion scenes")
+            if any(
+                a.motion_scene == b.motion_scene
+                for a, b in zip(self.shots, self.shots[1:], strict=False)
+            ):
+                raise ValueError("Adjacent motion scenes must demonstrate different operations")
+            if self.image_requests or any(s.headline or s.labels for s in self.shots):
+                raise ValueError(
+                    "Installment visuals use trusted numbers; no stock imagery or duplicate prose"
+                )
+        for shot in self.shots:
+            if shot.motion_scene != "none" and (shot.headline or shot.labels):
+                raise ValueError("Authored motion scenes supply their own labels; no ignored text")
+            if shot.motion_scene != "none" and shot.kind != "diagram":
+                raise ValueError("Motion scenes require diagram shots")
+            if (
+                shot.motion_scene
+                in {
+                    "price_tag",
+                    "split_payment",
+                    "stack_purchases",
+                    "payment_calendar",
+                    "total_cost",
+                    "choice_balance",
+                    "receipt",
+                }
+                and not brief.installment_example
+            ):
+                raise ValueError("Payment motion requires a validated installment example")
         if brief.presentation == "reference_v3":
-            if brief.format_id == "visual_explainer" and brief.trace_kind == "none":
+            if (
+                brief.format_id == "visual_explainer"
+                and brief.trace_kind == "none"
+                and not brief.installment_example
+            ):
                 used = [s.asset_ids[0] for s in self.shots if s.kind == "image"]
                 if len(set(used)) < 4 or any(used.count(a) > 2 for a in used):
                     raise ValueError(
@@ -388,6 +494,7 @@ class ContentReview(Record):
 
 
 class RenderReview(ContentReview):
+    repair_scope: Literal["none", "storyboard", "renderer"] = "none"
     notes: list[Annotated[str, Field(max_length=600)]] = Field(default_factory=list, max_length=10)
 
     @model_validator(mode="after")

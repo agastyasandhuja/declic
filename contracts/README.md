@@ -75,3 +75,20 @@ Reference v3 update (November 14): internal Brief adds bounded matrix inputs and
 `reference_v3`; `math_explainer` joins the learning/feed format enum. Ordinary video
 asset delivery remains unchanged. The worker supports music-led matrix lessons and
 rendered-frame review; see [decision 006](../docs/decisions/006-video-quality-and-math-template.md).
+
+Semantic motion update (November 14): additive internal Brief fields `math_topic`,
+`pythagorean_sides` and `installment_example`, plus `Shot.motion_scene` and enzyme
+`space_mode` values, support bounded geometry, payment and decision demonstrations.
+Historical matrix/image/space inputs retain their defaults and supported paths.
+New plans require the updated worker and renderer together. Public format names,
+VideoVariant/feed fields and MP4 delivery remain unchanged; optional mobile display
+label **Animated science** does not rename `space_explainer`. See the
+[learning contract](learning.md#semantic-motion-extension-november-14) and
+[decision 007](../docs/decisions/007-semantic-motion-video-templates.md).
+
+
+November 14 presentation refinement: narrator captions use the shared white
+single-word pop component (sample 22 feedback). This changes renderer style and
+recipe identity (4.1.0), not the public format IDs, timestamp fields, caption
+payload or feed protocol. Music-led math still has no invented speech captions.
+See `services/renderer/ANIMATION_STANDARD.md` for asset reuse and motion review.

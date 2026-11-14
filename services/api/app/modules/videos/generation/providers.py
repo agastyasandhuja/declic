@@ -10,6 +10,7 @@ from pathlib import Path
 import httpx
 from pydantic import ValidationError
 
+from ..media import atomic_json
 from ..models import (
     Brief,
     ContentReview,
@@ -18,6 +19,7 @@ from ..models import (
     RenderReview,
     SceneSource,
     Storyboard,
+    digest,
 )
 
 
@@ -58,7 +60,17 @@ def request_json(client, method, url, **kwargs):
 
 
 class Claude:
-    def __init__(self, model=None, client=None, charge=lambda: None, diagnostic=lambda _: None):
+    def __init__(
+        self,
+        model=None,
+        client=None,
+        charge=lambda: None,
+        diagnostic=lambda _: None,
+        cache_dir=None,
+        max_tokens=9000,
+    ):
+        if not isinstance(max_tokens, int) or not 1 <= max_tokens <= 32000:
+            raise ValueError('max_tokens must be an integer between 1 and 32000')
         self.key = os.environ.get("ANTHROPIC_API_KEY")
         if not self.key:
             raise ProviderError("MISSING_ANTHROPIC_API_KEY")
@@ -67,8 +79,24 @@ class Claude:
         self.usage = []
         self.charge = charge
         self.diagnostic = diagnostic
+        self.cache_dir = Path(cache_dir) if cache_dir else None
+        self.max_tokens = max_tokens
 
     def structured(self, schema, system, payload, validate=lambda x: x, attachments=None):
+        cache_key = digest(
+            {
+                "model": self.model,
+                "schema": schema.model_json_schema(),
+                "system": system,
+                "payload": payload,
+                "attachments": attachments,
+            }
+        )
+        cached = self.cache_dir / f"{cache_key}.json" if self.cache_dir else None
+        if cached and cached.is_file():
+            result = validate(schema.model_validate_json(cached.read_text()))
+            self.usage.append({"model": self.model, "cache_hit": True, "usage": {}})
+            return result
         messages = [{"role": "user", "content": json.dumps(payload)}]
         for attempt in range(3):
             if attachments:
@@ -84,7 +112,7 @@ class Claude:
                 headers={"x-api-key": self.key, "anthropic-version": "2023-06-01"},
                 json={
                     "model": self.model,
-                    "max_tokens": 9000,
+                    "max_tokens": self.max_tokens,
                     "system": system,
                     "tools": [
                         {
@@ -110,12 +138,17 @@ class Claude:
             try:
                 if len(calls) != 1:
                     raise ValueError("Exactly one structured result required")
-                return validate(schema.model_validate(calls[0]["input"]))
+                result = validate(schema.model_validate(calls[0]["input"]))
+                if cached:
+                    cached.parent.mkdir(parents=True, exist_ok=True)
+                    atomic_json(cached, result.model_dump())
+                return result
             except (ValidationError, ValueError) as error:
                 self.diagnostic(
                     {
                         "stage": schema.__name__,
                         "attempt": attempt,
+                        "stop_reason": response.get("stop_reason"),
                         "validation_error": str(error)[:4000],
                         "previous": calls[0].get("input") if calls else None,
                     }
@@ -198,7 +231,13 @@ as evidence. Also check the chronological pointer trace, understandable narratio
 and whether imagery supports the specific spoken idea. Space images and animations must
 not imply measured sizes or distances. The space_mode field is inactive for non-space shots; do
 not reject an inactive default value. Empty headlines are allowed because captions carry the
-narration. Output passed=false if ANY issue is found.
+narration. diagram_demo is inactive when trace_kind is none; motion_scene selects the
+actual authored scene. Do not request a nonexistent pointer trace. The user explicitly
+wants fictional Stewie to call fictional Peter an idiot in original concept-related
+snark; this is permitted and is not a factual or safety defect. Humor must target the
+character's reasoning, never the viewer. Do not confuse a mistaken question immediately
+corrected by the other character with an asserted teaching fact.
+Output passed=false if ANY factual or explanatory issue is found.
 This is an automated content check, never proof of accuracy or improved engagement.""",
             {"brief": brief.teaching_payload(), "storyboard": board.model_dump()},
         )
@@ -367,13 +406,17 @@ This is an automated content check, never proof of accuracy or improved engageme
         return self.structured(
             RenderReview,
             SYSTEM + "Return issues=[] when passed; nonblocking observations belong in notes. "
+            "Set repair_scope=renderer for overlapping geometry, ignored labels "
+            "or incorrect object "
+            "paths; storyboard only for script/scene-selection issues; none when passed. "
+            "Do not ask for unimplemented label overlays or production prose. "
             "You are the critical final visual editor. Inspect actual chronological rendered "
             "frames, not promises in a storyboard. Reject clipped/overlapping unreadable "
             "essential text, "
             "incorrect equations, mislabeled illustrations, irrelevant/repeated photographs, and "
             "space sequences recycling essentially the same geometry. For dialogue require no"
-            " white "
-            "background/card, readable diagrams, expressive short exchanges. For math allow stable "
+            " card or panel of any color behind diagrams, readable diagrams, "
+            "expressive short exchanges. For math allow stable "
             "source matrices: values should move into a worked row-times-column equation then"
             " result; "
             "do not reject purposeful persistence as repetition. Distinguish an intermediate "
@@ -384,16 +427,25 @@ This is an automated content check, never proof of accuracy or improved engageme
             "pays it off. State exact times and actionable defects. passed=false on concrete "
             "defects; "
             "do not claim engagement is proven, or that sampled stills verify audio or motion"
-            " fluidity."
+            " fluidity. For animation require meaningful different mechanisms, "
+            "minimal labels, white single-word "
+            "speech-aligned captions. Do not request titles or onscreen sources: credits are sidecar metadata. "
+            "For finance, check the payment counts/totals against installment_example and reject "
+            "generic money photographs. Distinguish due-now payment from total commitment."
             + (
                 " FORMAT-SPECIFIC OVERRIDE: The user explicitly requires minimal math: one title, "
-                "large matrices and animated mathematical symbols ONLY. Reject recommendations "
+                "large geometry/matrices and animated mathematical symbols ONLY. "
+                "Reject recommendations "
                 "to add instructional prose, dimension explanations, a written hook/payoff, "
                 "captions or music-credit text on the canvas. Credits accompany the file. "
-                "The opening product matrix of question marks is the visual question; filling "
+                "For matrix lessons, the opening product matrix of question marks "
+                "is the visual question; filling "
                 "it correctly is the payoff. Demonstrating row-column dot products visually "
                 "satisfies the teaching goal without stating it in words. lesson.hook and "
                 "lesson.payoff are internal editorial intentions, NOT required visible text. "
+                "For geometry lessons, compare the same four rigid triangles "
+                "and preserved empty area "
+                "before/after rearrangement. Do not demand a matrix or verbal rule. "
                 "Review arithmetic, correspondence of highlights, legibility and visual clutter."
                 if lesson.get("minimal_math")
                 else ""
@@ -448,11 +500,11 @@ must have delivery sarcastic and a brief dry punchline responding to Peter's act
 His snark targets the misunderstanding, never the learner. Do not add extra facts for jokes.
 Keep humor within the explanation, e.g. absurd confidence followed by a precise correction.
 No long lectures or repeated summary. Aim 100–115 words, tight punctuation and short turns.
-For photo explainers: at least four distinct photos matched to different scene purposes,
-no adjacent reuse, no asset used more than twice. At least one numerical/concept diagram
-or kinetic comparison. Images should change as the example changes, not show one object
-throughout. Use headlines/labels to make numbers legible. Explicit hypothetical labels
-on finance examples. Photos illustrate objects, not evidence of a financial result.
+For visual explainers prefer meaningful semantic animation over generic stock photography.
+If brief.installment_example is supplied, use authored payment motion scenes and NO images.
+The numerical example is computed by trusted code; never invent labels that override it.
+If real photographic evidence is needed, use four distinct images with different purposes.
+Captions carry speech; no permanent titles or source-credit footers on the canvas.
 Reference presentation: six to twelve spoken segments, with exactly one shot per segment.
 Open on a concrete surprise/question/misconception (at most 14 words). Explain one narrow
 objective with an unfolding example and a satisfying payoff. Keep natural sentence rhythm;
@@ -466,10 +518,10 @@ asset_ids and fact_ids. Change visual composition with the spoken idea every few
 Use at least two camera modes. Use short, grammatical screen text; captions carry speech,
 so headline can be empty. Do not fill the frame with duplicate narration or persistent titles.
 Image shots require image_requests with asset_id, public generic query, provider, purpose
-and fact_ids. Use 4–6 DISTINCT image requests for photo explainers with trace_kind none. Each
-must illustrate a different narrative idea, not synonyms for the same subject. Use 2–5
-otherwise. Queries should be short (one to three
-subject words), not elaborate descriptions; for example "leatherback turtle" or "jellyfish".
+and fact_ids. ONLY for an image-led story use 4–6 DISTINCT image requests. Each
+must illustrate a different narrative idea, not synonyms for the same subject. Use zero
+for authored diagrams, biology mechanisms, or payment examples. Queries should be short
+(one to three subject words), e.g. "leatherback turtle" or "jellyfish".
 The worker performs those searches
 and lets you choose among returned candidates; never write URLs or claim an image exists.
 Use commons/openverse for scientific subjects, familiar objects and diagrams; nasa for

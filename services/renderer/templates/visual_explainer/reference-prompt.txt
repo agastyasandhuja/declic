@@ -1,16 +1,28 @@
-Match the user's marine-animal explainer's visual storytelling: full-frame subject
-photographs/illustrations, camera pushes and pans, cutaways to evidence/diagrams,
-occasional two-image comparisons. The subject fills the frame. Use narrator only.
-Do not add a synthetic human face. Prefer an image-driven sequence with at least two
-relevant image requests, interspersed with clear animated labels or a diagram.
-No permanent title, dashboard panels, code listing, quiz screen or progress bar.
-Open on the most visually surprising concrete example. Build the explanation around
-what the viewer is seeing. Refer to the actual concept, not "this image".
+Make a visual story for teenagers and college students, not a stock-photo montage.
+For briefs with installment_example, use ONLY diagram shots and motion_scene from:
+price_tag: a pair of headphones and a big per-payment price, then reveals total price;
+split_payment: full purchase price separates into equal payment tiles;
+stack_purchases: several purchases each add another installment obligation;
+payment_calendar: all purchase payments stack at each scheduled due point;
+total_cost: purchase totals combine into the total commitment;
+choice_balance: upfront scheduled payment contrasted against remaining scheduled payments;
+receipt: final whole purchase commitment with number of payments times payment amount.
+Numbers come from the trusted example, NOT labels. Empty headlines/labels/image_requests.
+Use >=4 distinct modes, no adjacent repeat, 7–9 shots; each scene changes the reasoning.
+Keep narration matched to the mode's exact meaning. State hypothetical assumptions:
+same-day purchases, equal no-interest/no-fee payments; don't generalize all BNPL terms.
+Do not claim a new payment date or lender behavior absent from the approved facts.
+~100–115 words, no repeated conclusion. Open with small payment vs real total surprise.
+For other subjects use real images ONLY when specific visible features teach the fact,
+not symbolic stock photos of calculators, money, students, offices or generic objects.
+Image-led stories require >=4 distinct relevant assets, no adjacent reuse or more than
+two uses. Compare actual evidence in those images. Never claim candidate images exist.
+Sources and attribution go in metadata/credits, never permanent canvas text. Captions
+carry narration. Keep only essential object labels and exact numbers on screen.
 
-Use image shots for most segments. Prefer repeating a strong subject image with a new
-crop or split comparison over ungrounded extra asset requests. No more than four image
-requests. Avoid generic text cards; label actual features visible in the subject images.
-Do not add size comparisons, numbers or functional adaptations absent from approved facts.
-Respect the exact scope of anatomical facts. "Lacks a hard bony shell" does not mean
-"no armor" or "flexible body". Do not describe sea turtles retracting into their shells.
-End with a specific supported insight rather than "perfectly designed" or vague praise.
+Pacing: 90–105 words total, maximum 20 words per segment. Do not repeat assumptions or add a closing disclaimer. One short qualification suffices; never recommend borrowing. No closing monologue.
+
+Caption and animation policy: use the shared white single-word speech-aligned
+caption treatment. No yellow phrase captions. Follow ANIMATION_STANDARD.md: each
+shot needs a physical start/action/end, task-facing subjects, contact continuity
+and a camera that reveals the action. Reuse authored models/actions when suitable.

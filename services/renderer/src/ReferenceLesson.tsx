@@ -1,7 +1,10 @@
+import {PopCaptions} from './PopCaptions';
 import React from 'react';
 import {AbsoluteFill, Audio, Img, OffthreadVideo, staticFile, useCurrentFrame} from 'remotion';
 import {SpaceScenesV3} from './SpaceScenesV3';
 import {SpaceScene} from './SpaceScene';
+import {PaymentScene} from './PaymentScenes';
+import {DecisionScene} from './DecisionScenes';
 
 const clamp=(n:number)=>Math.max(0,Math.min(1,n));
 const ImageShot=({shot,images,dialogue=false}:{shot:any,images:any,dialogue?:boolean})=>{
@@ -35,7 +38,7 @@ const Diagram=({lesson,shot}:{lesson:any,shot:any})=>{
  const values=linked?lesson.values:shot.labels;
  const width=850,spacing=values.length>1?650/(values.length-1):0,x=(i:number)=>values.length===1?425:100+i*spacing;
  return <div style={{position:'absolute',left:70,right:110,top:530,height:630,transform:`scale(${1+p*.035})`,transformOrigin:'center'}}>
-  <div style={{height:630,background:lesson.format_id==='dialogue_gameplay'?'#07101dbb':'#071827c9',borderRadius:16,boxShadow:'0 15px 60px #0005',color:'#fff'}}>
+  <div style={{height:630,background:lesson.format_id==='dialogue_gameplay'?'transparent':'#071827c9',borderRadius:16,filter:lesson.format_id==='dialogue_gameplay'?'drop-shadow(0 3px 5px #000)':'none',color:'#fff'}}>
    {(shot.headline||mistake)&&<div style={{padding:'40px 35px 0',fontSize:42,fontWeight:800,textAlign:'center'}}>{mistake?"Peter’s wrong move":shot.headline}</div>}
    {linked?<svg viewBox={`0 0 ${width} 460`} style={{width:'100%',height:450}}>
     <defs><marker id="trace-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5ff3e4"/></marker></defs>
@@ -61,14 +64,9 @@ const Diagram=({lesson,shot}:{lesson:any,shot:any})=>{
 };
 
 const WordCaptions=({lesson}:{lesson:any})=>{
- const t=useCurrentFrame()/30,group=lesson.captions.find((g:any)=>g.start<=t&&t<g.end)||[...lesson.captions].reverse().find((g:any)=>g.end<=t&&t-g.end<.4);
- if(!group)return null;
- // Short three-word chunks match the references; preserve the provider's word timestamps.
- const nextIndex=group.words.findIndex((w:any)=>w.end>t),index=nextIndex<0?group.words.length-1:nextIndex,start=Math.floor(index/3)*3;
- const words=group.words.slice(start,start+3),dialogue=lesson.format_id==='dialogue_gameplay';
- return <div style={{position:'absolute',left:90,right:120,top:dialogue?235:1390,textAlign:'center',fontSize:dialogue?66:51,lineHeight:1.15,fontWeight:850,color:'white',textShadow:'0 3px 3px #000, 0 0 10px #000, 0 0 22px #0009',WebkitTextStroke:dialogue?'2px #111':'1px #111',paintOrder:'stroke fill',background:dialogue?'transparent':'#000d',padding:dialogue?0:'18px 20px',borderRadius:12}}>
-  {words.map((w:any,i:number)=><span key={i} style={{color:dialogue&&t>=w.start&&t<w.end?'#ffe34d':'white'}}>{w.text}{' '}</span>)}
- </div>;
+ const t=useCurrentFrame()/30;
+ const caption=lesson.captions.find((g:any)=>g.start<=t&&t<g.end);
+ return <PopCaptions caption={caption} now={t} top={lesson.format_id==='dialogue_gameplay'?235:1450}/>;
 };
 const ActiveCharacter=({lesson}:{lesson:any})=>{
  const t=useCurrentFrame()/30,segment=lesson.segments.find((s:any)=>s.start<=t&&t<s.end)||lesson.segments.at(-1);
@@ -90,18 +88,18 @@ export const ReferenceLesson=({lesson}:{lesson:any})=>{
   {dialogue&&lesson.background&&<OffthreadVideo src={staticFile(lesson.background)} muted style={{width:'100%',height:'100%',objectFit:'cover'}}/>}
   {dialogue&&<AbsoluteFill style={{background:'linear-gradient(#0004,transparent 24%,transparent 72%,#0003)'}}/>}
   {space&&shot.kind!=='image'&&(lesson.presentation==='reference_v3'?<SpaceScenesV3 shot={shot}/>:<SpaceScene shot={shot} images={lesson.images}/>)}
-  {!dialogue&&!space&&<AbsoluteFill style={{background:'radial-gradient(ellipse at 50% 45%,#17526d,#040d18 75%)'}}/>}
+  {!dialogue&&!space&&<AbsoluteFill style={{background:lesson.installment_example?'#08090e':'radial-gradient(ellipse at 50% 45%,#17526d,#040d18 75%)'}}/>}
   {shot.kind==='image'&&<ImageShot shot={shot} images={lesson.images} dialogue={dialogue}/>}
   {shot.kind==='image'&&(shot.headline||shot.labels.length>0)&&<div style={{position:'absolute',left:85,right:120,top:dialogue?460:320,textAlign:'center',textShadow:'0 3px 8px #000,0 0 30px #000',background:'#07101df2',padding:'25px 24px',borderRadius:14}}>
    <div style={{fontSize:dialogue?38:48,fontWeight:800,lineHeight:1.15}}>{shot.headline}</div>
    <div style={{fontSize:dialogue?31:39,color:'#ffdf82',lineHeight:1.5,marginTop:12}}>{shot.labels.map((label:string,i:number)=><div key={i}>{label}</div>)}</div>
   </div>}
-  {shot.kind==='diagram'&&<Diagram lesson={lesson} shot={shot}/>}
+  {shot.kind==='diagram'&&(lesson.installment_example?<PaymentScene lesson={lesson} shot={shot}/>:shot.motion_scene&&shot.motion_scene!=='none'?<DecisionScene shot={shot}/>:<Diagram lesson={lesson} shot={shot}/>)}
   {shot.kind==='kinetic'&&<div style={{position:'absolute',top:580,left:80,right:120,textAlign:'center',fontSize:83,lineHeight:1.08,fontWeight:850,textShadow:'0 6px 25px #000',transform:`scale(${.94+.06*clamp(shotAge*4)})`}}>{shot.headline}<div style={{fontSize:54,color:'#81e9f5',marginTop:36,lineHeight:1.5}}>{shot.labels.map((label:string,i:number)=><div key={i}>{label}</div>)}</div></div>}
-  {space&&shot.kind==='space'&&shot.headline&&<div style={{position:'absolute',left:90,right:120,top:330,textAlign:'center',fontSize:46,fontWeight:650,letterSpacing:1,opacity:clamp(shotAge*2)*Math.min(1,(shot.end-t)*2),textShadow:'0 4px 15px #000'}}>{shot.headline}</div>}
+  {space&&lesson.presentation!=='reference_v3'&&shot.kind==='space'&&shot.headline&&<div style={{position:'absolute',left:90,right:120,top:330,textAlign:'center',fontSize:46,fontWeight:650,letterSpacing:1,opacity:clamp(shotAge*2)*Math.min(1,(shot.end-t)*2),textShadow:'0 4px 15px #000'}}>{shot.headline}</div>}
   {dialogue&&<ActiveCharacter lesson={lesson}/>}
   <WordCaptions lesson={lesson}/>
-  <div style={{position:'absolute',left:45,right:120,bottom:90,fontSize:24,lineHeight:1.4,color:'#fff',background:'#000e',padding:'12px 16px',borderRadius:8,textShadow:'0 2px 4px #000'}}>{image?`${image.creator || 'Source'} · ${image.license.startsWith('NASA')?'NASA source':`CC ${image.license.toUpperCase()} ${image.license_url?.match(/\/(\d\.\d)\//)?.[1]||''}`}`:space?'Illustrative animation · not to scale':''}</div>
+
   <Audio src={staticFile('narration.wav')}/>
  </AbsoluteFill>;
 };

@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 from .generation.providers import ElevenLabs, ProviderError
 from .media import atomic_json
-from .models import Brief
+from .models import Brief, digest
 from .pipeline import ROOT, artifact_digests, generate, generation_recipe
 from .rendering import render, validate_output
 
@@ -31,7 +31,7 @@ def main():
     )
     parser.add_argument("--env-file", type=Path, default=ROOT / ".env")
     parser.add_argument(
-        "--brief", type=Path, default=ROOT / "fixtures/learning/revised-linked-list-brief.json"
+        "--brief", type=Path, default=ROOT / "fixtures/learning/new-sunk-cost-brief.json"
     )
     parser.add_argument(
         "--format",
@@ -42,7 +42,7 @@ def main():
             "space_explainer",
             "math_explainer",
         ],
-        default="both",
+        default=None,
     )
     parser.add_argument(
         "--fixture",
@@ -52,13 +52,18 @@ def main():
     parser.add_argument("--custom-scene", action="store_true")
     parser.add_argument("--storyboard-feedback", type=Path)
     parser.add_argument(
+        "--storyboard-file",
+        type=Path,
+        help="Explicit edited storyboard; live reviews still required",
+    )
+    parser.add_argument(
         "--scene-feedback",
         type=Path,
         help="Private visual review feedback for a bounded Claude repair",
     )
     parser.add_argument("--preview", action="store_true")
     parser.add_argument("--prepare-only", action="store_true")
-    parser.add_argument("--output", type=Path, default=ROOT / ".local/video-runs/linked-list")
+    parser.add_argument("--output", type=Path, default=ROOT / ".local/video-runs/latest")
     parser.add_argument(
         "--mongodb",
         action="store_true",
@@ -150,10 +155,15 @@ def main():
             )
         )
         return
-    formats = ["visual_explainer", "dialogue_gameplay"] if args.format == "both" else [args.format]
+    default_brief = Brief.model_validate_json(args.brief.read_text())
+    formats = (
+        ["visual_explainer", "dialogue_gameplay"]
+        if args.format == "both"
+        else [args.format or default_brief.format_id]
+    )
     for fmt in formats:
         brief = Brief.model_validate_json(args.brief.read_text())
-        brief = brief.model_copy(update={"format_id": fmt})
+        brief = Brief.model_validate({**brief.model_dump(), "format_id": fmt})
         work = args.output / fmt
         if args.command == "enqueue":
             if brief.scope == "private" and brief.owner_user_id != args.owner:
@@ -172,6 +182,18 @@ def main():
             continue
         if args.command in {"render", "validate"}:
             manifest = json.loads((work / "generation-manifest.json").read_text())
+            if args.command == "render" and not manifest.get("fixture"):
+                lesson = json.loads((work / "pack/lesson.json").read_text())
+                review_path = work / "render-review.json"
+                review = json.loads(review_path.read_text()) if review_path.exists() else {}
+                renderer_source = generation_recipe()["renderer_source"]
+                if (
+                    not review.get("passed")
+                    or review.get("issues")
+                    or review.get("lesson_digest") != digest(lesson)
+                    or review.get("renderer_source") != renderer_source
+                ):
+                    parser.error("Current frames need review; run generate before render")
             report = (
                 render(work / "pack", work / "output", args.preview)
                 if args.command == "render"
@@ -193,6 +215,9 @@ def main():
             preview=args.preview,
             custom_scene=args.custom_scene and fmt == "visual_explainer",
             render_video=not args.prepare_only,
+            storyboard_override=json.loads(args.storyboard_file.read_text())
+            if args.storyboard_file
+            else None,
             storyboard_feedback=args.storyboard_feedback.read_text()
             if args.storyboard_feedback
             else None,

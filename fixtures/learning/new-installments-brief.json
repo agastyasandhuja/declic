@@ -1,0 +1,56 @@
+{
+  "schema_version": "1",
+  "brief_id": "pay-in-four-demo",
+  "lesson_request_id": "synthetic-request",
+  "objective_id": "installments-vs-price",
+  "title": "Twenty-five dollars is not the price",
+  "learning_goal": "Distinguish an installment payment from total purchase commitment and see simultaneous loans stack.",
+  "subject": "personal finance",
+  "level": "high_school_college",
+  "language": "en",
+  "notation": "US dollars",
+  "assumed_knowledge": [],
+  "must_cover": [
+    "split",
+    "stack",
+    "total",
+    "terms"
+  ],
+  "must_not_claim": [
+    "All BNPL is free",
+    "A predicted payment schedule for any actual lender",
+    "Borrowing recommendations"
+  ],
+  "approved_facts": [
+    {
+      "fact_id": "split",
+      "statement": "In this hypothetical example, a $100 pair of headphones is paid in four equal $25 installments, with no interest or fees."
+    },
+    {
+      "fact_id": "stack",
+      "statement": "Three $100 purchases made on the same day under identical four-payment schedules require $75 at each payment point, not $25."
+    },
+    {
+      "fact_id": "total",
+      "statement": "The three purchases cost $300 total. Paying $75 initially leaves $225 of scheduled payments; splitting payments changes timing, not the purchase price."
+    },
+    {
+      "fact_id": "terms",
+      "statement": "Buy Now Pay Later terms vary; some plans have interest or fees. This illustration assumes no interest or fees."
+    }
+  ],
+  "input_values": [],
+  "format_id": "visual_explainer",
+  "teaching_approach": "payment_consequence",
+  "target_duration_seconds": 40,
+  "scope": "shared_generic_candidate",
+  "owner_user_id": null,
+  "template_version": "4.0.0",
+  "presentation": "reference_v3",
+  "trace_kind": "none",
+  "installment_example": {
+    "unit_price": 100,
+    "installments": 4,
+    "purchases": 3
+  }
+}

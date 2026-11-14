@@ -21,7 +21,7 @@ def render(
     *,
     stills_only=False,
 ):
-    image = os.environ.get("VIDEO_RENDER_IMAGE", "hackumass-renderer:0.1")
+    image = os.environ.get("VIDEO_RENDER_IMAGE", "hackumass-renderer:reference-v8-captions")
     if not image or image.startswith("-"):
         raise ValueError("Invalid renderer image")
     lesson = json.loads((pack / "lesson.json").read_text())
@@ -29,7 +29,7 @@ def render(
         lesson.get("presentation") in {"reference_v2", "reference_v3"}
         and lesson.get("format_id") == "space_explainer"
     )
-    cpu_limit = "4" if spatial else "2"
+    cpu_limit = "4" if spatial or lesson.get("format_id") == "dialogue_gameplay" else "2"
     # Authored spatial scenes rasterize substantially more geometry; keep an explicit cap.
     if spatial and timeout == 1100:
         timeout = 1600

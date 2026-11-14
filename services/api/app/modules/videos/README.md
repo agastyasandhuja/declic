@@ -84,6 +84,13 @@ the authored trace renderer. Stock substitutes are configured locally as Roger
 (`Xb7hH8MSUJpSbSDYk0k2`). Set `VIDEO_VOICE_DISCLOSURE` to identify substitutes.
 These are not claimed to be Peter or Stewie impersonations.
 
+When editing an existing Instant Voice Clone's samples, also change that role's
+`ELEVENLABS_<ROLE>_VOICE_REVISION` server setting (for example, a sample-set hash).
+ElevenLabs keeps the same voice ID after sample edits; this revision prevents both
+generation reuse and narration-cache reuse from returning the previous voice.
+Changing a voice ID alone already invalidates its audio cache. Voice verification
+and a successful synthesis check are required before activating a pending clone.
+
 Offline macOS smoke test (synthetic scripts, macOS `say`, estimated timing):
 
 ```sh
@@ -216,3 +223,54 @@ and [NASA large-scale structures](https://science.nasa.gov/universe/galaxies/lar
 See [decision 005](../../../../../docs/decisions/005-reference-driven-video-templates.md),
 [research and evaluation](../../../../../docs/VIDEO_ENGAGEMENT_RESEARCH.md), and the
 latest local evidence in [Agastya's status](../../../../../docs/status/AGASTYA.md).
+
+## Real-world story and humor planner
+
+`generation/story_engine.py` provides `plan_story(client, brief, recent, run_id=...)`.
+It asks Opus for three different grounded stories, checks structure/fact-ID coverage,
+short joke placement, minimal diagram notation, recent setup/punchline similarity,
+and repetition of the primary humor mechanism. A separate model audit checks
+factual and visual causality before the plan is returned. These are safeguards,
+not proof that a joke is funny or semantically unique.
+Each rejected candidate can receive up to two targeted repairs, each followed
+by a fresh audit. The planner moves to another alternative if both still fail,
+instead of rebuilding the whole batch repeatedly. The independent comparison
+uses actual comic expectations/reversals; sharing a physics principle alone
+does not make two stories the same joke.
+
+Local invocation:
+
+```sh
+PYTHONPATH=services/api services/api/.venv/bin/python -m app.modules.videos.story_cli \
+  --brief fixtures/learning/friction-story-engine-brief.json \
+  --output .local/story-engine-audition --count 2
+```
+
+History is partitioned by private owner vs generic scope and rejects mixed-scope
+inputs before any model call. The CLI is a single-writer authoring tool; a future
+production integration needs a scoped transactional history store. It records
+recent *drafts*, not automatic user approval. Sources and provider caches remain
+local, outside the renderer.
+
+`record_feedback(history_folder, brief, plan_digest, verdict, note)` records an
+actual user verdict (`keep`, `potential`, or `pass`) for a known scoped plan.
+That feedback is included in later planning without treating approval of a
+story structure as approval of every animation. The CLI retains validation
+diagnostics and a run report, including partial results if generation fails.
+The planner also selects a male stock narrator from Liam, Roger, Charlie and
+Callum, excluding the last two planned leads and preferring less recently used
+voices. `narration.voice_id` in the CLI artifact is ready for the existing TTS
+adapter; `planned_not_synthesized` explicitly distinguishes casting from audio.
+This does not override the production feed's narrator configuration.
+
+The output `StoryPlan` is an internal authoring artifact: it contains narration,
+visual actions, supported end states, fact references, jokes and casting direction.
+It is not the existing public `Storyboard` contract. New objects/actions still
+need animation implementation and the existing content/render review gates;
+this planner is not silently routed into the production feed. The prior fixed
+scene enums cannot honestly render arbitrary new real-world situations.
+
+`services/renderer/src/PopCaptions.tsx` is the shared phrase-pop caption component,
+currently exercised in the friction v2 audition. Future authored story scenes
+can reuse it. Male voices, college topics, minimal text, and causal situational
+humor are the current experimental authoring defaults.

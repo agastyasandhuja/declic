@@ -1,6 +1,6 @@
 # Isolated Remotion renderer
 
-Build from repository root: `docker build -t hackumass-renderer:0.1 services/renderer`.
+Build from repository root: `docker build -t hackumass-renderer:reference-v8-captions services/renderer`.
 Use the video CLI documented in `services/api/app/modules/videos/README.md` to run
 the broker. Do not execute generated scene modules on the host.
 

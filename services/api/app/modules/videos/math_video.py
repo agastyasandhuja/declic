@@ -1,6 +1,7 @@
-"""Music-led matrix animation: model plans presentation; trusted code computes every value."""
+"""Music-led mathematical motion: trusted code computes every value and geometric plan."""
 
 import json
+import shutil
 from pathlib import Path
 from typing import Literal
 
@@ -43,6 +44,35 @@ def matrix_plan(a, b):
     return {"a": a, "b": b, "cells": cells}, cells[-1]["end"] + 1.5
 
 
+def pythagorean_plan(sides):
+    """Four congruent right triangles leave the same area in two arrangements."""
+    if (
+        not isinstance(sides, list)
+        or len(sides) != 2
+        or any(type(v) is not int or not 1 <= v <= 9 for v in sides)
+    ):
+        raise ValueError("Pythagorean sides must be two positive integers from 1 to 9")
+    a, b = sides
+    stages = [
+        ("triangle", 0, 3),
+        ("assemble", 3, 6),
+        ("c_square", 6, 9),
+        ("rearrange", 9, 14),
+        ("area_sum", 14, 18),
+        ("identity", 18, 22),
+    ]
+    return {
+        "kind": "pythagorean_rearrangement",
+        "a": a,
+        "b": b,
+        "c_squared": a * a + b * b,
+        "outer_side": a + b,
+        "triangle_area": a * b / 2,
+        "areas": {"a_squared": a * a, "b_squared": b * b},
+        "stages": [{"kind": kind, "start": start, "end": end} for kind, start, end in stages],
+    }, 22
+
+
 def generate_math(
     brief,
     work: Path,
@@ -60,7 +90,12 @@ def generate_math(
     pack = work / "pack"
     assets = pack / "assets"
     assets.mkdir(parents=True, exist_ok=True)
-    math, duration = matrix_plan(brief.matrix_a, brief.matrix_b)
+    geometry = brief.math_topic == "pythagorean_rearrangement"
+    math, duration = (
+        pythagorean_plan(brief.pythagorean_sides)
+        if geometry
+        else matrix_plan(brief.matrix_a, brief.matrix_b)
+    )
     recipe = generation_recipe(fixture=fixture)
     key = brief.generation_key(recipe)
     atomic_json(
@@ -77,15 +112,19 @@ def generate_math(
         if turns > 8:
             raise ProviderError("AGENT_BUDGET_EXHAUSTED")
 
-    claude = None if fixture else Claude(charge=charge)
-    direction_key = digest([brief.teaching_payload(), recipe["claude"], "math-direction-2"])
+    claude = None if fixture else Claude(charge=charge, cache_dir=work / "model-cache")
+    direction_key = digest([brief.teaching_payload(), recipe["claude"], "math-direction-3"])
     cached = work / "math-direction.json"
     if cached.exists() and json.loads(cached.read_text()).get("key") == direction_key:
         direction = MathDirection.model_validate(json.loads(cached.read_text())["direction"])
     elif fixture:
         direction = MathDirection(
-            hook="One row. One column. One answer.",
-            payoff="Each row meets each column.",
+            hook="Why do the two square areas equal the third?"
+            if geometry
+            else "One row. One column. One answer.",
+            payoff="Same square. Same triangles. Same remaining area."
+            if geometry
+            else "Each row meets each column.",
             music_id="cylinder_six",
             rationale="Synthetic direction fixture",
         )
@@ -93,17 +132,30 @@ def generate_math(
         direction = claude.structured(
             MathDirection,
             SYSTEM
-            + "Direct a minimal, music-led matrix-multiplication short. No instructional captions "
-            "or credit text on the canvas; oversized matrices and moving numbers do the teaching. "
-            "Hook and payoff are internal editorial intent, not rendered text. "
-            "Black canvas, serif math, "
-            "purple rows and gold columns. Source matrices stay still; factors move into "
-            "dot products and results slide into their cells. Choose a concise specific hook "
-            "and useful final rule from the approved facts. No narration, financial claim, "
-            "unrelated slogan or text requiring an unseen diagram. The hook should invite "
-            "the viewer to follow the first dot product, e.g. 'How does this become 20?' "
-            "only when 20 is the computed first result. Choose one licensed instrumental track "
-            "ID from the catalog. Never output arithmetic: code supplies exact results.",
+            + (
+                "Direct a minimal music-led Pythagorean rearrangement proof. Four congruent right "
+                "triangles tile the same outer square in two ways: first leaving a tilted square "
+                "of area c squared, then two squares of areas a squared and b squared. The same "
+                "triangles only translate, preserving shape and area. Never call an intermediate "
+                "overlapping arrangement a proof. Only the two exact endpoint tilings establish "
+                "the identity. No written explanation; large geometry, symbolic labels and one "
+                "equation explain the concept. Hook/payoff are internal intent only. Choose a "
+                "licensed instrumental catalog ID. No voice, prose, credit footer, or URLs. "
+                "Never supply arithmetic or coordinates; trusted code supplies them."
+                if geometry
+                else "Direct a minimal, music-led matrix-multiplication short. No instructional "
+                "captions or credit text on the canvas; oversized matrices and moving numbers "
+                "do the teaching. "
+                "Hook and payoff are internal editorial intent, not rendered text. "
+                "Black canvas, serif math, "
+                "purple rows and gold columns. Source matrices stay still; factors move into "
+                "dot products and results slide into their cells. Choose a concise specific hook "
+                "and useful final rule from the approved facts. No narration, financial claim, "
+                "unrelated slogan or text requiring an unseen diagram. The hook should invite "
+                "the viewer to follow the first dot product, e.g. 'How does this become 20?' "
+                "only when 20 is the computed first result. Choose one licensed instrumental track "
+                "ID from the catalog. Never output arithmetic: code supplies exact results."
+            ),
             {"brief": brief.teaching_payload(), "computed_math": math, "music_catalog": CATALOG},
         )
     atomic_json(cached, {"key": direction_key, "direction": direction.model_dump()})
@@ -118,7 +170,7 @@ def generate_math(
         "Include this credit in the description when sharing the video.\n"
     )
     review_frames = [0, 30]
-    for cell in math["cells"]:
+    for cell in math["stages"] if geometry else math["cells"]:
         review_frames.extend(
             round((cell["start"] + n * (cell["end"] - cell["start"])) * 30)
             for n in (0.34, 0.62, 0.80, 0.95)
@@ -172,6 +224,7 @@ def generate_math(
             {
                 **review.model_dump(),
                 "lesson_digest": digest(lesson),
+                "renderer_source": recipe["renderer_source"],
                 "model": claude.model,
                 "scope": "sampled_frames",
             },
@@ -185,6 +238,15 @@ def generate_math(
         if render_video
         else {"media_checks": "not_run"}
     )
+    if render_video:
+        # A standalone export must retain the licensed soundtrack's attribution.
+        shutil.copyfile(work / "CREDITS.txt", work / "output" / "CREDITS.txt")
+    motion_inspection = None
+    if render_video:
+        from .motion_review import stage_motion_review
+
+        stage("staging_motion_inspection")
+        motion_inspection = stage_motion_review(work, lesson)
     manifest = {
         "schema_version": "1",
         "generation_key": key,
@@ -193,6 +255,7 @@ def generate_math(
         "owner_user_id": brief.owner_user_id,
         "status": "validating",
         "quality": report,
+        "motion_inspection": motion_inspection,
         "fixture": fixture,
         "custom_scene": False,
         "human_review": "pending",
@@ -201,12 +264,17 @@ def generate_math(
         "music_credit": music,
         "provider_usage": getattr(claude, "usage", []),
         "teaching_checks": {
-            "policy": "matrix-motion-1",
+            "policy": "pythagorean-area-motion-1" if geometry else "matrix-motion-1",
             "arithmetic": "computed_and_renderer_verified",
             "engagement_uplift": "unmeasured",
             "learning_uplift": "unmeasured",
         },
-        "artifact_digests": artifact_digests(work) if render_video else {},
+        "artifact_digests": {
+            **artifact_digests(work),
+            "output/CREDITS.txt": sha256(work / "output" / "CREDITS.txt"),
+        }
+        if render_video
+        else {},
     }
     atomic_json(work / "generation-manifest.json", manifest)
     return manifest

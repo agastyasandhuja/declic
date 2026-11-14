@@ -1,0 +1,281 @@
+{
+  "id": "election-college",
+  "title": "More votes. Still lost?",
+  "template": "voxel-election-story-v1",
+  "voice": {
+    "name": "Roger",
+    "id": "CwhRBWXzGAHq8TQ4Fs17"
+  },
+  "objective": "Explain how state-based winner-take-all electoral votes can produce a U.S. president who did not win the national popular vote, using a clearly fictional numerical example.",
+  "sources": [
+    "https://www.archives.gov/electoral-college/about",
+    "https://www.archives.gov/electoral-college/allocation",
+    "https://www.archives.gov/electoral-college/faq"
+  ],
+  "beats": [
+    {
+      "scene": "hook",
+      "text": "Orange got more votes. Teal won. Somebody brought the wrong victory confetti.",
+      "camera": [
+        [
+          2.5,
+          5.7,
+          18
+        ],
+        [
+          2.2,
+          5.5,
+          17.5
+        ]
+      ],
+      "target": [
+        0,
+        1.3,
+        5.2
+      ],
+      "pause": 0.17
+    },
+    {
+      "scene": "ballot",
+      "text": "U.S. presidential voters choose electors, state by state.",
+      "camera": [
+        [
+          5,
+          4.5,
+          7
+        ],
+        [
+          4.4,
+          4,
+          6.5
+        ]
+      ],
+      "target": [
+        0.2,
+        1.3,
+        0
+      ],
+      "pause": 0.17
+    },
+    {
+      "scene": "majority",
+      "text": "Five hundred thirty-eight electoral votes. Two hundred seventy wins.",
+      "camera": [
+        [
+          10,
+          13,
+          19
+        ],
+        [
+          9,
+          12,
+          18
+        ]
+      ],
+      "target": [
+        0,
+        1,
+        0
+      ],
+      "pause": 0.17
+    },
+    {
+      "scene": "allocation",
+      "text": "State totals equal House seats plus two. D.C. gets three.",
+      "camera": [
+        [
+          7,
+          7,
+          13
+        ],
+        [
+          6.5,
+          6.5,
+          12
+        ]
+      ],
+      "target": [
+        0,
+        1,
+        0
+      ],
+      "pause": 0.17
+    },
+    {
+      "scene": "exceptions",
+      "text": "Forty-eight states and D.C. are winner-take-all. Maine and Nebraska also use congressional districts.",
+      "camera": [
+        [
+          10,
+          12,
+          19
+        ],
+        [
+          9,
+          11,
+          18
+        ]
+      ],
+      "target": [
+        0,
+        1,
+        0
+      ],
+      "pause": 0.17
+    },
+    {
+      "scene": "toy",
+      "text": "Imagine three fictional states, each worth five electoral votes.",
+      "camera": [
+        [
+          4,
+          14,
+          25
+        ],
+        [
+          3,
+          13.5,
+          24
+        ]
+      ],
+      "target": [
+        0,
+        0.6,
+        0
+      ],
+      "pause": 0.17
+    },
+    {
+      "scene": "narrow",
+      "text": "Teal wins two, fifty-one to forty-nine.",
+      "camera": [
+        [
+          4,
+          14,
+          25
+        ],
+        [
+          3,
+          13.5,
+          24
+        ]
+      ],
+      "target": [
+        0,
+        0.6,
+        0
+      ],
+      "pause": 0.17
+    },
+    {
+      "scene": "landslide",
+      "text": "Orange wins the third, ninety-eight to two. A landslide!",
+      "camera": [
+        [
+          4,
+          14,
+          25
+        ],
+        [
+          3,
+          13.5,
+          24
+        ]
+      ],
+      "target": [
+        0,
+        0.6,
+        0
+      ],
+      "pause": 0.17
+    },
+    {
+      "scene": "popular",
+      "text": "Popular votes: Orange, one hundred ninety-six. Teal, one hundred four.",
+      "camera": [
+        [
+          2.5,
+          5.7,
+          18
+        ],
+        [
+          2.2,
+          5.5,
+          17.5
+        ]
+      ],
+      "target": [
+        0,
+        1.3,
+        5.2
+      ],
+      "pause": 0.17
+    },
+    {
+      "scene": "electoral",
+      "text": "Electoral votes: Teal, ten. Orange, five. That is the reversal.",
+      "camera": [
+        [
+          2.5,
+          5.7,
+          18
+        ],
+        [
+          2.2,
+          5.5,
+          17.5
+        ]
+      ],
+      "target": [
+        0,
+        1.3,
+        5.2
+      ],
+      "pause": 0.17
+    },
+    {
+      "scene": "certify",
+      "text": "Electors vote in December; Congress counts in January. No electoral majority? The House chooses, one vote per state delegation.",
+      "camera": [
+        [
+          4,
+          14,
+          25
+        ],
+        [
+          3,
+          13.5,
+          24
+        ]
+      ],
+      "target": [
+        0,
+        0.6,
+        0
+      ],
+      "pause": 0.17
+    },
+    {
+      "scene": "outro",
+      "text": "More votes nationwide does not guarantee the presidency.",
+      "camera": [
+        [
+          2.5,
+          5.7,
+          18
+        ],
+        [
+          2.2,
+          5.5,
+          17.5
+        ]
+      ],
+      "target": [
+        0,
+        1.3,
+        5.2
+      ],
+      "pause": 0.17
+    }
+  ]
+}

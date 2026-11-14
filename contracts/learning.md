@@ -98,7 +98,7 @@ constraint remain unchanged. See [decision 004](../docs/decisions/004-video-teac
 
 ## Reference-driven presentation v2 (November 14)
 
-`Brief.presentation` selects `reference_v2` (new default) or `guided_v1` (earlier
+`Brief.presentation` originally selected `reference_v2` or `guided_v1` (earlier
 five-beat format). `Brief.trace_kind` selects `linked_list_reverse` or `none`;
 non-code subjects use `none` and do not fabricate pointer events. Existing stored
 boards remain readable when paired with their explicit guided presentation.
@@ -125,8 +125,10 @@ See [decision 005](../docs/decisions/005-reference-driven-video-templates.md).
 
 New Brief defaults to `reference_v3`. This adds photo/scene diversity requirements
 without changing existing narration field names or the public playback payload.
-`math_explainer` requires `trace_kind=none` and compatible `matrix_a`, `matrix_b`
-(2–3 rows/columns, integer entries −9…9). Matrices are forbidden for other formats.
+`math_explainer` requires `trace_kind=none`. Its original/default matrix topic uses
+compatible `matrix_a`, `matrix_b` (2–3 rows/columns, integer entries −9…9).
+Matrices are forbidden for other formats. The additive geometry topic below is
+the explicit alternative to matrix inputs.
 Math uses music and on-screen worked equations; it does not invent spoken segments
 or captions. Internal pack includes verified products/sums, timing, `audio_file` and
 music attribution. The renderer checks arithmetic again before rendering.
@@ -134,3 +136,47 @@ Live v3 generation requires source review (spoken lessons), actual image review,
 and rendered-frame inspection. Human review still gates publication. See decision 006.
 
 User-directed math refinement: the minimal matrix format permits 20–60 seconds; spoken formats retain 30–60. The two-by-two demo is 21 seconds. Credits accompany the file instead of occupying the canvas.
+
+### Semantic motion extension (November 14)
+
+The public format IDs, VideoVariant/feed fields and ordinary MP4 delivery remain
+unchanged. Updated internal validators accept historical briefs/storyboards through
+defaults; new scene packages require the corresponding updated renderer. See
+[decision 007](../docs/decisions/007-semantic-motion-video-templates.md).
+
+`Brief.math_topic` defaults to `matrix_multiplication`. The alternative
+`pythagorean_rearrangement` requires `pythagorean_sides`, exactly two strict integers
+from 1 through 9, and forbids matrix inputs. The sides represent perpendicular
+legs, not three supplied side lengths. Trusted code derives the triangle/square
+areas and exact endpoint geometry. Matrix plans cannot include Pythagorean sides.
+Non-math briefs cannot select the geometry topic or include its side inputs.
+
+`Brief.installment_example` optionally supplies strict integer `unit_price` (4…10000),
+`installments` (2…4), and `purchases` (1…3). It is valid only for
+`visual_explainer` with `trace_kind=none`; `unit_price` must be divisible by
+`installments`. The trusted plan derives payment amounts, total commitments and
+remaining balance. These are bounded hypothetical equal-payment illustrations,
+not lender-specific payment schedules. Such plans use authored visuals instead of
+the four-image requirement for historical photo explainers.
+
+`Shot.motion_scene` defaults to `none`. Non-default modes require `kind=diagram`:
+
+| Family | Modes | Required context |
+| --- | --- | --- |
+| Payment | `price_tag`, `split_payment`, `stack_purchases`, `payment_calendar`, `total_cost`, `choice_balance`, `receipt` | Validated `installment_example`; no model-provided arithmetic or stock-image requirement |
+| Decision | `ticket_purchase`, `ticket_loss`, `future_choice`, `time_loss`, `decision_reset` | The authored $20 nonrefundable ticket/one-hour example, with matching approved facts |
+
+The existing `space_explainer` identifier also supports illustrative biology through
+`Shot.space_mode`: `enzyme_hook`, `enzyme_fit`, `enzyme_reaction`, `enzyme_reuse`,
+`enzyme_compete`, `enzyme_concentration`, `enzyme_denature`. All-enzyme plans do not
+request NASA assets; older space/image modes remain available. Reference-v3 spatial
+plans still require distinct demonstrations, not just camera variation. Adi may
+optionally label this format **Animated science** without renaming the wire enum.
+
+Current style policy removes diagram backplates in dialogue and keeps its gameplay
+muted with narration only. Narrated animation uses shared white single-word speech-aligned pop captions
+and essential labels without persistent titles or source footers. Math remains
+music-led and minimal. Source/music/image attribution must travel in metadata and
+`CREDITS.txt`; the eventual publisher must preserve required attribution in the
+description or accompanying credits. These presentation changes do not establish
+measured learning/engagement gains or successful iPhone playback.

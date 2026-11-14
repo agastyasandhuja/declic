@@ -1,3 +1,4 @@
+import {PopCaptions} from './PopCaptions';
 import {MathLesson} from './MathLesson';
 import React from 'react';
 import {AbsoluteFill, Audio, Composition, Img, OffthreadVideo, registerRoot, staticFile, useCurrentFrame, useVideoConfig, interpolate} from 'remotion';
@@ -56,13 +57,9 @@ export const PointerTrace: React.FC<{lesson:any,compact?:boolean}> = ({lesson,co
 };
 
 const Captions = ({lesson}:{lesson:any}) => {
-  const t=useCurrentFrame()/30;
-  const group=lesson.captions.find((g:any)=>g.start<=t&&t<g.end);
-  if(!group)return null;
-  return <div style={{position:'absolute',left:78,right:150,top:lesson.format_id==='dialogue_gameplay'?800:1335,textAlign:'center',fontSize:62,fontWeight:850,lineHeight:1.22,textShadow:'0 4px 10px #000',WebkitTextStroke:'1.5px #0b1020'}}>
-    <div style={{fontSize:24,letterSpacing:3,color:group.speaker==='peter'?C.gold:C.cyan,marginBottom:16,textTransform:'uppercase'}}>{group.speaker==='narrator'?'':group.speaker}</div>
-    {group.words.map((w:any,i:number)=><span key={i} style={{color:t>=w.start&&t<w.end?C.gold:'white'}}>{w.text}{' '}</span>)}
-  </div>;
+ const t=useCurrentFrame()/30;
+ const caption=lesson.captions.find((g:any)=>g.start<=t&&t<g.end);
+ return <PopCaptions caption={caption} now={t} top={lesson.format_id==='dialogue_gameplay'?800:1335}/>;
 };
 
 const Character=({role,lesson,left}:{role:string,lesson:any,left:number})=>{

@@ -1,0 +1,204 @@
+{
+  "$defs": {
+    "Beat": {
+      "additionalProperties": false,
+      "properties": {
+        "scene": {
+          "enum": [
+            "hook",
+            "ballot",
+            "majority",
+            "allocation",
+            "exceptions",
+            "toy",
+            "narrow",
+            "landslide",
+            "popular",
+            "electoral",
+            "certify",
+            "outro"
+          ],
+          "title": "Scene",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 260,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "camera": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "maxItems": 3,
+              "minItems": 3,
+              "prefixItems": [
+                {
+                  "maximum": 80,
+                  "minimum": -80,
+                  "type": "number"
+                },
+                {
+                  "maximum": 80,
+                  "minimum": -80,
+                  "type": "number"
+                },
+                {
+                  "maximum": 80,
+                  "minimum": -80,
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "maxItems": 3,
+              "minItems": 3,
+              "prefixItems": [
+                {
+                  "maximum": 80,
+                  "minimum": -80,
+                  "type": "number"
+                },
+                {
+                  "maximum": 80,
+                  "minimum": -80,
+                  "type": "number"
+                },
+                {
+                  "maximum": 80,
+                  "minimum": -80,
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            }
+          ],
+          "title": "Camera",
+          "type": "array"
+        },
+        "target": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "maximum": 80,
+              "minimum": -80,
+              "type": "number"
+            },
+            {
+              "maximum": 80,
+              "minimum": -80,
+              "type": "number"
+            },
+            {
+              "maximum": 80,
+              "minimum": -80,
+              "type": "number"
+            }
+          ],
+          "title": "Target",
+          "type": "array"
+        },
+        "pause": {
+          "maximum": 1,
+          "minimum": 0.1,
+          "title": "Pause",
+          "type": "number"
+        }
+      },
+      "required": [
+        "scene",
+        "text",
+        "camera",
+        "target",
+        "pause"
+      ],
+      "title": "Beat",
+      "type": "object"
+    },
+    "Voice": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[A-Za-z0-9_-]{1,100}$",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "id"
+      ],
+      "title": "Voice",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "const": "election-college",
+      "title": "Id",
+      "type": "string"
+    },
+    "title": {
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "template": {
+      "const": "voxel-election-story-v1",
+      "title": "Template",
+      "type": "string"
+    },
+    "voice": {
+      "$ref": "#/$defs/Voice"
+    },
+    "objective": {
+      "maxLength": 1000,
+      "minLength": 20,
+      "title": "Objective",
+      "type": "string"
+    },
+    "sources": {
+      "items": {
+        "maxLength": 500,
+        "pattern": "^https://",
+        "type": "string"
+      },
+      "maxItems": 8,
+      "minItems": 1,
+      "title": "Sources",
+      "type": "array"
+    },
+    "beats": {
+      "items": {
+        "$ref": "#/$defs/Beat"
+      },
+      "maxItems": 12,
+      "minItems": 12,
+      "title": "Beats",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "template",
+    "voice",
+    "objective",
+    "sources",
+    "beats"
+  ],
+  "title": "Story",
+  "type": "object"
+}

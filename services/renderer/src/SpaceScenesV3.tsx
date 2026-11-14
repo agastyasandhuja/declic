@@ -1,5 +1,6 @@
 import React from 'react';
 import {AbsoluteFill,useCurrentFrame} from 'remotion';
+import {BiologyScenes, BIOLOGY_MODES} from './BiologyScenes';
 const clamp=(x:number)=>Math.max(0,Math.min(1,x));
 const ease=(x:number)=>{x=clamp(x);return x*x*(3-2*x)};
 const mixPosition=(a:number,b:number,p:number)=>a+(b-a)*p;
@@ -11,6 +12,7 @@ const Label=({x,y,children,color='#d6e6ff'}:any)=><text x={x} y={y} textAnchor="
 // Each mode has its own geometry and explanatory motion. No shared spinning mesh.
 export const SpaceScenesV3=({shot}:{shot:any})=>{
  const t=useCurrentFrame()/30,age=t-shot.start,p=clamp(age/(shot.end-shot.start)),e=ease(p),mode=shot.space_mode;
+ if(BIOLOGY_MODES.has(mode)) return <BiologyScenes shot={shot}/>;
  const seed=[...shot.shot_id].reduce((n:number,c:string)=>n+c.charCodeAt(0),0);
  const hubs=baseHubs.map(([x,y],i)=>[x+(random(seed+i)-.5)*130,y+(random(seed+i+20)-.5)*130]);
  return <AbsoluteFill style={{background:'radial-gradient(ellipse at 45% 40%,#10162f,#01030a 72%)'}}>
