@@ -48,6 +48,17 @@ external course tools depend on institution and student permissions.
   proposed managed identity implementation.
 - [Supabase changelog](https://supabase.com/changelog):
   verify current CLI and SDK behavior before creating resources/migrations.
+- [Supabase Storage buckets](https://supabase.com/docs/guides/storage/buckets/fundamentals):
+  private document/media storage and signed access; retained with Atlas.
+- [MongoDB data modeling](https://www.mongodb.com/docs/manual/data-modeling/):
+  adopted application datastore; domain owners draft collection shapes.
+- [MongoDB schema validation](https://www.mongodb.com/docs/manual/core/schema-validation/specify-json-schema/):
+  collection validation; runtime API schemas remain governed by the contracts.
+- [MongoDB indexes](https://www.mongodb.com/docs/manual/reference/method/db.collection.createindex/)
+  and [transactions](https://www.mongodb.com/docs/manual/core/transactions/):
+  uniqueness and atomic domain/outbox changes; implementation remains untested.
+- [MongoDB Vector Search](https://www.mongodb.com/docs/vector-search/query/aggregation-stages/vector-search-stage/):
+  optional later lesson discovery; not required for the first mobile milestone.
 
 Model IDs, voice IDs, generated-code isolation implementation, performance and
 costs have not been validated by this planning scaffold.

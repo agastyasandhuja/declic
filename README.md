@@ -6,8 +6,9 @@ upcoming exams, and quiz answers guide the study recommendations.
 
 **Current status:** architecture, ownership guides, and directory scaffold only.
 There is no runnable app or configured cloud infrastructure yet. Technology
-choices below are proposed defaults; user-confirmed product requirements are
-identified in the project document.
+choices below include the adopted MongoDB Atlas database decision; remaining
+defaults and user-confirmed product requirements are identified in the project
+document.
 
 ## Start here
 
@@ -20,19 +21,28 @@ identified in the project document.
    - [Agastya — video generation, quizzes, recommendations](docs/tasks/AGASTYA.md)
 5. Use [integration milestones](docs/INTEGRATION.md) for handoffs and demo checks.
 
-## Proposed stack
+## Stack
 
 | Layer | Default |
 |---|---|
 | iPhone UI | React Native + Expo + TypeScript |
-| App identity, database, media storage | Supabase Auth, Postgres, Storage |
+| App identity | Supabase Auth |
+| Application database | MongoDB Atlas |
+| Documents and media files | Supabase Storage |
 | HTTP API and domain logic | Python + FastAPI, one modular backend |
 | Entertainment adapters | TikTok-Api first experiment; instagrapi alternative |
 | Course extraction and lesson planning | Gemini, with validated structured output |
 | Video writing and scene generation | Claude |
 | Narration and alignment | ElevenLabs |
 | Compositing | Remotion + React/SVG + FFmpeg |
-| Background work | Persistent database job table + separate workers initially |
+| Background work | Persistent Atlas jobs collection + separate workers initially |
+
+Atlas replaces the proposed Postgres application tables for profiles, courses,
+lesson plans, video metadata, jobs, quizzes and feed state. Supabase continues to
+handle accounts and file storage. The phone accesses Atlas-backed data through
+the authenticated FastAPI API. See the [accepted decision](docs/decisions/001-proposed-atlas-application-data.md)
+and [database ownership/setup plan](database/README.md). No Atlas cluster or
+database connection has been provisioned or tested by this scaffold.
 
 ## Repository map
 
@@ -49,7 +59,7 @@ identified in the project document.
 | packages/mobile-academics | Course connection/profile feature components | Amogh |
 | packages/mobile-learning | Quiz/progress feature components | Agastya |
 | contracts | Domain interface definitions; see ownership inside | Split by file |
-| database | Domain migration drafts and ordered migrations | Split / Agastya integrates |
+| database | Domain collection/index drafts and ordered database changes | Split / Agastya integrates |
 | fixtures | Synthetic, nonprivate integration samples | Split by subfolder |
 | docs | Product architecture, integration, references, task guides | Split by document |
 

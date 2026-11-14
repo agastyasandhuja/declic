@@ -34,12 +34,19 @@ Python dependencies and API router registration with Agastya.
 1. Initialize React Native + Expo + TypeScript inside apps/mobile.
 2. Keep the repository root as a workspace, not the Expo application itself.
 3. Set up minimal auth and feed navigation with clear loading/error states.
-4. Implement proposed Supabase Auth signup/login/logout and persistence using
+4. Implement Supabase Auth signup/login/logout and persistence using
    current provider guidance. Show email confirmation when required.
 5. Keep session credentials in secure device storage; never store passwords.
 6. Define one API client that attaches app access tokens and handles expired sessions.
 7. Add a fixture entertainment adapter so player work proceeds independently.
 8. Document exact install/start/device-test commands and public environment names.
+
+Application profiles and entertainment metadata use MongoDB Atlas under the
+[accepted storage decision](../decisions/001-proposed-atlas-application-data.md).
+Prepare Adi's collection/validator/index drafts in the owned database domains;
+Agastya integrates the shared connection and ordered database changes. Keep Atlas
+credentials server-side. Mobile uses Supabase Auth and the authenticated API;
+fixture playback does not depend on a live database.
 
 Acceptance:
 
