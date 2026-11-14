@@ -229,3 +229,40 @@ def test_playback_renewal_fences_older_background_worker(connected):
     row = c.social.get("alice")
     assert row["refresh_version"] == 1
     assert c.vault.open("alice", "instagram", row["sealed"])["cursor"] is None
+
+
+def test_expired_catalog_can_renew_known_instagram_clip_without_reconnect(connected):
+    c = connected
+    c.database.mongo.entertainment_catalogs.update_one(
+        {"user_id": "alice"}, {"$set": {"expires_at": utc_now() - timedelta(seconds=1)}}
+    )
+    assert c.service.resolve_playback("instagram_123", {"user_id": "alice"}) == c.fresh["playback"]
+    assert c.social.public("alice")["status"] == "connected"
+
+
+@pytest.mark.parametrize("code", ["INSTAGRAM_UNAVAILABLE", "INSTAGRAM_RATE_LIMITED"])
+def test_transient_media_failure_preserves_encrypted_login_session(connected, code):
+    c = connected
+    original = c.social.get("alice")
+
+    def fail(_identifier):
+        raise CatalogFailure(503, code, "Synthetic temporary failure")
+
+    c.provider.refresh = fail
+    with pytest.raises(CatalogFailure) as failure:
+        c.service.resolve_playback("instagram_123", {"user_id": "alice"})
+    assert failure.value.code == code
+    after = c.social.get("alice")
+    assert after["status"] == "connected"
+    assert after["sealed"] == original["sealed"]
+    assert after["connection_id"] == original["connection_id"]
+
+
+def test_evicted_media_requires_feed_reload_not_instagram_reauthentication(connected):
+    c = connected
+    c.database.mongo.entertainment_catalogs.delete_one({"user_id": "alice"})
+    with pytest.raises(CatalogFailure) as failure:
+        c.service.resolve_playback("instagram_123", {"user_id": "alice"})
+    assert failure.value.code == "VIDEO_NOT_FOUND"
+    assert c.social.public("alice")["status"] == "connected"
+    assert c.calls == []

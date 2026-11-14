@@ -1,5 +1,25 @@
 # Agastya status
 
+## Instagram cookie handoff and reopening — November 14
+
+- Added app-authenticated `/v1/instagram/browser-session` using the existing
+  single-attempt browser-cookie verifier, owner-bound encryption, attempt fencing
+  and cooldown. Failed replacements preserve a previously working connection.
+  The Expo preview proxy allows only the new POST route; UI wiring is delegated
+  to the mobile workstream.
+- Added synthetic SDK/database restart and playback freshness regressions.
+  Focused browser-session/restoration/social/playback tests: 28 passed against a
+  private disposable Mongo replica set on localhost:27029, with provider calls
+  mocked. The real pinned SDK restoration test prohibits network connections.
+  Initial SQLite checks: 13 passed. Proxy test: 1 passed with Node 24. Ruff passed.
+- An initial test attempt against the previously used localhost:27027 failed
+  because that server was no longer the disposable rs0 instance; it was untouched.
+  Created a separate 512MB test container for the successful tests and removed
+  only that container afterward.
+- Documented media expiry versus authentication and the official professional-
+  account API boundary in decision 011. No real cookie login, provider call,
+  new OAuth implementation or phone-session longevity claim is part of these tests.
+
 ## Selected video worker batches — November 14
 
 - Added optional `job_ids` to Atlas/local video claiming and `run_once`; empty
