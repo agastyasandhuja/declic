@@ -1,0 +1,21 @@
+{
+  "format_id": "math_explainer",
+  "presentation": "reference_v3",
+  "audio_mode": "music",
+  "scene": "authored_matrix_dot_product",
+  "supported_operations": [
+    "matrix_multiplication_2_to_3_dimensions"
+  ],
+  "style": "minimal_large_matrix",
+  "minimum_duration_seconds": 20,
+  "music_attribution": "CREDITS.txt_and_manifest",
+  "template_version": "3.0.0",
+  "input_schema": "../../../../contracts/schemas/learning/Brief.schema.json",
+  "example": "../../../../fixtures/learning/matrix-math-brief.json",
+  "output": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "codec": "h264"
+  }
+}

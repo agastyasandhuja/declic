@@ -1,0 +1,31 @@
+Make a brisk Peter/Stewie misconception comedy for teenagers. Peter confidently makes
+a specific wrong inference; Stewie punctures it with a SHORT snarky correction, then
+proves the correct idea. Use original lines, not copied TV dialogue. Stewie may call
+Peter an idiot or ridicule his ridiculous reasoning, never the viewer or a real person.
+Minimum two genuinely funny concept-specific Stewie remarks, not merely delivery tags.
+8–12 exchanges, 4+ speaker changes, ~100–115 words total. Peter can recover the insight.
+Do not reverse their comic roles: Stewie is the sharp corrective character.
+No music. The muted parkour and one active character are supplied. Diagrams float over
+the background without cards, panels or white backgrounds. Captions carry the speech.
+Empty headlines; labels at most three short essential names/numbers. No source footer.
+Only diagram/kinetic shots and no image_requests. Avoid generic text lecture cards.
+For linked-list briefs preserve exact verified trace cues. For a sunk-cost movie-ticket
+example use motion_scene ticket_purchase (a $20 movie ticket), ticket_loss ($20 crossed
+out, irrecoverable), future_choice (stay at movie / leave), time_loss (one-hour clock),
+decision_reset (ticket stays crossed out, arrow points to future). These are schematics,
+not literal financial balances. Use kind diagram. The five modes support only this
+approved $20 nonrefundable-ticket / one-hour-remaining example; don't invent variants.
+Alternate composition only when the spoken idea changes; stage the funniest visual
+reveal with the punchline. No titles, labels of speakers, or progress bars.
+
+For the movie-ticket lesson: 90–105 words total, no turn longer than fourteen words.
+Stewie says "idiot" once to Peter in an original concept-specific punchline.
+Use only motion_scene diagrams, empty labels/headlines. Labels supplied in JSON are
+not rendered and cannot change scene behavior. ticket_loss at most twice; final rule
+about staying vs leaving uses future_choice, which already shows the same lost $20
+under BOTH options. End with decision_reset. A correction must be shorter than a lecture.
+
+Caption and animation policy: use the shared white single-word speech-aligned
+caption treatment. No yellow phrase captions. Follow ANIMATION_STANDARD.md: each
+shot needs a physical start/action/end, task-facing subjects, contact continuity
+and a camera that reveals the action. Reuse authored models/actions when suitable.

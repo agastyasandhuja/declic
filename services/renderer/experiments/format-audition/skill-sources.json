@@ -1,0 +1,52 @@
+{
+  "retrieved_at": "2026-11-14",
+  "policy": "Read instruction sources; no third-party scripts, installer, dependency or global skill executed. Applied selected craft guidance, not unsupported retention statistics.",
+  "sources": [
+    {
+      "repository": "https://github.com/iart-ai/tiktok-video-skills",
+      "commit": "88e7152fc2710fa16852d013959cfd988a8adc8b",
+      "applied": [
+        "one educational payoff",
+        "first-frame subject",
+        "safe areas",
+        "short caption groups"
+      ],
+      "not_adopted": [
+        "unverified numeric retention thresholds",
+        "ending silence prohibited even for retrieval"
+      ]
+    },
+    {
+      "repository": "https://github.com/iart-ai/explainer-video-skills",
+      "commit": "3c13a1bc360c08503f24f9c9a99fda6d3d35de56",
+      "applied": [
+        "progressive diagram disclosure",
+        "consistent color meaning",
+        "exact numerical endpoints"
+      ]
+    },
+    {
+      "repository": "https://github.com/iart-ai/kinetic-typography-skills",
+      "commit": "2b79c81230c6647a344844f9ed53b6fa07f3f1f9",
+      "applied": [
+        "static typography before animation",
+        "word emphasis",
+        "frame-based timing"
+      ]
+    },
+    {
+      "repository": "https://github.com/remotion-dev/skills",
+      "commit": "7e541aa4d7361dfaca0780a565a47307eb7bdfbb",
+      "applied": [
+        "inspected current skill organization"
+      ],
+      "limitation": "Existing pinned 4.0.543 renderer used; current new Remotion packages/API migrations not tested."
+    }
+  ],
+  "local_guidance": {
+    "skill": "real-world-humor",
+    "source": "User feedback on friction sample 21, 2026-11-14",
+    "implementation": "services/api/app/modules/videos/generation/story_engine.py",
+    "global_install": false
+  }
+}

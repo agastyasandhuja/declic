@@ -1,0 +1,247 @@
+{
+  "schema_version": "1",
+  "title": "Your ticket is not a hostage contract",
+  "segments": [
+    {
+      "segment_id": "s1",
+      "speaker_role": "peter",
+      "spoken_text": "This movie's awful. I paid twenty dollars, so I'm suffering responsibly.",
+      "fact_ids": [
+        "scenario"
+      ],
+      "delivery": "emphatic"
+    },
+    {
+      "segment_id": "s2",
+      "speaker_role": "stewie",
+      "spoken_text": "Peter, you idiot. It's a ticket, not a hostage contract.",
+      "fact_ids": [
+        "scenario"
+      ],
+      "delivery": "sarcastic"
+    },
+    {
+      "segment_id": "s3",
+      "speaker_role": "peter",
+      "spoken_text": "It's nonrefundable. Leaving wastes my twenty dollars.",
+      "fact_ids": [
+        "scenario"
+      ],
+      "delivery": "curious"
+    },
+    {
+      "segment_id": "s4",
+      "speaker_role": "stewie",
+      "spoken_text": "Staying doesn't resurrect them. Congratulations, you've invented paying extra in misery.",
+      "fact_ids": [
+        "scenario",
+        "sunk_cost"
+      ],
+      "delivery": "sarcastic"
+    },
+    {
+      "segment_id": "s5",
+      "speaker_role": "peter",
+      "spoken_text": "But there's an hour left. Maybe suffering makes it worth the money.",
+      "fact_ids": [
+        "scenario"
+      ],
+      "delivery": "curious"
+    },
+    {
+      "segment_id": "s6",
+      "speaker_role": "stewie",
+      "spoken_text": "That's the sunk-cost trap: letting money already gone choose what happens next.",
+      "fact_ids": [
+        "sunk_cost"
+      ],
+      "delivery": "emphatic"
+    },
+    {
+      "segment_id": "s7",
+      "speaker_role": "peter",
+      "spoken_text": "So compare enjoyment and future costs: staying versus leaving for the next hour?",
+      "fact_ids": [
+        "future_choice"
+      ],
+      "delivery": "curious"
+    },
+    {
+      "segment_id": "s8",
+      "speaker_role": "stewie",
+      "spoken_text": "Stay if the rest beats your alternative. Otherwise, leaving can save time.",
+      "fact_ids": [
+        "not_always_quit",
+        "future_choice"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s9",
+      "speaker_role": "peter",
+      "spoken_text": "The twenty dollars stays gone either way. My next hour doesn't have to.",
+      "fact_ids": [
+        "scenario",
+        "future_choice"
+      ],
+      "delivery": "emphatic"
+    },
+    {
+      "segment_id": "s10",
+      "speaker_role": "stewie",
+      "spoken_text": "Look at that. We rescued your evening. Your taste in movies remains missing.",
+      "fact_ids": [
+        "future_choice"
+      ],
+      "delivery": "sarcastic"
+    }
+  ],
+  "events": [],
+  "teaching_beats": [],
+  "image_requests": [],
+  "shots": [
+    {
+      "shot_id": "sh1",
+      "segment_id": "s1",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "push",
+      "layout": "insert",
+      "motion_scene": "ticket_purchase",
+      "fact_ids": [
+        "scenario"
+      ]
+    },
+    {
+      "shot_id": "sh2",
+      "segment_id": "s2",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "pull",
+      "layout": "insert",
+      "motion_scene": "ticket_loss",
+      "fact_ids": [
+        "scenario"
+      ]
+    },
+    {
+      "shot_id": "sh3",
+      "segment_id": "s3",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "push",
+      "layout": "insert",
+      "motion_scene": "ticket_purchase",
+      "fact_ids": [
+        "scenario"
+      ]
+    },
+    {
+      "shot_id": "sh4",
+      "segment_id": "s4",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "pull",
+      "layout": "insert",
+      "motion_scene": "ticket_loss",
+      "fact_ids": [
+        "scenario",
+        "sunk_cost"
+      ]
+    },
+    {
+      "shot_id": "sh5",
+      "segment_id": "s5",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "push",
+      "layout": "insert",
+      "motion_scene": "time_loss",
+      "fact_ids": [
+        "scenario"
+      ]
+    },
+    {
+      "shot_id": "sh6",
+      "segment_id": "s6",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "pull",
+      "layout": "insert",
+      "motion_scene": "decision_reset",
+      "fact_ids": [
+        "sunk_cost"
+      ]
+    },
+    {
+      "shot_id": "sh7",
+      "segment_id": "s7",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "push",
+      "layout": "insert",
+      "motion_scene": "future_choice",
+      "fact_ids": [
+        "future_choice"
+      ]
+    },
+    {
+      "shot_id": "sh8",
+      "segment_id": "s8",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "pull",
+      "layout": "insert",
+      "motion_scene": "future_choice",
+      "fact_ids": [
+        "not_always_quit",
+        "future_choice"
+      ]
+    },
+    {
+      "shot_id": "sh9",
+      "segment_id": "s9",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "push",
+      "layout": "insert",
+      "motion_scene": "decision_reset",
+      "fact_ids": [
+        "scenario",
+        "future_choice"
+      ]
+    },
+    {
+      "shot_id": "sh10",
+      "segment_id": "s10",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "pull",
+      "layout": "insert",
+      "motion_scene": "decision_reset",
+      "fact_ids": [
+        "future_choice"
+      ]
+    }
+  ]
+}

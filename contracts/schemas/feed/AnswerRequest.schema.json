@@ -1,0 +1,25 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "selected_option_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "title": "Selected Option Id",
+      "type": "string"
+    },
+    "session_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "title": "Session Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "session_id",
+    "selected_option_id"
+  ],
+  "title": "AnswerRequest",
+  "type": "object"
+}

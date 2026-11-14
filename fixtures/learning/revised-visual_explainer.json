@@ -1,0 +1,279 @@
+{
+  "schema_version": "1",
+  "title": "Interest earns interest",
+  "segments": [
+    {
+      "segment_id": "s1",
+      "speaker_role": "narrator",
+      "spoken_text": "Same rate, same two years. Why does one account end ten dollars ahead?",
+      "fact_ids": [
+        "simple",
+        "year2"
+      ],
+      "delivery": "curious"
+    },
+    {
+      "segment_id": "s2",
+      "speaker_role": "narrator",
+      "spoken_text": "Start with one thousand dollars. No deposits. No withdrawals.",
+      "fact_ids": [
+        "principal"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s3",
+      "speaker_role": "narrator",
+      "spoken_text": "Ten percent is hypothetical, not a promised return.",
+      "fact_ids": [
+        "assumption"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s4",
+      "speaker_role": "narrator",
+      "spoken_text": "Year one adds one hundred dollars of interest, giving eleven hundred.",
+      "fact_ids": [
+        "year1"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s5",
+      "speaker_role": "narrator",
+      "spoken_text": "Simple interest keeps paying ten percent of the original thousand. Another hundred makes twelve hundred after two years.",
+      "fact_ids": [
+        "simple"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s6",
+      "speaker_role": "narrator",
+      "spoken_text": "Compound interest takes ten percent of eleven hundred instead: one hundred ten dollars, giving twelve hundred ten.",
+      "fact_ids": [
+        "year2"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s7",
+      "speaker_role": "narrator",
+      "spoken_text": "That extra ten dollars is interest earned on last year's interest.",
+      "fact_ids": [
+        "year2",
+        "assumption"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s8",
+      "speaker_role": "narrator",
+      "spoken_text": "Ten extra dollars. The interest earned interest.",
+      "fact_ids": [
+        "assumption",
+        "simple",
+        "year2"
+      ],
+      "delivery": "emphatic"
+    }
+  ],
+  "events": [],
+  "teaching_beats": [],
+  "image_requests": [
+    {
+      "asset_id": "piggy_bank",
+      "query": "piggy bank",
+      "provider": "commons",
+      "purpose": "Represents the hypothetical $1,000 starting principal with no deposits or withdrawals",
+      "fact_ids": [
+        "principal"
+      ]
+    },
+    {
+      "asset_id": "calculator",
+      "query": "calculator",
+      "provider": "commons",
+      "purpose": "Shows the 10% rate is an illustrative calculation assumption, not a prediction",
+      "fact_ids": [
+        "assumption"
+      ]
+    },
+    {
+      "asset_id": "coin_stack",
+      "query": "stacked coins",
+      "provider": "commons",
+      "purpose": "A photograph of actual modern coins, symbolizing the balance. On-screen figures explain the hypothetical interest calculation.",
+      "fact_ids": [
+        "year1",
+        "year2"
+      ]
+    },
+    {
+      "asset_id": "calendar",
+      "query": "calendar",
+      "provider": "commons",
+      "purpose": "Marks two yearly periods where simple interest adds the same $100 each year",
+      "fact_ids": [
+        "simple"
+      ]
+    }
+  ],
+  "shots": [
+    {
+      "shot_id": "sh1",
+      "segment_id": "s1",
+      "kind": "kinetic",
+      "asset_ids": [],
+      "headline": "Hypothetical: 10% for 2 years",
+      "labels": [
+        "Simple: ?",
+        "Compound: ?"
+      ],
+      "camera": "push",
+      "layout": "split",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "simple",
+        "year2"
+      ]
+    },
+    {
+      "shot_id": "sh2",
+      "segment_id": "s2",
+      "kind": "image",
+      "asset_ids": [
+        "piggy_bank"
+      ],
+      "headline": "Hypothetical principal",
+      "labels": [
+        "$1,000",
+        "No deposits",
+        "No withdrawals"
+      ],
+      "camera": "push",
+      "layout": "full",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "principal"
+      ]
+    },
+    {
+      "shot_id": "sh3",
+      "segment_id": "s3",
+      "kind": "image",
+      "asset_ids": [
+        "calculator"
+      ],
+      "headline": "Illustrative rate only",
+      "labels": [
+        "10% per year",
+        "Not guaranteed"
+      ],
+      "camera": "drift",
+      "layout": "full",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "assumption"
+      ]
+    },
+    {
+      "shot_id": "sh4",
+      "segment_id": "s4",
+      "kind": "image",
+      "asset_ids": [
+        "coin_stack"
+      ],
+      "headline": "Year 1",
+      "labels": [
+        "$1,000 + $100",
+        "= $1,100"
+      ],
+      "camera": "pan_right",
+      "layout": "full",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "year1"
+      ]
+    },
+    {
+      "shot_id": "sh5",
+      "segment_id": "s5",
+      "kind": "image",
+      "asset_ids": [
+        "calendar"
+      ],
+      "headline": "Simple interest",
+      "labels": [
+        "Year 1: +$100",
+        "Year 2: +$100",
+        "Total: $1,200"
+      ],
+      "camera": "pan_left",
+      "layout": "full",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "simple"
+      ]
+    },
+    {
+      "shot_id": "sh6",
+      "segment_id": "s6",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "Compound: year 2",
+      "labels": [
+        "10% \u00d7 $1,100",
+        "= $110",
+        "$1,100 + $110",
+        "= $1,210"
+      ],
+      "camera": "pull",
+      "layout": "full",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "year2"
+      ]
+    },
+    {
+      "shot_id": "sh7",
+      "segment_id": "s7",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "The extra $10",
+      "labels": [
+        "Year-1 interest: $100",
+        "10% \u00d7 $100 = $10",
+        "Interest earns interest"
+      ],
+      "camera": "push",
+      "layout": "full",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "year2",
+        "assumption"
+      ]
+    },
+    {
+      "shot_id": "sh8",
+      "segment_id": "s8",
+      "kind": "kinetic",
+      "asset_ids": [],
+      "headline": "Hypothetical, after 2 years",
+      "labels": [
+        "Simple: $1,200",
+        "Compound: $1,210",
+        "Gap: $10"
+      ],
+      "camera": "pull",
+      "layout": "split",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "assumption",
+        "simple",
+        "year2"
+      ]
+    }
+  ]
+}

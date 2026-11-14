@@ -1,0 +1,269 @@
+{
+  "schema_version": "1",
+  "title": "The universe has a structure",
+  "segments": [
+    {
+      "segment_id": "s1",
+      "speaker_role": "narrator",
+      "spoken_text": "If the universe is a web, what are its strings made of?",
+      "fact_ids": [
+        "web",
+        "scale"
+      ],
+      "delivery": "curious"
+    },
+    {
+      "segment_id": "s2",
+      "speaker_role": "narrator",
+      "spoken_text": "Start with one galaxy: stars, gas, dust and dark matter, held together by gravity.",
+      "fact_ids": [
+        "galaxy"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s3",
+      "speaker_role": "narrator",
+      "spoken_text": "That was a sketch. A telescope shows a real one.",
+      "fact_ids": [
+        "galaxy"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s4",
+      "speaker_role": "narrator",
+      "spoken_text": "Stars belong to galaxies. Galaxies gather into groups and clusters.",
+      "fact_ids": [
+        "clusters",
+        "hierarchy"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s5",
+      "speaker_role": "narrator",
+      "spoken_text": "A telescope image of a cluster shows many galaxies gathered together.",
+      "fact_ids": [
+        "clusters"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s6",
+      "speaker_role": "narrator",
+      "spoken_text": "Why do they gather? Gravity pulls matter together and helps this structure develop over time.",
+      "fact_ids": [
+        "gravity"
+      ],
+      "delivery": "curious"
+    },
+    {
+      "segment_id": "s7",
+      "speaker_role": "narrator",
+      "spoken_text": "In this illustrative, not-to-scale view, galaxies on large scales trace filaments and sheets.",
+      "fact_ids": [
+        "web",
+        "scale"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s8",
+      "speaker_role": "narrator",
+      "spoken_text": "Those filaments and sheets surround immense, relatively empty voids.",
+      "fact_ids": [
+        "web"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s9",
+      "speaker_role": "narrator",
+      "spoken_text": "Matter, not strings or a solid wall: galaxies trace the web.",
+      "fact_ids": [
+        "web",
+        "scale"
+      ],
+      "delivery": "emphatic"
+    }
+  ],
+  "events": [],
+  "teaching_beats": [],
+  "image_requests": [
+    {
+      "asset_id": "img_spiral",
+      "query": "spiral galaxy",
+      "provider": "nasa",
+      "purpose": "Show a real galaxy, a system of stars, gas and dust held together by gravity",
+      "fact_ids": [
+        "galaxy"
+      ]
+    },
+    {
+      "asset_id": "img_cluster",
+      "query": "galaxy cluster",
+      "provider": "nasa",
+      "purpose": "Show telescope data of many galaxies gathered into a cluster",
+      "fact_ids": [
+        "clusters"
+      ]
+    }
+  ],
+  "shots": [
+    {
+      "shot_id": "sh1",
+      "segment_id": "s1",
+      "kind": "space",
+      "asset_ids": [],
+      "headline": "Strings?",
+      "labels": [],
+      "camera": "pull",
+      "layout": "full",
+      "space_mode": "cosmic_web",
+      "fact_ids": [
+        "web",
+        "scale"
+      ]
+    },
+    {
+      "shot_id": "sh2",
+      "segment_id": "s2",
+      "kind": "space",
+      "asset_ids": [],
+      "headline": "One galaxy",
+      "labels": [],
+      "camera": "orbit",
+      "layout": "full",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "galaxy"
+      ]
+    },
+    {
+      "shot_id": "sh3",
+      "segment_id": "s3",
+      "kind": "image",
+      "asset_ids": [
+        "img_spiral"
+      ],
+      "headline": "Telescope image",
+      "labels": [
+        "Real galaxy"
+      ],
+      "camera": "push",
+      "layout": "full",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "galaxy"
+      ]
+    },
+    {
+      "shot_id": "sh4",
+      "segment_id": "s4",
+      "kind": "space",
+      "asset_ids": [],
+      "headline": "Who belongs to what",
+      "labels": [
+        "Stars",
+        "Galaxies",
+        "Groups + clusters",
+        "Schematic"
+      ],
+      "camera": "pan_right",
+      "layout": "full",
+      "space_mode": "scale_ladder",
+      "fact_ids": [
+        "clusters",
+        "hierarchy"
+      ]
+    },
+    {
+      "shot_id": "sh5",
+      "segment_id": "s5",
+      "kind": "image",
+      "asset_ids": [
+        "img_cluster"
+      ],
+      "headline": "Real telescope data",
+      "labels": [
+        "Galaxy cluster"
+      ],
+      "camera": "drift",
+      "layout": "full",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "clusters"
+      ]
+    },
+    {
+      "shot_id": "sh6",
+      "segment_id": "s6",
+      "kind": "space",
+      "asset_ids": [],
+      "headline": "Gravity gathers",
+      "labels": [
+        "Matter pulled in",
+        "Over time"
+      ],
+      "camera": "push",
+      "layout": "full",
+      "space_mode": "gravity",
+      "fact_ids": [
+        "gravity"
+      ]
+    },
+    {
+      "shot_id": "sh7",
+      "segment_id": "s7",
+      "kind": "space",
+      "asset_ids": [],
+      "headline": "Filaments and sheets",
+      "labels": [
+        "Illustrative",
+        "Not to scale"
+      ],
+      "camera": "orbit",
+      "layout": "full",
+      "space_mode": "cosmic_sheet",
+      "fact_ids": [
+        "web",
+        "scale"
+      ]
+    },
+    {
+      "shot_id": "sh8",
+      "segment_id": "s8",
+      "kind": "space",
+      "asset_ids": [],
+      "headline": "Around the voids",
+      "labels": [
+        "Relatively empty regions"
+      ],
+      "camera": "pan_left",
+      "layout": "full",
+      "space_mode": "cosmic_overview",
+      "fact_ids": [
+        "web"
+      ]
+    },
+    {
+      "shot_id": "sh9",
+      "segment_id": "s9",
+      "kind": "space",
+      "asset_ids": [],
+      "headline": "Matter, not strings",
+      "labels": [
+        "Galaxies along filament",
+        "Illustrative"
+      ],
+      "camera": "pull",
+      "layout": "full",
+      "space_mode": "filament_detail",
+      "fact_ids": [
+        "web",
+        "scale"
+      ]
+    }
+  ]
+}

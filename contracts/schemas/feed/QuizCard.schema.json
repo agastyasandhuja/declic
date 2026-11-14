@@ -1,0 +1,77 @@
+{
+  "$defs": {
+    "QuizOption": {
+      "properties": {
+        "option_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Option Id",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "option_id",
+        "text"
+      ],
+      "title": "QuizOption",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "objective_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Objective Ids",
+      "type": "array"
+    },
+    "options": {
+      "items": {
+        "$ref": "#/$defs/QuizOption"
+      },
+      "title": "Options",
+      "type": "array"
+    },
+    "prompt": {
+      "title": "Prompt",
+      "type": "string"
+    },
+    "quiz_id": {
+      "title": "Quiz Id",
+      "type": "string"
+    },
+    "quiz_instance_id": {
+      "title": "Quiz Instance Id",
+      "type": "string"
+    },
+    "related_video_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Related Video Ids",
+      "type": "array"
+    },
+    "revision": {
+      "title": "Revision",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "quiz_instance_id",
+    "quiz_id",
+    "revision",
+    "objective_ids",
+    "prompt",
+    "options",
+    "related_video_ids"
+  ],
+  "title": "QuizCard",
+  "type": "object"
+}

@@ -1,0 +1,22 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "resume_session_id": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Resume Session Id"
+    }
+  },
+  "title": "SessionRequest",
+  "type": "object"
+}

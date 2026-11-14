@@ -1,0 +1,176 @@
+{
+  "schema_version": "1",
+  "title": "Twenty-five dollars is not the price",
+  "segments": [
+    {
+      "segment_id": "s1",
+      "speaker_role": "narrator",
+      "spoken_text": "Those headphones are twenty-five dollars? That is one payment, not the price.",
+      "fact_ids": [
+        "split"
+      ],
+      "delivery": "curious"
+    },
+    {
+      "segment_id": "s2",
+      "speaker_role": "narrator",
+      "spoken_text": "Imagine a hundred-dollar pair split into four equal payments of twenty-five, with no interest or fees.",
+      "fact_ids": [
+        "split",
+        "terms"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s3",
+      "speaker_role": "narrator",
+      "spoken_text": "Buy three hundred-dollar items on the same day, and those small payments stack up together.",
+      "fact_ids": [
+        "stack"
+      ],
+      "delivery": "emphatic"
+    },
+    {
+      "segment_id": "s4",
+      "speaker_role": "narrator",
+      "spoken_text": "With identical schedules, each payment point needs seventy-five dollars. Not twenty-five. Each purchase still needs its share.",
+      "fact_ids": [
+        "stack"
+      ],
+      "delivery": "emphatic"
+    },
+    {
+      "segment_id": "s5",
+      "speaker_role": "narrator",
+      "spoken_text": "Three purchases mean three hundred dollars committed altogether. Splitting that amount did not make anything cheaper.",
+      "fact_ids": [
+        "total"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s6",
+      "speaker_role": "narrator",
+      "spoken_text": "Seventy-five now still means three hundred in total, with two hundred twenty-five left to pay.",
+      "fact_ids": [
+        "total"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s7",
+      "speaker_role": "narrator",
+      "spoken_text": "Real plans vary: interest or fees may apply. Check the whole commitment, not just the small payment.",
+      "fact_ids": [
+        "terms",
+        "total"
+      ],
+      "delivery": "emphatic"
+    }
+  ],
+  "events": [],
+  "teaching_beats": [],
+  "image_requests": [],
+  "shots": [
+    {
+      "shot_id": "sh1",
+      "segment_id": "s1",
+      "kind": "diagram",
+      "motion_scene": "price_tag",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "push",
+      "layout": "full",
+      "fact_ids": [
+        "split"
+      ]
+    },
+    {
+      "shot_id": "sh2",
+      "segment_id": "s2",
+      "kind": "diagram",
+      "motion_scene": "split_payment",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "pull",
+      "layout": "full",
+      "fact_ids": [
+        "split",
+        "terms"
+      ]
+    },
+    {
+      "shot_id": "sh3",
+      "segment_id": "s3",
+      "kind": "diagram",
+      "motion_scene": "stack_purchases",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "push",
+      "layout": "full",
+      "fact_ids": [
+        "stack"
+      ]
+    },
+    {
+      "shot_id": "sh4",
+      "segment_id": "s4",
+      "kind": "diagram",
+      "motion_scene": "payment_calendar",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "pull",
+      "layout": "full",
+      "fact_ids": [
+        "stack"
+      ]
+    },
+    {
+      "shot_id": "sh5",
+      "segment_id": "s5",
+      "kind": "diagram",
+      "motion_scene": "total_cost",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "push",
+      "layout": "full",
+      "fact_ids": [
+        "total"
+      ]
+    },
+    {
+      "shot_id": "sh6",
+      "segment_id": "s6",
+      "kind": "diagram",
+      "motion_scene": "choice_balance",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "pull",
+      "layout": "full",
+      "fact_ids": [
+        "total"
+      ]
+    },
+    {
+      "shot_id": "sh7",
+      "segment_id": "s7",
+      "kind": "diagram",
+      "motion_scene": "receipt",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "push",
+      "layout": "full",
+      "fact_ids": [
+        "terms",
+        "total"
+      ]
+    }
+  ]
+}

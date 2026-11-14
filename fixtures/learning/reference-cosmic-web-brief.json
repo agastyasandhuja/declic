@@ -1,0 +1,54 @@
+{
+  "schema_version": "1",
+  "brief_id": "reference-cosmic-web",
+  "lesson_request_id": "synthetic-request",
+  "objective_id": "reference-cosmic-web",
+  "title": "The universe has a structure",
+  "learning_goal": "Explain how galaxies form the cosmic web without confusing it with a solid object",
+  "subject": "astronomy",
+  "level": "introductory_undergraduate",
+  "language": "en",
+  "notation": "plain language",
+  "assumed_knowledge": [],
+  "must_cover": [
+    "galaxy",
+    "clusters",
+    "web",
+    "gravity",
+    "scale"
+  ],
+  "must_not_claim": [
+    "This is confirmed exam content"
+  ],
+  "approved_facts": [
+    {
+      "fact_id": "galaxy",
+      "statement": "Galaxies are systems of stars, gas, dust and dark matter held together by gravity."
+    },
+    {
+      "fact_id": "clusters",
+      "statement": "Galaxies gather into groups and clusters."
+    },
+    {
+      "fact_id": "web",
+      "statement": "On large scales, galaxies trace filaments and sheets around immense relatively empty voids, making a cosmic web."
+    },
+    {
+      "fact_id": "gravity",
+      "statement": "Gravity pulls matter together and helps this structure develop over time."
+    },
+    {
+      "fact_id": "scale",
+      "statement": "The cosmic web is a distribution of matter, not one solid wall or a literal web of strings; the animation is illustrative, not to scale."
+    }
+  ],
+  "input_values": [],
+  "format_id": "space_explainer",
+  "teaching_approach": "visual_story",
+  "target_duration_seconds": 45,
+  "scope": "shared_generic_candidate",
+  "owner_user_id": null,
+  "template_version": "2.0.0",
+  "presentation": "reference_v2",
+  "trace_kind": "none"
+}

@@ -1,0 +1,13 @@
+Write a narrated prediction-to-proof story about keeping access to the rest of the
+list. Open with a short question about losing a node, then ask the viewer to predict
+what happens if they overwrite a pointer first. After the thinking pause, explicitly
+answer that question and name previous/current/saved-next. Demonstrate every operation
+on the supplied nodes, then return previous as the new head. Use narrator only.
+Keep the whole script around 100–130 words, adjusting to the requested duration.
+Speak code in natural English. Use distinct exact phrases as cues for each action.
+Emit intro, then save/reverse/advance for each node, then finish. Several consecutive
+actions may share a narration segment, but their cue phrases must be in spoken order.
+Finish the demonstration with reversed values and null. Then ask a concise recall
+question with no answer in its speech/text; a separate feedback segment supplies the
+correct answer after the pause. No invented dates or exam relevance. The renderer
+shows a single relevant diagram, brief teaching text, and synchronized captions.

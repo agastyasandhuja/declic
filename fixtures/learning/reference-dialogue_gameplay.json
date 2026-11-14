@@ -1,0 +1,329 @@
+{
+  "schema_version": "1",
+  "title": "Reverse a linked list",
+  "segments": [
+    {
+      "segment_id": "seg1",
+      "speaker_role": "stewie",
+      "spoken_text": "Reversing pointers will lose the rest of the chain!",
+      "fact_ids": [
+        "save"
+      ],
+      "delivery": "curious"
+    },
+    {
+      "segment_id": "seg2",
+      "speaker_role": "peter",
+      "spoken_text": "Not if you remember where two is before you touch one. At node one, we grab two and stash it.",
+      "fact_ids": [
+        "save"
+      ],
+      "delivery": "emphatic"
+    },
+    {
+      "segment_id": "seg3",
+      "speaker_role": "peter",
+      "spoken_text": "Now flip one's next pointer back to null, then slide previous up to one and current over to two.",
+      "fact_ids": [
+        "reverse",
+        "advance"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "seg4",
+      "speaker_role": "stewie",
+      "spoken_text": "So at two you save three, reverse two's link toward one, and jump forward?",
+      "fact_ids": [
+        "save",
+        "reverse",
+        "advance"
+      ],
+      "delivery": "curious"
+    },
+    {
+      "segment_id": "seg5",
+      "speaker_role": "peter",
+      "spoken_text": "Exactly. Then at three we save null, aim three's next pointer back at two, and step into null.",
+      "fact_ids": [
+        "save",
+        "reverse",
+        "advance"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "seg6",
+      "speaker_role": "stewie",
+      "spoken_text": "Wait, current is null now. Did we just lose everything?",
+      "fact_ids": [
+        "return"
+      ],
+      "delivery": "sarcastic"
+    },
+    {
+      "segment_id": "seg7",
+      "speaker_role": "peter",
+      "spoken_text": "Nope! Previous holds three, our new head. The list runs three, two, one.",
+      "fact_ids": [
+        "return"
+      ],
+      "delivery": "emphatic"
+    }
+  ],
+  "events": [
+    {
+      "action": "intro",
+      "node": 0,
+      "cue": {
+        "segment_id": "seg2",
+        "phrase": "At node one",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "save",
+      "node": 0,
+      "cue": {
+        "segment_id": "seg2",
+        "phrase": "we grab two and stash it",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "reverse",
+      "node": 0,
+      "cue": {
+        "segment_id": "seg3",
+        "phrase": "flip one's next pointer back to null",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "advance",
+      "node": 0,
+      "cue": {
+        "segment_id": "seg3",
+        "phrase": "slide previous up to one and current over to two",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "save",
+      "node": 1,
+      "cue": {
+        "segment_id": "seg4",
+        "phrase": "at two you save three",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "reverse",
+      "node": 1,
+      "cue": {
+        "segment_id": "seg4",
+        "phrase": "reverse two's link toward one",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "advance",
+      "node": 1,
+      "cue": {
+        "segment_id": "seg4",
+        "phrase": "jump forward",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "save",
+      "node": 2,
+      "cue": {
+        "segment_id": "seg5",
+        "phrase": "at three we save null",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "reverse",
+      "node": 2,
+      "cue": {
+        "segment_id": "seg5",
+        "phrase": "aim three's next pointer back at two",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "advance",
+      "node": 2,
+      "cue": {
+        "segment_id": "seg5",
+        "phrase": "step into null",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "finish",
+      "node": 2,
+      "cue": {
+        "segment_id": "seg7",
+        "phrase": "Previous holds three, our new head",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    }
+  ],
+  "teaching_beats": [],
+  "image_requests": [],
+  "shots": [
+    {
+      "shot_id": "shot1",
+      "segment_id": "seg1",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [
+        "1",
+        "2",
+        "3"
+      ],
+      "camera": "push",
+      "layout": "insert",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "save"
+      ]
+    },
+    {
+      "shot_id": "shot2",
+      "segment_id": "seg2",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [
+        "1",
+        "2",
+        "3",
+        "saved"
+      ],
+      "camera": "push",
+      "layout": "split",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "save"
+      ]
+    },
+    {
+      "shot_id": "shot3",
+      "segment_id": "seg3",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [
+        "1",
+        "2",
+        "3",
+        "prev",
+        "curr"
+      ],
+      "camera": "pan_right",
+      "layout": "split",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "reverse",
+        "advance"
+      ]
+    },
+    {
+      "shot_id": "shot4",
+      "segment_id": "seg4",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [
+        "1",
+        "2",
+        "3",
+        "prev",
+        "curr"
+      ],
+      "camera": "push",
+      "layout": "split",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "save",
+        "reverse",
+        "advance"
+      ]
+    },
+    {
+      "shot_id": "shot5",
+      "segment_id": "seg5",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [
+        "1",
+        "2",
+        "3",
+        "prev",
+        "curr"
+      ],
+      "camera": "pan_left",
+      "layout": "split",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "save",
+        "reverse",
+        "advance"
+      ]
+    },
+    {
+      "shot_id": "shot6",
+      "segment_id": "seg6",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [
+        "3",
+        "2",
+        "1",
+        "null"
+      ],
+      "camera": "pull",
+      "layout": "split",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "return"
+      ]
+    },
+    {
+      "shot_id": "shot7",
+      "segment_id": "seg7",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "3 \u2192 2 \u2192 1",
+      "labels": [
+        "3",
+        "2",
+        "1"
+      ],
+      "camera": "push",
+      "layout": "full",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "return"
+      ]
+    }
+  ]
+}

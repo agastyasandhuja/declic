@@ -1,0 +1,212 @@
+{
+  "schema_version": "1",
+  "title": "The universe has a structure",
+  "segments": [
+    {
+      "segment_id": "seg1",
+      "speaker_role": "narrator",
+      "spoken_text": "The universe isn't just a random cloud of stars.",
+      "fact_ids": [
+        "web"
+      ],
+      "delivery": "curious"
+    },
+    {
+      "segment_id": "seg2",
+      "speaker_role": "narrator",
+      "spoken_text": "Galaxies are systems of stars, gas, dust and dark matter held together by gravity.",
+      "fact_ids": [
+        "galaxy"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "seg3",
+      "speaker_role": "narrator",
+      "spoken_text": "And galaxies don't drift alone. They gather into groups and clusters.",
+      "fact_ids": [
+        "clusters"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "seg4",
+      "speaker_role": "narrator",
+      "spoken_text": "On large scales, these galaxies trace filaments and sheets around immense relatively empty voids.",
+      "fact_ids": [
+        "web",
+        "scale"
+      ],
+      "delivery": "emphatic"
+    },
+    {
+      "segment_id": "seg5",
+      "speaker_role": "narrator",
+      "spoken_text": "Together, they make a cosmic web. Gravity pulls matter together and helps this structure develop over time.",
+      "fact_ids": [
+        "web",
+        "gravity"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "seg6",
+      "speaker_role": "narrator",
+      "spoken_text": "This is a distribution of matter, not one solid wall or a literal web of strings. The animation is illustrative, not to scale.",
+      "fact_ids": [
+        "scale"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "seg7",
+      "speaker_role": "narrator",
+      "spoken_text": "A vast pattern, shaped by gravity.",
+      "fact_ids": [
+        "web",
+        "gravity",
+        "scale"
+      ],
+      "delivery": "emphatic"
+    }
+  ],
+  "events": [],
+  "teaching_beats": [],
+  "image_requests": [
+    {
+      "asset_id": "img_galaxy1",
+      "query": "spiral galaxy",
+      "provider": "nasa",
+      "purpose": "Show the structure of a galaxy containing stars, gas and dust",
+      "fact_ids": [
+        "galaxy"
+      ]
+    },
+    {
+      "asset_id": "img_cluster",
+      "query": "galaxy cluster",
+      "provider": "nasa",
+      "purpose": "Illustrate how galaxies gather into groups and clusters",
+      "fact_ids": [
+        "clusters"
+      ]
+    }
+  ],
+  "shots": [
+    {
+      "shot_id": "shot1",
+      "segment_id": "seg1",
+      "kind": "space",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "push",
+      "layout": "full",
+      "space_mode": "starfield",
+      "fact_ids": [
+        "web"
+      ]
+    },
+    {
+      "shot_id": "shot2",
+      "segment_id": "seg2",
+      "kind": "space",
+      "asset_ids": [
+        "img_galaxy1"
+      ],
+      "headline": "",
+      "labels": [
+        "Stars",
+        "Gas",
+        "Dust"
+      ],
+      "camera": "orbit",
+      "layout": "full",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "galaxy"
+      ]
+    },
+    {
+      "shot_id": "shot3",
+      "segment_id": "seg3",
+      "kind": "space",
+      "asset_ids": [
+        "img_cluster"
+      ],
+      "headline": "",
+      "labels": [
+        "Galaxy cluster"
+      ],
+      "camera": "pull",
+      "layout": "full",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "clusters"
+      ]
+    },
+    {
+      "shot_id": "shot4",
+      "segment_id": "seg4",
+      "kind": "space",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [
+        "Filament",
+        "Void"
+      ],
+      "camera": "drift",
+      "layout": "full",
+      "space_mode": "cosmic_web",
+      "fact_ids": [
+        "web",
+        "scale"
+      ]
+    },
+    {
+      "shot_id": "shot5",
+      "segment_id": "seg5",
+      "kind": "space",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "push",
+      "layout": "full",
+      "space_mode": "cosmic_web",
+      "fact_ids": [
+        "web",
+        "gravity"
+      ]
+    },
+    {
+      "shot_id": "shot6",
+      "segment_id": "seg6",
+      "kind": "space",
+      "asset_ids": [],
+      "headline": "Illustration, not to scale",
+      "labels": [],
+      "camera": "pan_right",
+      "layout": "full",
+      "space_mode": "nebula",
+      "fact_ids": [
+        "scale"
+      ]
+    },
+    {
+      "shot_id": "shot7",
+      "segment_id": "seg7",
+      "kind": "space",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "pull",
+      "layout": "full",
+      "space_mode": "cosmic_web",
+      "fact_ids": [
+        "web",
+        "gravity",
+        "scale"
+      ]
+    }
+  ]
+}

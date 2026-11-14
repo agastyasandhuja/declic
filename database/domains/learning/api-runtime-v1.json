@@ -1,0 +1,563 @@
+{
+  "api_feed_events": {
+    "indexes": [
+      {
+        "keys": [
+          "user_id",
+          "event_id"
+        ],
+        "unique": true
+      }
+    ],
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "properties": {
+          "event_id": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "user_id": {
+            "bsonType": "string",
+            "maxLength": 128,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "event_id",
+          "user_id"
+        ]
+      }
+    }
+  },
+  "api_feed_occurrences": {
+    "indexes": [
+      {
+        "keys": [
+          "item_id"
+        ],
+        "unique": true
+      },
+      {
+        "keys": [
+          "session_id",
+          "sequence"
+        ],
+        "unique": true
+      },
+      {
+        "keys": [
+          "user_id",
+          "session_id",
+          "sequence"
+        ],
+        "unique": false
+      }
+    ],
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "properties": {
+          "data": {
+            "bsonType": "object"
+          },
+          "item_id": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "sequence": {
+            "bsonType": [
+              "int",
+              "long"
+            ],
+            "minimum": 1
+          },
+          "session_id": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "user_id": {
+            "bsonType": "string",
+            "maxLength": 128,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "item_id",
+          "sequence",
+          "session_id",
+          "data",
+          "user_id"
+        ]
+      }
+    }
+  },
+  "api_feed_pages": {
+    "indexes": [
+      {
+        "keys": [
+          "page_id"
+        ],
+        "unique": true
+      },
+      {
+        "keys": [
+          "user_id",
+          "session_id",
+          "revision"
+        ],
+        "unique": false
+      }
+    ],
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "properties": {
+          "data": {
+            "bsonType": [
+              "object",
+              "null"
+            ]
+          },
+          "page_id": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "user_id": {
+            "bsonType": "string",
+            "maxLength": 128,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "page_id",
+          "data",
+          "user_id"
+        ]
+      }
+    }
+  },
+  "api_feed_sessions": {
+    "indexes": [
+      {
+        "keys": [
+          "session_id"
+        ],
+        "unique": true
+      },
+      {
+        "keys": [
+          "user_id",
+          "last_active"
+        ],
+        "unique": false
+      }
+    ],
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "properties": {
+          "data": {
+            "bsonType": "object"
+          },
+          "session_id": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "user_id": {
+            "bsonType": "string",
+            "maxLength": 128,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "session_id",
+          "data",
+          "user_id"
+        ]
+      }
+    }
+  },
+  "api_idempotency": {
+    "indexes": [
+      {
+        "keys": [
+          "user_id",
+          "route",
+          "key"
+        ],
+        "unique": true
+      }
+    ],
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "properties": {
+          "key": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "route": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "user_id": {
+            "bsonType": "string",
+            "maxLength": 128,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "key",
+          "route",
+          "user_id"
+        ]
+      }
+    }
+  },
+  "api_jobs": {
+    "indexes": [
+      {
+        "keys": [
+          "job_id"
+        ],
+        "unique": true
+      },
+      {
+        "keys": [
+          "owner_user_id",
+          "job_type",
+          "dedupe_key"
+        ],
+        "unique": true
+      },
+      {
+        "keys": [
+          "job_type",
+          "state",
+          "available_at"
+        ],
+        "unique": false
+      },
+      {
+        "keys": [
+          "state",
+          "lease_until"
+        ],
+        "unique": false
+      }
+    ],
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "properties": {
+          "attempt_count": {
+            "bsonType": [
+              "int",
+              "long"
+            ],
+            "minimum": 0
+          },
+          "dedupe_key": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "input_ref": {
+            "bsonType": "object"
+          },
+          "job_id": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "job_type": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "max_attempts": {
+            "bsonType": [
+              "int",
+              "long"
+            ],
+            "maximum": 10,
+            "minimum": 1
+          },
+          "owner_user_id": {
+            "bsonType": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "retry_wait",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ]
+          }
+        },
+        "required": [
+          "dedupe_key",
+          "job_id",
+          "job_type",
+          "owner_user_id",
+          "state",
+          "attempt_count",
+          "max_attempts",
+          "input_ref"
+        ]
+      }
+    }
+  },
+  "api_outbox": {
+    "indexes": [
+      {
+        "keys": [
+          "event_id"
+        ],
+        "unique": true
+      },
+      {
+        "keys": [
+          "event_type",
+          "created_at"
+        ],
+        "unique": false
+      }
+    ],
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "properties": {
+          "data": {
+            "bsonType": "object"
+          },
+          "event_id": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "event_id",
+          "data"
+        ]
+      }
+    }
+  },
+  "api_processed_events": {
+    "indexes": [
+      {
+        "keys": [
+          "consumer",
+          "event_id"
+        ],
+        "unique": true
+      }
+    ],
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "properties": {
+          "consumer": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "event_id": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "consumer",
+          "event_id"
+        ]
+      }
+    }
+  },
+  "api_quiz_attempts": {
+    "indexes": [
+      {
+        "keys": [
+          "attempt_id"
+        ],
+        "unique": true
+      },
+      {
+        "keys": [
+          "instance_id"
+        ],
+        "unique": true
+      },
+      {
+        "keys": [
+          "user_id"
+        ],
+        "unique": false
+      }
+    ],
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "properties": {
+          "attempt_id": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "data": {
+            "bsonType": "object"
+          },
+          "instance_id": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "user_id": {
+            "bsonType": "string",
+            "maxLength": 128,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "attempt_id",
+          "instance_id",
+          "data",
+          "user_id"
+        ]
+      }
+    }
+  },
+  "api_quiz_instances": {
+    "indexes": [
+      {
+        "keys": [
+          "instance_id"
+        ],
+        "unique": true
+      },
+      {
+        "keys": [
+          "user_id",
+          "session_id",
+          "state"
+        ],
+        "unique": false
+      }
+    ],
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "properties": {
+          "data": {
+            "bsonType": "object"
+          },
+          "instance_id": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "state": {
+            "enum": [
+              "issued",
+              "pending",
+              "answered",
+              "recovered"
+            ]
+          },
+          "user_id": {
+            "bsonType": "string",
+            "maxLength": 128,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "instance_id",
+          "data",
+          "state",
+          "user_id"
+        ]
+      }
+    }
+  },
+  "api_topic_learning_state": {
+    "indexes": [
+      {
+        "keys": [
+          "user_id",
+          "objective_id"
+        ],
+        "unique": true
+      },
+      {
+        "keys": [
+          "user_id"
+        ],
+        "unique": false
+      }
+    ],
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "properties": {
+          "data": {
+            "bsonType": "object"
+          },
+          "objective_id": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "user_id": {
+            "bsonType": "string",
+            "maxLength": 128,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "objective_id",
+          "user_id",
+          "data"
+        ]
+      }
+    }
+  },
+  "api_user_state": {
+    "indexes": [
+      {
+        "keys": [
+          "user_id"
+        ],
+        "unique": true
+      }
+    ],
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "properties": {
+          "user_id": {
+            "bsonType": "string",
+            "maxLength": 128,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      }
+    }
+  }
+}

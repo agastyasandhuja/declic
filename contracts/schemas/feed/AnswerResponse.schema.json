@@ -1,0 +1,49 @@
+{
+  "properties": {
+    "accepted": {
+      "title": "Accepted",
+      "type": "boolean"
+    },
+    "attempt_id": {
+      "title": "Attempt Id",
+      "type": "string"
+    },
+    "correct": {
+      "title": "Correct",
+      "type": "boolean"
+    },
+    "explanation": {
+      "title": "Explanation",
+      "type": "string"
+    },
+    "learning_revision": {
+      "title": "Learning Revision",
+      "type": "integer"
+    },
+    "recommendation_revision": {
+      "title": "Recommendation Revision",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": "1",
+      "default": "1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scroll_unlocked": {
+      "title": "Scroll Unlocked",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "attempt_id",
+    "accepted",
+    "correct",
+    "explanation",
+    "scroll_unlocked",
+    "learning_revision",
+    "recommendation_revision"
+  ],
+  "title": "AnswerResponse",
+  "type": "object"
+}

@@ -1,0 +1,25 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "item_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "title": "Item Id",
+      "type": "string"
+    },
+    "quiz_instance_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "title": "Quiz Instance Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "quiz_instance_id",
+    "item_id"
+  ],
+  "title": "GateRequest",
+  "type": "object"
+}

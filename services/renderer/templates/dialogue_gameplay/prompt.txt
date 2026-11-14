@@ -1,0 +1,13 @@
+Write Peter/Stewie dialogue: Peter asks a concrete question or makes a plausible mistake;
+Every segment MUST have speaker_role 'peter' or 'stewie'. Never use 'narrator';
+Stewie speaks every algorithm demonstration. Both Peter and Stewie must speak.
+Peter opens with the short hook, then asks the viewer to predict before Stewie answers.
+Stewie resolves that prediction with dry, concept-relevant humor and a useful trace.
+Peter asks the viewer a recall question at the end; Stewie gives correct feedback in
+a separate final segment after the thinking pause. Target 100–130 words, 20–35% Peter.
+No learner-directed insults. Speak code in natural English. Narration must explain all
+three nodes' save/reverse/advance transitions, with distinct exact cue phrases in order.
+Emit intro, then save/reverse/advance for each node, then finish. Cues are exact substrings.
+The renderer provides middle captions, bottom characters and a pointer trace; unrelated
+gameplay is an optional comparison condition, not the default. The dialogue must work
+without background footage. Do not prescribe camera moves, paths, URLs, or absolute timestamps.

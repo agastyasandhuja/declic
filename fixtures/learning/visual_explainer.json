@@ -1,0 +1,226 @@
+{
+  "schema_version": "1",
+  "title": "Reverse a linked list",
+  "segments": [
+    {
+      "segment_id": "hook",
+      "speaker_role": "narrator",
+      "spoken_text": "Can one link lose the whole list?",
+      "fact_ids": [],
+      "delivery": "curious"
+    },
+    {
+      "segment_id": "prediction",
+      "speaker_role": "narrator",
+      "spoken_text": "You reverse the first link. Can you still reach node two? Guess.",
+      "fact_ids": [],
+      "delivery": "curious"
+    },
+    {
+      "segment_id": "s0",
+      "speaker_role": "narrator",
+      "spoken_text": "You need a saved next pointer. Start with one, two, three. Previous is null; current is one.",
+      "fact_ids": [
+        "save"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s1",
+      "speaker_role": "narrator",
+      "spoken_text": "Save two before touching the first link. Point one to previous, which is null. Move previous to one and current to two.",
+      "fact_ids": [
+        "save",
+        "reverse",
+        "advance"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s2",
+      "speaker_role": "narrator",
+      "spoken_text": "Save three. Point two back to one. Move previous to two and current to three. The saved pointer keeps the unfinished list reachable.",
+      "fact_ids": [
+        "save",
+        "reverse",
+        "advance"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s3",
+      "speaker_role": "narrator",
+      "spoken_text": "Save null at the last node. Point three back to two. Move previous to three and current to null. Now stop.",
+      "fact_ids": [
+        "save",
+        "reverse",
+        "advance"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s4",
+      "speaker_role": "narrator",
+      "spoken_text": "Return previous as the new head: three, two, one, null.",
+      "fact_ids": [
+        "return"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "recall",
+      "speaker_role": "narrator",
+      "spoken_text": "Your turn: what must you save before changing a link?",
+      "fact_ids": [],
+      "delivery": "curious"
+    },
+    {
+      "segment_id": "feedback",
+      "speaker_role": "narrator",
+      "spoken_text": "The original next node. Save it first so the remaining nodes stay reachable.",
+      "fact_ids": [
+        "save"
+      ],
+      "delivery": "emphatic"
+    }
+  ],
+  "events": [
+    {
+      "action": "intro",
+      "node": 0,
+      "cue": {
+        "segment_id": "s0",
+        "phrase": "Start with",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "save",
+      "node": 0,
+      "cue": {
+        "segment_id": "s1",
+        "phrase": "Save two",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "reverse",
+      "node": 0,
+      "cue": {
+        "segment_id": "s1",
+        "phrase": "Point one",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "advance",
+      "node": 0,
+      "cue": {
+        "segment_id": "s1",
+        "phrase": "Move previous",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "save",
+      "node": 1,
+      "cue": {
+        "segment_id": "s2",
+        "phrase": "Save three",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "reverse",
+      "node": 1,
+      "cue": {
+        "segment_id": "s2",
+        "phrase": "Point two",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "advance",
+      "node": 1,
+      "cue": {
+        "segment_id": "s2",
+        "phrase": "Move previous",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "save",
+      "node": 2,
+      "cue": {
+        "segment_id": "s3",
+        "phrase": "Save null",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "reverse",
+      "node": 2,
+      "cue": {
+        "segment_id": "s3",
+        "phrase": "Point three",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "advance",
+      "node": 2,
+      "cue": {
+        "segment_id": "s3",
+        "phrase": "Move previous",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "finish",
+      "node": 2,
+      "cue": {
+        "segment_id": "s4",
+        "phrase": "Return previous",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    }
+  ],
+  "teaching_beats": [
+    {
+      "kind": "hook",
+      "segment_id": "hook",
+      "text": "Can one link lose the whole list?"
+    },
+    {
+      "kind": "prediction",
+      "segment_id": "prediction",
+      "text": "Reverse first: can you still reach node two?"
+    },
+    {
+      "kind": "reveal",
+      "segment_id": "s0",
+      "text": "Save the next pointer before changing the link."
+    },
+    {
+      "kind": "retrieval",
+      "segment_id": "recall",
+      "text": "What must you save before changing a link?"
+    },
+    {
+      "kind": "feedback",
+      "segment_id": "feedback",
+      "text": "The original next node keeps the rest reachable."
+    }
+  ]
+}

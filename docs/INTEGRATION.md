@@ -139,3 +139,10 @@ See [the database setup handoff](../database/README.md) for shared setup ownersh
 Each owner updates only their docs/status file, recording completed work,
 commands/results, interface changes, dependencies, and remaining work.
 Avoid blanket “done” claims when provider/device verification is still pending.
+
+Video-runtime evidence (November 14): both linked-list formats rendered locally
+with live Claude scripts and ElevenLabs stock voices; 28 Python and 7 renderer
+tests passed, including local MongoDB transactional publication/fencing checks.
+The core ordered video-index hook also passed twice. See
+[VIDEO_VERIFICATION.md](VIDEO_VERIFICATION.md) for exact files, provider/fixture
+distinctions and remaining hosted-storage, academic binding and iPhone checks.

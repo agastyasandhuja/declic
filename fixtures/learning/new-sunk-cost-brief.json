@@ -1,0 +1,52 @@
+{
+  "schema_version": "1",
+  "brief_id": "psychology-sunk-cost-demo",
+  "lesson_request_id": "synthetic-request",
+  "objective_id": "sunk-cost-future-choice",
+  "title": "Your ticket is not a hostage contract",
+  "learning_goal": "Recognize a sunk-cost mistake and compare future consequences instead of trying to recover irrecoverable spending",
+  "subject": "psychology",
+  "level": "high_school_and_introductory_undergraduate",
+  "language": "en",
+  "notation": "dollars and hours",
+  "assumed_knowledge": [],
+  "must_cover": [
+    "scenario",
+    "sunk_cost",
+    "future_choice",
+    "not_always_quit"
+  ],
+  "must_not_claim": [
+    "All past costs are irrelevant when they affect future obligations or recoverable value",
+    "Ignoring sunk costs means always quitting",
+    "The movie ticket can be refunded",
+    "This hypothetical example is an observed experiment"
+  ],
+  "approved_facts": [
+    {
+      "fact_id": "scenario",
+      "statement": "In this hypothetical example, Peter paid $20 for a nonrefundable movie ticket. He dislikes the movie and has one hour remaining. The $20 cannot be recovered by either staying or leaving."
+    },
+    {
+      "fact_id": "sunk_cost",
+      "statement": "A sunk cost is an already incurred cost that cannot be recovered. The sunk-cost effect is allowing such past expenditure to motivate continuing an endeavor."
+    },
+    {
+      "fact_id": "future_choice",
+      "statement": "For this simplified movie decision, compare the expected enjoyment and other future costs of spending the next hour watching versus leaving. The nonrefundable $20 is the same under both choices and does not favor either option."
+    },
+    {
+      "fact_id": "not_always_quit",
+      "statement": "Ignoring sunk costs does not mean always quitting. Staying is reasonable if the remaining movie is expected to be worthwhile compared with the alternative; otherwise leaving can avoid wasting more time."
+    }
+  ],
+  "input_values": [],
+  "format_id": "dialogue_gameplay",
+  "teaching_approach": "misconception_comedy",
+  "target_duration_seconds": 40,
+  "scope": "shared_generic_candidate",
+  "owner_user_id": null,
+  "template_version": "3.0.0",
+  "presentation": "reference_v3",
+  "trace_kind": "none"
+}

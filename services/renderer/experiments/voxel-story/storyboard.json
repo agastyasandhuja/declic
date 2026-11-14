@@ -1,0 +1,258 @@
+{
+  "id": "commons-lake",
+  "title": "The village that fished itself out of dinner",
+  "template": "voxel-causal-story-v1",
+  "voice": {
+    "name": "Brian",
+    "id": "nPczCjzI2devNBz1zQrb"
+  },
+  "objective": "Explain the individual incentive and shared depletion in an open-access common-pool resource, and why effective collective rules can change the outcome.",
+  "sources": [
+    "https://www.fao.org/4/a0312e/a0312e03.htm",
+    "https://www.nobelprize.org/uploads/2018/06/press-7.pdf"
+  ],
+  "beats": [
+    {
+      "scene": "hook",
+      "text": "This village just fished itself out of dinner.",
+      "camera": [
+        [
+          4.2,
+          3.8,
+          0.4
+        ],
+        [
+          3.8,
+          3.5,
+          0.7
+        ]
+      ],
+      "target": [
+        0,
+        1.5,
+        4.1
+      ],
+      "pause": 0.25
+    },
+    {
+      "scene": "access",
+      "text": "At first, anyone can fish here. Take a fish, and it's yours.",
+      "camera": [
+        [
+          11,
+          11,
+          14
+        ],
+        [
+          10,
+          10,
+          13
+        ]
+      ],
+      "target": [
+        0,
+        0.5,
+        1.5
+      ],
+      "pause": 0.16
+    },
+    {
+      "scene": "subtract",
+      "text": "But every fish you catch leaves one less for everyone else.",
+      "camera": [
+        [
+          4.5,
+          4.2,
+          0.5
+        ],
+        [
+          4,
+          3.6,
+          0.9
+        ]
+      ],
+      "target": [
+        0.3,
+        1.2,
+        3.6
+      ],
+      "pause": 0.18
+    },
+    {
+      "scene": "extra",
+      "text": "One player thinks: I'll take a few extra before the others do.",
+      "camera": [
+        [
+          3.8,
+          3.5,
+          0.7
+        ],
+        [
+          3.2,
+          3.2,
+          0.9
+        ]
+      ],
+      "target": [
+        0.3,
+        1.45,
+        4
+      ],
+      "pause": 0.16
+    },
+    {
+      "scene": "rush",
+      "text": "Everyone has the same brilliant idea.",
+      "camera": [
+        [
+          10,
+          8,
+          7
+        ],
+        [
+          8.5,
+          7,
+          6
+        ]
+      ],
+      "target": [
+        0,
+        1,
+        1.4
+      ],
+      "pause": 0.24
+    },
+    {
+      "scene": "deplete",
+      "text": "They catch fish faster than the lake can replace them.",
+      "camera": [
+        [
+          8,
+          11,
+          9
+        ],
+        [
+          6,
+          9,
+          7
+        ]
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "pause": 0.2
+    },
+    {
+      "scene": "empty",
+      "text": "Soon, more fishing gets them... nothing.",
+      "camera": [
+        [
+          3.6,
+          3.4,
+          0.7
+        ],
+        [
+          3.2,
+          3.2,
+          1
+        ]
+      ],
+      "target": [
+        0,
+        1.5,
+        4.1
+      ],
+      "pause": 0.38
+    },
+    {
+      "scene": "commons",
+      "text": "That's the tragedy of the commons: private rewards, shared costs.",
+      "camera": [
+        [
+          7,
+          5.5,
+          0
+        ],
+        [
+          6.5,
+          5,
+          0.4
+        ]
+      ],
+      "target": [
+        0.7,
+        1,
+        3.2
+      ],
+      "pause": 0.18
+    },
+    {
+      "scene": "cost",
+      "text": "The problem isn't sharing. It's taking without accounting for what others lose.",
+      "camera": [
+        [
+          -7,
+          5.5,
+          1
+        ],
+        [
+          -6,
+          5,
+          1.4
+        ]
+      ],
+      "target": [
+        0,
+        1,
+        3.5
+      ],
+      "pause": 0.18
+    },
+    {
+      "scene": "rules",
+      "text": "So the village agrees on catch limits, checks them, and leaves fish time to reproduce.",
+      "camera": [
+        [
+          7,
+          6,
+          1
+        ],
+        [
+          8,
+          7,
+          2
+        ]
+      ],
+      "target": [
+        1,
+        1.1,
+        4.1
+      ],
+      "pause": 0.2
+    },
+    {
+      "scene": "restore",
+      "text": "With rules people actually follow, tomorrow's dinner stays in the lake.",
+      "camera": [
+        [
+          5,
+          6,
+          0.5
+        ],
+        [
+          8,
+          10,
+          8
+        ]
+      ],
+      "target": [
+        0,
+        0.2,
+        1.5
+      ],
+      "pause": 0.6
+    }
+  ]
+}

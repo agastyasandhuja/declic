@@ -1,0 +1,55 @@
+{
+  "schema_version": "1",
+  "brief_id": "finance-compounding-demo",
+  "lesson_request_id": "synthetic-request",
+  "objective_id": "compound-interest",
+  "title": "Interest earns interest",
+  "learning_goal": "Contrast simple and compound interest using a hypothetical two-year example",
+  "subject": "finance",
+  "level": "introductory_undergraduate",
+  "language": "en",
+  "notation": "dollars",
+  "assumed_knowledge": [],
+  "must_cover": [
+    "principal",
+    "year1",
+    "year2",
+    "simple",
+    "assumption"
+  ],
+  "must_not_claim": [
+    "Guaranteed returns",
+    "Investment recommendations"
+  ],
+  "approved_facts": [
+    {
+      "fact_id": "principal",
+      "statement": "In this hypothetical example the starting principal is $1,000, with no additional deposits or withdrawals."
+    },
+    {
+      "fact_id": "year1",
+      "statement": "At a hypothetical 10% annual rate compounded annually, year one adds $100 of interest, giving $1,100."
+    },
+    {
+      "fact_id": "year2",
+      "statement": "Year two interest is 10% of $1,100, or $110, giving $1,210. The extra $10 is interest earned on year one interest."
+    },
+    {
+      "fact_id": "simple",
+      "statement": "Simple interest at the same hypothetical 10% rate on the original $1,000 adds $100 each year, giving $1,200 after two years."
+    },
+    {
+      "fact_id": "assumption",
+      "statement": "The 10% rate is an illustrative assumption, not a prediction or guaranteed investment return. Compound interest earns interest on prior interest."
+    }
+  ],
+  "input_values": [],
+  "format_id": "visual_explainer",
+  "teaching_approach": "visual_story",
+  "target_duration_seconds": 40,
+  "scope": "shared_generic_candidate",
+  "owner_user_id": null,
+  "template_version": "3.0.0",
+  "presentation": "reference_v3",
+  "trace_kind": "none"
+}

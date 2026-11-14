@@ -1,0 +1,862 @@
+{
+  "schema_version": "1",
+  "notice": "Synthetic API policy fixtures only. fixture.invalid URLs do not play media. Not an academic export or video-generation fixture.",
+  "objectives": [
+    {
+      "user_id": "user_demo_01",
+      "course_id": "course_demo_dsa",
+      "course_title": "Data structures",
+      "objective_id": "objective_demo_dsa",
+      "title": "Linked-list reversal",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "current_unit": true,
+      "assessment_scope_status": "explicit",
+      "assessment_evidence_status": "explicit",
+      "assessment_date": null,
+      "assessment_timestamp": "2026-11-18T14:00:00-05:00",
+      "timezone": "America/New_York"
+    },
+    {
+      "user_id": "user_demo_01",
+      "course_id": "course_demo_probability",
+      "course_title": "Probability",
+      "objective_id": "objective_demo_probability",
+      "title": "Conditional probability",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "current_unit": true,
+      "assessment_scope_status": "explicit",
+      "assessment_evidence_status": "explicit",
+      "assessment_date": "2026-11-20",
+      "assessment_timestamp": null,
+      "timezone": "America/New_York"
+    },
+    {
+      "user_id": "user_demo_01",
+      "course_id": "course_demo_accounting",
+      "course_title": "Accounting",
+      "objective_id": "objective_demo_accounting",
+      "title": "Accrual accounting",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "current_unit": true,
+      "assessment_scope_status": "unknown",
+      "assessment_evidence_status": "unknown",
+      "assessment_date": null,
+      "assessment_timestamp": null,
+      "timezone": "America/New_York"
+    }
+  ],
+  "variants": [
+    {
+      "video_id": "video_demo_dsa_00",
+      "objective_id": "objective_demo_dsa",
+      "format_id": "visual_explainer",
+      "teaching_approach": "trace",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Linked-list reversal",
+      "learning_goal": "Explain one linked-list reversal objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_dsa_00",
+        "url": "https://fixture.invalid/video_demo_dsa_00.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_dsa_01",
+      "objective_id": "objective_demo_dsa",
+      "format_id": "worked_example",
+      "teaching_approach": "misconception",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Linked-list reversal",
+      "learning_goal": "Explain one linked-list reversal objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_dsa_01",
+        "url": "https://fixture.invalid/video_demo_dsa_01.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_dsa_02",
+      "objective_id": "objective_demo_dsa",
+      "format_id": "visual_explainer",
+      "teaching_approach": "trace",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Linked-list reversal",
+      "learning_goal": "Explain one linked-list reversal objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_dsa_02",
+        "url": "https://fixture.invalid/video_demo_dsa_02.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_dsa_03",
+      "objective_id": "objective_demo_dsa",
+      "format_id": "worked_example",
+      "teaching_approach": "misconception",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Linked-list reversal",
+      "learning_goal": "Explain one linked-list reversal objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_dsa_03",
+        "url": "https://fixture.invalid/video_demo_dsa_03.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_dsa_04",
+      "objective_id": "objective_demo_dsa",
+      "format_id": "visual_explainer",
+      "teaching_approach": "trace",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Linked-list reversal",
+      "learning_goal": "Explain one linked-list reversal objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_dsa_04",
+        "url": "https://fixture.invalid/video_demo_dsa_04.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_dsa_05",
+      "objective_id": "objective_demo_dsa",
+      "format_id": "worked_example",
+      "teaching_approach": "misconception",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Linked-list reversal",
+      "learning_goal": "Explain one linked-list reversal objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_dsa_05",
+        "url": "https://fixture.invalid/video_demo_dsa_05.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_dsa_06",
+      "objective_id": "objective_demo_dsa",
+      "format_id": "visual_explainer",
+      "teaching_approach": "trace",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Linked-list reversal",
+      "learning_goal": "Explain one linked-list reversal objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_dsa_06",
+        "url": "https://fixture.invalid/video_demo_dsa_06.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_dsa_07",
+      "objective_id": "objective_demo_dsa",
+      "format_id": "worked_example",
+      "teaching_approach": "misconception",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Linked-list reversal",
+      "learning_goal": "Explain one linked-list reversal objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_dsa_07",
+        "url": "https://fixture.invalid/video_demo_dsa_07.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_dsa_08",
+      "objective_id": "objective_demo_dsa",
+      "format_id": "visual_explainer",
+      "teaching_approach": "trace",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Linked-list reversal",
+      "learning_goal": "Explain one linked-list reversal objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_dsa_08",
+        "url": "https://fixture.invalid/video_demo_dsa_08.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_dsa_09",
+      "objective_id": "objective_demo_dsa",
+      "format_id": "worked_example",
+      "teaching_approach": "misconception",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Linked-list reversal",
+      "learning_goal": "Explain one linked-list reversal objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_dsa_09",
+        "url": "https://fixture.invalid/video_demo_dsa_09.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_dsa_10",
+      "objective_id": "objective_demo_dsa",
+      "format_id": "visual_explainer",
+      "teaching_approach": "trace",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Linked-list reversal",
+      "learning_goal": "Explain one linked-list reversal objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_dsa_10",
+        "url": "https://fixture.invalid/video_demo_dsa_10.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_dsa_11",
+      "objective_id": "objective_demo_dsa",
+      "format_id": "worked_example",
+      "teaching_approach": "misconception",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Linked-list reversal",
+      "learning_goal": "Explain one linked-list reversal objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_dsa_11",
+        "url": "https://fixture.invalid/video_demo_dsa_11.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_dsa_12",
+      "objective_id": "objective_demo_dsa",
+      "format_id": "visual_explainer",
+      "teaching_approach": "trace",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Linked-list reversal",
+      "learning_goal": "Explain one linked-list reversal objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_dsa_12",
+        "url": "https://fixture.invalid/video_demo_dsa_12.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_dsa_13",
+      "objective_id": "objective_demo_dsa",
+      "format_id": "worked_example",
+      "teaching_approach": "misconception",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Linked-list reversal",
+      "learning_goal": "Explain one linked-list reversal objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_dsa_13",
+        "url": "https://fixture.invalid/video_demo_dsa_13.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_dsa_14",
+      "objective_id": "objective_demo_dsa",
+      "format_id": "visual_explainer",
+      "teaching_approach": "trace",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Linked-list reversal",
+      "learning_goal": "Explain one linked-list reversal objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_dsa_14",
+        "url": "https://fixture.invalid/video_demo_dsa_14.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_dsa_15",
+      "objective_id": "objective_demo_dsa",
+      "format_id": "worked_example",
+      "teaching_approach": "misconception",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Linked-list reversal",
+      "learning_goal": "Explain one linked-list reversal objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_dsa_15",
+        "url": "https://fixture.invalid/video_demo_dsa_15.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_dsa_16",
+      "objective_id": "objective_demo_dsa",
+      "format_id": "visual_explainer",
+      "teaching_approach": "trace",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Linked-list reversal",
+      "learning_goal": "Explain one linked-list reversal objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_dsa_16",
+        "url": "https://fixture.invalid/video_demo_dsa_16.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_dsa_17",
+      "objective_id": "objective_demo_dsa",
+      "format_id": "worked_example",
+      "teaching_approach": "misconception",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Linked-list reversal",
+      "learning_goal": "Explain one linked-list reversal objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_dsa_17",
+        "url": "https://fixture.invalid/video_demo_dsa_17.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_dsa_18",
+      "objective_id": "objective_demo_dsa",
+      "format_id": "visual_explainer",
+      "teaching_approach": "trace",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Linked-list reversal",
+      "learning_goal": "Explain one linked-list reversal objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_dsa_18",
+        "url": "https://fixture.invalid/video_demo_dsa_18.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_dsa_19",
+      "objective_id": "objective_demo_dsa",
+      "format_id": "worked_example",
+      "teaching_approach": "misconception",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Linked-list reversal",
+      "learning_goal": "Explain one linked-list reversal objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_dsa_19",
+        "url": "https://fixture.invalid/video_demo_dsa_19.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_probability_00",
+      "objective_id": "objective_demo_probability",
+      "format_id": "visual_explainer",
+      "teaching_approach": "trace",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Conditional probability",
+      "learning_goal": "Explain one conditional probability objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_probability_00",
+        "url": "https://fixture.invalid/video_demo_probability_00.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_probability_01",
+      "objective_id": "objective_demo_probability",
+      "format_id": "worked_example",
+      "teaching_approach": "misconception",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Conditional probability",
+      "learning_goal": "Explain one conditional probability objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_probability_01",
+        "url": "https://fixture.invalid/video_demo_probability_01.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_probability_02",
+      "objective_id": "objective_demo_probability",
+      "format_id": "visual_explainer",
+      "teaching_approach": "trace",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Conditional probability",
+      "learning_goal": "Explain one conditional probability objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_probability_02",
+        "url": "https://fixture.invalid/video_demo_probability_02.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_probability_03",
+      "objective_id": "objective_demo_probability",
+      "format_id": "worked_example",
+      "teaching_approach": "misconception",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Conditional probability",
+      "learning_goal": "Explain one conditional probability objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_probability_03",
+        "url": "https://fixture.invalid/video_demo_probability_03.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_accounting_00",
+      "objective_id": "objective_demo_accounting",
+      "format_id": "visual_explainer",
+      "teaching_approach": "trace",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Accrual accounting",
+      "learning_goal": "Explain one accrual accounting objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_accounting_00",
+        "url": "https://fixture.invalid/video_demo_accounting_00.mp4",
+        "mime_type": "video/mp4"
+      }
+    },
+    {
+      "video_id": "video_demo_accounting_01",
+      "objective_id": "objective_demo_accounting",
+      "format_id": "worked_example",
+      "teaching_approach": "misconception",
+      "level": "intro",
+      "language": "en",
+      "notation": "plain",
+      "scope": "shared_generic",
+      "owner_user_id": null,
+      "status": "ready",
+      "title": "Accrual accounting",
+      "learning_goal": "Explain one accrual accounting objective",
+      "duration_seconds": 45,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "asset_video_demo_accounting_01",
+        "url": "https://fixture.invalid/video_demo_accounting_01.mp4",
+        "mime_type": "video/mp4"
+      }
+    }
+  ],
+  "entertainment": [
+    {
+      "schema_version": "1",
+      "video_id": "entertainment_demo_00",
+      "provider": "fixture",
+      "provider_video_id": "fixture_clip_00",
+      "source_url": null,
+      "creator": {},
+      "caption": "Synthetic catalog metadata; not a playable clip",
+      "duration_seconds": 30,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "entertainment_asset_0",
+        "url": "https://fixture.invalid/entertainment-0.mp4",
+        "mime_type": "video/mp4"
+      },
+      "thumbnail_url": null,
+      "acquired_at": "2026-11-14T00:00:00Z",
+      "availability": "ready",
+      "acquisition_mode": "fixture"
+    },
+    {
+      "schema_version": "1",
+      "video_id": "entertainment_demo_01",
+      "provider": "fixture",
+      "provider_video_id": "fixture_clip_01",
+      "source_url": null,
+      "creator": {},
+      "caption": "Synthetic catalog metadata; not a playable clip",
+      "duration_seconds": 30,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "entertainment_asset_1",
+        "url": "https://fixture.invalid/entertainment-1.mp4",
+        "mime_type": "video/mp4"
+      },
+      "thumbnail_url": null,
+      "acquired_at": "2026-11-14T00:00:00Z",
+      "availability": "ready",
+      "acquisition_mode": "fixture"
+    },
+    {
+      "schema_version": "1",
+      "video_id": "entertainment_demo_02",
+      "provider": "fixture",
+      "provider_video_id": "fixture_clip_02",
+      "source_url": null,
+      "creator": {},
+      "caption": "Synthetic catalog metadata; not a playable clip",
+      "duration_seconds": 30,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "entertainment_asset_2",
+        "url": "https://fixture.invalid/entertainment-2.mp4",
+        "mime_type": "video/mp4"
+      },
+      "thumbnail_url": null,
+      "acquired_at": "2026-11-14T00:00:00Z",
+      "availability": "ready",
+      "acquisition_mode": "fixture"
+    },
+    {
+      "schema_version": "1",
+      "video_id": "entertainment_demo_03",
+      "provider": "fixture",
+      "provider_video_id": "fixture_clip_03",
+      "source_url": null,
+      "creator": {},
+      "caption": "Synthetic catalog metadata; not a playable clip",
+      "duration_seconds": 30,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "entertainment_asset_3",
+        "url": "https://fixture.invalid/entertainment-3.mp4",
+        "mime_type": "video/mp4"
+      },
+      "thumbnail_url": null,
+      "acquired_at": "2026-11-14T00:00:00Z",
+      "availability": "ready",
+      "acquisition_mode": "fixture"
+    },
+    {
+      "schema_version": "1",
+      "video_id": "entertainment_demo_04",
+      "provider": "fixture",
+      "provider_video_id": "fixture_clip_04",
+      "source_url": null,
+      "creator": {},
+      "caption": "Synthetic catalog metadata; not a playable clip",
+      "duration_seconds": 30,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "entertainment_asset_4",
+        "url": "https://fixture.invalid/entertainment-4.mp4",
+        "mime_type": "video/mp4"
+      },
+      "thumbnail_url": null,
+      "acquired_at": "2026-11-14T00:00:00Z",
+      "availability": "ready",
+      "acquisition_mode": "fixture"
+    },
+    {
+      "schema_version": "1",
+      "video_id": "entertainment_demo_05",
+      "provider": "fixture",
+      "provider_video_id": "fixture_clip_05",
+      "source_url": null,
+      "creator": {},
+      "caption": "Synthetic catalog metadata; not a playable clip",
+      "duration_seconds": 30,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "entertainment_asset_5",
+        "url": "https://fixture.invalid/entertainment-5.mp4",
+        "mime_type": "video/mp4"
+      },
+      "thumbnail_url": null,
+      "acquired_at": "2026-11-14T00:00:00Z",
+      "availability": "ready",
+      "acquisition_mode": "fixture"
+    },
+    {
+      "schema_version": "1",
+      "video_id": "entertainment_demo_06",
+      "provider": "fixture",
+      "provider_video_id": "fixture_clip_06",
+      "source_url": null,
+      "creator": {},
+      "caption": "Synthetic catalog metadata; not a playable clip",
+      "duration_seconds": 30,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "entertainment_asset_6",
+        "url": "https://fixture.invalid/entertainment-6.mp4",
+        "mime_type": "video/mp4"
+      },
+      "thumbnail_url": null,
+      "acquired_at": "2026-11-14T00:00:00Z",
+      "availability": "ready",
+      "acquisition_mode": "fixture"
+    },
+    {
+      "schema_version": "1",
+      "video_id": "entertainment_demo_07",
+      "provider": "fixture",
+      "provider_video_id": "fixture_clip_07",
+      "source_url": null,
+      "creator": {},
+      "caption": "Synthetic catalog metadata; not a playable clip",
+      "duration_seconds": 30,
+      "playback": {
+        "kind": "mp4",
+        "asset_id": "entertainment_asset_7",
+        "url": "https://fixture.invalid/entertainment-7.mp4",
+        "mime_type": "video/mp4"
+      },
+      "thumbnail_url": null,
+      "acquired_at": "2026-11-14T00:00:00Z",
+      "availability": "ready",
+      "acquisition_mode": "fixture"
+    }
+  ],
+  "quizzes": [
+    {
+      "quiz_id": "quiz_demo_dsa",
+      "revision": 1,
+      "objective_ids": [
+        "objective_demo_dsa"
+      ],
+      "prompt": "Before overwriting current.next during list reversal, what must you save?",
+      "options": [
+        {
+          "option_id": "a",
+          "text": "The original next node"
+        },
+        {
+          "option_id": "b",
+          "text": "The length of the list"
+        }
+      ],
+      "correct_option_id": "a",
+      "explanation": "Save the original next node so the remaining list stays reachable.",
+      "misconception_by_option": {
+        "b": "demo_misconception_dsa"
+      },
+      "source_refs": [
+        {
+          "source_id": "synthetic_dsa",
+          "course_id": "course_demo_dsa",
+          "locator": "fixture question",
+          "evidence_kind": "explicit"
+        }
+      ],
+      "scope": "shared_generic"
+    },
+    {
+      "quiz_id": "quiz_demo_probability",
+      "revision": 1,
+      "objective_ids": [
+        "objective_demo_probability"
+      ],
+      "prompt": "What does P(A | B) describe?",
+      "options": [
+        {
+          "option_id": "a",
+          "text": "The probability of A given B"
+        },
+        {
+          "option_id": "b",
+          "text": "The probability of A plus B"
+        }
+      ],
+      "correct_option_id": "a",
+      "explanation": "The conditioning event B restricts the outcomes under consideration.",
+      "misconception_by_option": {
+        "b": "demo_misconception_probability"
+      },
+      "source_refs": [
+        {
+          "source_id": "synthetic_probability",
+          "course_id": "course_demo_probability",
+          "locator": "fixture question",
+          "evidence_kind": "explicit"
+        }
+      ],
+      "scope": "shared_generic"
+    },
+    {
+      "quiz_id": "quiz_demo_accounting",
+      "revision": 1,
+      "objective_ids": [
+        "objective_demo_accounting"
+      ],
+      "prompt": "Under accrual accounting, when is earned revenue recognized?",
+      "options": [
+        {
+          "option_id": "a",
+          "text": "When earned"
+        },
+        {
+          "option_id": "b",
+          "text": "Only when cash is collected"
+        }
+      ],
+      "correct_option_id": "a",
+      "explanation": "Revenue is recognized when earned; cash collection may occur at another time.",
+      "misconception_by_option": {
+        "b": "demo_misconception_accounting"
+      },
+      "source_refs": [
+        {
+          "source_id": "synthetic_accounting",
+          "course_id": "course_demo_accounting",
+          "locator": "fixture question",
+          "evidence_kind": "explicit"
+        }
+      ],
+      "scope": "shared_generic"
+    }
+  ]
+}

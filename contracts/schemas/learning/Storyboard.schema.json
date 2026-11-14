@@ -1,0 +1,420 @@
+{
+  "$defs": {
+    "Cue": {
+      "additionalProperties": false,
+      "properties": {
+        "segment_id": {
+          "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+          "title": "Segment Id",
+          "type": "string"
+        },
+        "phrase": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Phrase",
+          "type": "string"
+        },
+        "occurrence": {
+          "default": 0,
+          "maximum": 10,
+          "minimum": 0,
+          "title": "Occurrence",
+          "type": "integer"
+        },
+        "edge": {
+          "default": "start",
+          "enum": [
+            "start",
+            "end"
+          ],
+          "title": "Edge",
+          "type": "string"
+        }
+      },
+      "required": [
+        "segment_id",
+        "phrase"
+      ],
+      "title": "Cue",
+      "type": "object"
+    },
+    "Event": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "intro",
+            "save",
+            "reverse",
+            "advance",
+            "finish"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "node": {
+          "maximum": 4,
+          "minimum": 0,
+          "title": "Node",
+          "type": "integer"
+        },
+        "cue": {
+          "$ref": "#/$defs/Cue"
+        }
+      },
+      "required": [
+        "action",
+        "node",
+        "cue"
+      ],
+      "title": "Event",
+      "type": "object"
+    },
+    "ImageRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "query": {
+          "maxLength": 120,
+          "minLength": 3,
+          "title": "Query",
+          "type": "string"
+        },
+        "provider": {
+          "default": "commons",
+          "enum": [
+            "nasa",
+            "commons",
+            "openverse"
+          ],
+          "title": "Provider",
+          "type": "string"
+        },
+        "purpose": {
+          "maxLength": 180,
+          "minLength": 3,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "fact_ids": {
+          "items": {
+            "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+            "type": "string"
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "title": "Fact Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "asset_id",
+        "query",
+        "purpose",
+        "fact_ids"
+      ],
+      "title": "ImageRequest",
+      "type": "object"
+    },
+    "Segment": {
+      "additionalProperties": false,
+      "properties": {
+        "segment_id": {
+          "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+          "title": "Segment Id",
+          "type": "string"
+        },
+        "speaker_role": {
+          "enum": [
+            "peter",
+            "stewie",
+            "narrator"
+          ],
+          "title": "Speaker Role",
+          "type": "string"
+        },
+        "spoken_text": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Spoken Text",
+          "type": "string"
+        },
+        "fact_ids": {
+          "items": {
+            "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Fact Ids",
+          "type": "array"
+        },
+        "delivery": {
+          "default": "neutral",
+          "enum": [
+            "neutral",
+            "curious",
+            "sarcastic",
+            "emphatic"
+          ],
+          "title": "Delivery",
+          "type": "string"
+        }
+      },
+      "required": [
+        "segment_id",
+        "speaker_role",
+        "spoken_text",
+        "fact_ids"
+      ],
+      "title": "Segment",
+      "type": "object"
+    },
+    "Shot": {
+      "additionalProperties": false,
+      "properties": {
+        "shot_id": {
+          "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+          "title": "Shot Id",
+          "type": "string"
+        },
+        "segment_id": {
+          "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+          "title": "Segment Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "image",
+            "diagram",
+            "kinetic",
+            "space"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "diagram_demo": {
+          "default": "trace",
+          "description": "For an opening misconception ONLY, broken_first_link shows the first link severed before saving; trace shows the real verified algorithm.",
+          "enum": [
+            "trace",
+            "broken_first_link"
+          ],
+          "title": "Diagram Demo",
+          "type": "string"
+        },
+        "motion_scene": {
+          "default": "none",
+          "enum": [
+            "none",
+            "price_tag",
+            "split_payment",
+            "stack_purchases",
+            "payment_calendar",
+            "total_cost",
+            "choice_balance",
+            "receipt",
+            "ticket_purchase",
+            "ticket_loss",
+            "future_choice",
+            "time_loss",
+            "decision_reset"
+          ],
+          "title": "Motion Scene",
+          "type": "string"
+        },
+        "asset_ids": {
+          "items": {
+            "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+            "type": "string"
+          },
+          "maxItems": 2,
+          "title": "Asset Ids",
+          "type": "array"
+        },
+        "headline": {
+          "default": "",
+          "maxLength": 52,
+          "title": "Headline",
+          "type": "string"
+        },
+        "labels": {
+          "items": {
+            "maxLength": 24,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 5,
+          "title": "Labels",
+          "type": "array"
+        },
+        "camera": {
+          "default": "push",
+          "enum": [
+            "push",
+            "pull",
+            "pan_left",
+            "pan_right",
+            "orbit",
+            "drift"
+          ],
+          "title": "Camera",
+          "type": "string"
+        },
+        "layout": {
+          "default": "full",
+          "enum": [
+            "full",
+            "insert",
+            "split"
+          ],
+          "title": "Layout",
+          "type": "string"
+        },
+        "space_mode": {
+          "default": "galaxy",
+          "enum": [
+            "starfield",
+            "galaxy",
+            "cosmic_web",
+            "cosmic_sheet",
+            "cosmic_overview",
+            "filament_detail",
+            "solar_system",
+            "nebula",
+            "light_travel",
+            "lookback",
+            "scale_ladder",
+            "gravity",
+            "enzyme_hook",
+            "enzyme_fit",
+            "enzyme_reaction",
+            "enzyme_reuse",
+            "enzyme_compete",
+            "enzyme_concentration",
+            "enzyme_denature"
+          ],
+          "title": "Space Mode",
+          "type": "string"
+        },
+        "fact_ids": {
+          "items": {
+            "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+            "type": "string"
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "title": "Fact Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "shot_id",
+        "segment_id",
+        "kind",
+        "fact_ids"
+      ],
+      "title": "Shot",
+      "type": "object"
+    },
+    "TeachingBeat": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "hook",
+            "prediction",
+            "reveal",
+            "retrieval",
+            "feedback"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "segment_id": {
+          "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+          "title": "Segment Id",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 72,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "segment_id",
+        "text"
+      ],
+      "title": "TeachingBeat",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1",
+      "default": "1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "title": {
+      "maxLength": 90,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "segments": {
+      "items": {
+        "$ref": "#/$defs/Segment"
+      },
+      "maxItems": 16,
+      "minItems": 3,
+      "title": "Segments",
+      "type": "array"
+    },
+    "events": {
+      "items": {
+        "$ref": "#/$defs/Event"
+      },
+      "maxItems": 20,
+      "title": "Events",
+      "type": "array"
+    },
+    "teaching_beats": {
+      "items": {
+        "$ref": "#/$defs/TeachingBeat"
+      },
+      "maxItems": 5,
+      "title": "Teaching Beats",
+      "type": "array"
+    },
+    "image_requests": {
+      "items": {
+        "$ref": "#/$defs/ImageRequest"
+      },
+      "maxItems": 6,
+      "title": "Image Requests",
+      "type": "array"
+    },
+    "shots": {
+      "items": {
+        "$ref": "#/$defs/Shot"
+      },
+      "maxItems": 16,
+      "title": "Shots",
+      "type": "array"
+    }
+  },
+  "required": [
+    "title",
+    "segments"
+  ],
+  "title": "Storyboard",
+  "type": "object"
+}

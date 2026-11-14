@@ -1,0 +1,120 @@
+{
+  "title": "Zero Grip Zone: Sneaker Shark vs. Frictionless Street",
+  "trend_assessment": "The evidence is weak. One character-list page names a sneaker-wearing shark (Tralalero Tralala) and a coffee-cup-headed character as established Italian brainrot archetypes. That page is not a live TikTok ranking. The search-demand report explicitly leaves out in-app TikTok, Instagram, and YouTube searches, so it says nothing about what is on the For You Page right now. The Jensen Huang template page is unsupported marketing and is not used. Conclusion: brainrot-inspired visuals are a reasonable style choice, but nothing here proves anything is going viral now. The video uses original characters and dialogue and makes no claim of verified virality.",
+  "character_choice": "An original sneaker-wearing shark leads the story. He is expressive and overconfident, which makes his slips funny. The second character is an original driver with a coffee cup for a head. Its nervous energy suits the car scenes. A bright female narrator flips the switch and explains the physics in short lines. Both characters only borrow the brainrot visual shorthand. There is no borrowed audio, catchphrase, or celebrity imitation.",
+  "cast": [
+    {
+      "role": "narrator",
+      "voice_id": "FGY2WhTYpPnrIDTdsKH5",
+      "name": "Laura - Enthusiast, Quirky Attitude",
+      "reason": "A bright, sassy young American female voice. It fits a host who explains quickly, sounds playful, and is never dry."
+    },
+    {
+      "role": "shark",
+      "voice_id": "IKne3meq5aSn9XLyUdCD",
+      "name": "Charlie - Deep, Confident, Energetic",
+      "reason": "A hyped young Australian male voice. It has energetic swagger and sounds clearly different from the other two."
+    },
+    {
+      "role": "driver",
+      "voice_id": "N2lVS1w4EtoT3dr4eOWO",
+      "name": "Callum - Husky Trickster",
+      "reason": "A gravelly middle-aged American voice. It suits a frazzled coffee-cup driver and contrasts in pitch and texture with Laura and Charlie."
+    }
+  ],
+  "beats": [
+    {
+      "scene": "hook",
+      "speaker": "narrator",
+      "text": "What if friction disappeared under your shoes... and car tires?",
+      "action": "Sunny illustrated city. A three-sneaker shark walks as a small car passes behind. Title asks what if friction quit. Narrator is off screen.",
+      "pause_after": 0.3
+    },
+    {
+      "scene": "switch",
+      "speaker": "shark",
+      "text": "Relax. I've got three sneakers. What's the worst\u2014",
+      "action": "Close shot of shark speaking. A large ground-grip toggle changes from ON to OFF late in the line, labeled shoes + tires only. Shark expression changes to alarm.",
+      "pause_after": 0.4
+    },
+    {
+      "scene": "slip",
+      "speaker": "shark",
+      "text": "Bro! My feet are running. I'm not!",
+      "action": "Shark drifts forward with splayed sneakers paddling ineffectively. Arms flail; sweat, speed lines and evenly scrolling buildings reinforce the slide.",
+      "pause_after": 0.3
+    },
+    {
+      "scene": "reaction",
+      "speaker": "shark",
+      "text": "I've become a screensaver.",
+      "action": "Closer shot: shark drifts like a screensaver, paws still paddling, eyes worried. Mouth follows actual speech amplitude.",
+      "pause_after": 0.5
+    },
+    {
+      "scene": "car",
+      "speaker": "driver",
+      "text": "Brakes! Wheels stopped. Car didn't.",
+      "action": "Yellow car translates at steady speed while wheel spokes stop rotating. A wheel inset emphasizes lockup; a large circular coffee-driver reaction inset carries the dialogue.",
+      "pause_after": 0.4
+    },
+    {
+      "scene": "crash",
+      "speaker": "driver",
+      "text": "Turn! Turn! ...Thank you, suspiciously convenient foam.",
+      "action": "Curved dashed intended path contrasts with straight travel. Car slides into foam boxes and stops at contact, squash-and-stretch and a POOF burst. Shark is not struck.",
+      "pause_after": 0.6
+    },
+    {
+      "scene": "why",
+      "speaker": "narrator",
+      "text": "No horizontal force? You keep coasting. Gravity still pulls down; the ground pushes up.",
+      "action": "Cream overlay on the street with the shark, equal-length upward normal and downward gravity arrows, constant velocity arrow and Fx=0 implies ax=0. Text explicitly neglects air drag for this short slide.",
+      "pause_after": 0.3
+    },
+    {
+      "scene": "shoe",
+      "speaker": "narrator",
+      "text": "Normally, your shoe pushes the ground back. Static friction pushes you forward.",
+      "action": "Restored-grip close-up. Shoe and leg above a pavement slab. Equal-length arrows on separate bodies show the shoe pushing ground backward and ground pushing shoe forward.",
+      "pause_after": 0.3
+    },
+    {
+      "scene": "tire",
+      "speaker": "narrator",
+      "text": "That same grip supplies a car's turning force. No grip? No turn.",
+      "action": "Restored-grip top view: the car follows a circular path and the road friction arrow points inward to the turn center. No additional braking inset.",
+      "pause_after": 0.3
+    },
+    {
+      "scene": "restore",
+      "speaker": "narrator",
+      "text": "Your turning force can't exceed mu times N. Double your speed? You need four times the grip.",
+      "action": "Restored-grip top view of a car following a circular road with inward friction arrow. Show mv\u00b2/r \u2264 \u03bc_s N, then 2\u00d7 speed \u2192 4\u00d7 force, explicitly same car and turn radius.",
+      "pause_after": 0.4
+    },
+    {
+      "scene": "payoff",
+      "speaker": "shark",
+      "text": "Ground... I owe you an apology.",
+      "action": "Shark apologizes to the ground, with an affectionate heart and a confident planted-sneaker pose. The coffee car and foam stack remain in the background.",
+      "pause_after": 0.5
+    }
+  ],
+  "physics_checks": [
+    "Only shoe\u2013ground and tire\u2013road friction is switched off. Gravity, air, and normal contact and collision forces stay on, so the characters never sink or float.",
+    "The shark is already walking and the car is already moving when the switch flips. Both keep their speed and direction.",
+    "With no friction, a foot pushing back slides backward. The body keeps its forward speed, but there is no force from the ground to speed it up or slow it down.",
+    "Arm flailing doesn't change how fast the shark drifts: there is no friction from the ground, and the extra air drag from waving his arms is too small to matter.",
+    "Locked wheels give no braking force. The car keeps sliding straight at the same speed. Turning the front wheels doesn't change its path, because there is no sideways force from the road.",
+    "Air drag is very small over the roughly 2-second slide, so the shots show no visible slowing.",
+    "The free-body diagram shows gravity and the normal force as equal and opposite, friction as zero, and the velocity arrow at a constant length.",
+    "The shoe close-up shows an action-reaction pair: the shoe pushes the ground back, and the ground pushes the shoe forward with an equal-sized force.",
+    "When the car turns, static friction from the road points toward the center of the curve. When it brakes, friction on the tires points backward.",
+    "The restored top-view turn shows mv\u00b2/r \u2264 \u03bc_s N. Doubling speed quadruples force demand only with the same mass and turn radius.",
+    "The frictionless toy-world car is stopped by foam contact forces, not a friction force. This is an illustrative cartoon, not a numerical rigid-body simulation."
+  ],
+  "future_topic_policy": "Future episodes should target college-level topics such as introductory mechanics (Newton's laws, rotational dynamics, energy and momentum), electromagnetism, thermodynamics, intro chemistry, biology, and statistics. Avoid multiplication and basic arithmetic. Keep the same format: comedy first, with one precise idea or labeled relation per episode, and visuals that show correct cause and effect. Treat trend evidence cautiously and never claim verified virality. Use original characters and dialogue only, with no borrowed audio or celebrity voice imitation.",
+  "editorial_note": "Tightened after Opus draft; removed inaccurate supplied word count; added college mechanics v\u00b2 dependence. Collision involves car and foam only, avoiding a gratuitous character impact. Neglect air drag during short coasting demonstration.",
+  "spoken_word_count": 102
+}

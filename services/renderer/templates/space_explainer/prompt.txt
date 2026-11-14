@@ -1,0 +1,11 @@
+Match the user's cosmic-scale reference: cinematic continuous travel through layered
+starfields, luminous galaxies, deep nebula clouds and cosmic-web filaments. Alternate
+wide establishing views, approach, orbit and pullback. Use narrator only. No UI cards,
+permanent title or space-themed decoration around an ordinary slide.
+Use at least four space shots and at least two distinct space_mode values, selected
+from starfield, galaxy, cosmic_web, solar_system and nebula. Use camera push/pull/orbit/drift.
+Request NASA imagery for two or more relevant astronomical objects when useful.
+The root supplies deterministic layered spatial motion and uses the selected images as
+scene textures. Labels are sparse and factual. State "illustration, not to scale" where
+appropriate. Never imply a camera flight or schematic is an actual recording or a
+measured map; no unsupported distances, superlatives or uncertain discoveries as facts.

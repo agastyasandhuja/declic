@@ -1,0 +1,52 @@
+{
+  "schema_version": "1",
+  "brief_id": "math-matrix-demo",
+  "lesson_request_id": "synthetic-request",
+  "objective_id": "matrix-multiply",
+  "title": "Matrix multiplication",
+  "learning_goal": "Compute each matrix-product cell as a row-column dot product",
+  "subject": "mathematics",
+  "level": "introductory_undergraduate",
+  "language": "en",
+  "notation": "matrix notation",
+  "assumed_knowledge": [],
+  "must_cover": [
+    "rule"
+  ],
+  "must_not_claim": [],
+  "approved_facts": [
+    {
+      "fact_id": "rule",
+      "statement": "For AB, cell (i,j) is the sum of matching products from row i of A and column j of B."
+    }
+  ],
+  "input_values": [],
+  "format_id": "math_explainer",
+  "teaching_approach": "visual_story",
+  "target_duration_seconds": 21,
+  "scope": "shared_generic_candidate",
+  "owner_user_id": null,
+  "template_version": "3.0.0",
+  "presentation": "reference_v3",
+  "trace_kind": "none",
+  "matrix_a": [
+    [
+      1,
+      3
+    ],
+    [
+      5,
+      7
+    ]
+  ],
+  "matrix_b": [
+    [
+      2,
+      4
+    ],
+    [
+      6,
+      8
+    ]
+  ]
+}

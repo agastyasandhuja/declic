@@ -1,0 +1,105 @@
+{
+  "title": "What if friction disappeared? \u2014 everyday examples",
+  "cast": [
+    {
+      "role": "narrator",
+      "voice_id": "TX3LPaxmHKxFdv7VOQHJ",
+      "name": "Liam",
+      "reason": "Clear energetic male lead, different from the first cartoon."
+    },
+    {
+      "role": "friend",
+      "voice_id": "CwhRBWXzGAHq8TQ4Fs17",
+      "name": "Roger",
+      "reason": "Contrasting male delivery for one short gym reaction."
+    }
+  ],
+  "beats": [
+    {
+      "scene": "hook",
+      "speaker": "narrator",
+      "text": "What would happen if friction disappeared?",
+      "pause_after": 0.22,
+      "action": "Street-level red car approaches a stationary blue car at a red traffic light. No on-screen title."
+    },
+    {
+      "scene": "cars",
+      "speaker": "narrator",
+      "text": "Cars would miss turns and crash. Even with the brakes slammed.",
+      "pause_after": 0.28,
+      "action": "Red car locks its wheels and continues translating; it contacts the blue car. After contact the two cars translate together at half the red car pre-contact speed, with a dent and a brief contact puff."
+    },
+    {
+      "scene": "dog",
+      "speaker": "narrator",
+      "text": "Your mom would slip walking the dog. The dog? Also sliding.",
+      "pause_after": 0.3,
+      "action": "Woman loses purchase mid-walk, legs splay and torso rotates into a fall. Her dog also splays its paws and slides. Leash tracks the animated hand and collar."
+    },
+    {
+      "scene": "phone",
+      "speaker": "narrator",
+      "text": "Your phone would slide straight out of your hand.",
+      "pause_after": 0.2,
+      "action": "A phone pinched at its vertical sides falls out of the hand, accelerates downward, then tips against the floor with its lower bound constrained to the floor."
+    },
+    {
+      "scene": "gym",
+      "speaker": "friend",
+      "text": "Lightweight, baby!",
+      "pause_after": 0.35,
+      "action": "A male gym climber hangs on a vertical rope a short distance above a soft mat and says one short line."
+    },
+    {
+      "scene": "drop",
+      "speaker": "narrator",
+      "text": "Your gym bro just set a new floor record.",
+      "pause_after": 0.35,
+      "action": "Hands slide down the rope as the climber falls onto the mat and releases the rope."
+    },
+    {
+      "scene": "why",
+      "speaker": "narrator",
+      "text": "Why? Friction resists surfaces sliding past each other.",
+      "pause_after": 0.24,
+      "action": "A sliding block decelerates under a constant opposing friction arrow F while its velocity arrow v shortens."
+    },
+    {
+      "scene": "shoe",
+      "speaker": "narrator",
+      "text": "Normally, your foot pushes backward. The ground's static friction pushes you forward.",
+      "pause_after": 0.24,
+      "action": "Normally: a planted shoe presses backward on the floor; the floor pushes it forward. Equal opposing force arrows are drawn on separate objects."
+    },
+    {
+      "scene": "nogrip",
+      "speaker": "narrator",
+      "text": "Remove that force, and your foot slips instead.",
+      "pause_after": 0.25,
+      "action": "Same close-up, now F=0: the foot slides backward instead of remaining planted."
+    },
+    {
+      "scene": "turn",
+      "speaker": "narrator",
+      "text": "Tires need sideways friction to turn. Without it, the car keeps going straight.",
+      "pause_after": 0.24,
+      "action": "Car initially follows a circular road with an inward force arrow. At F=0 it leaves along the tangent, with continuous position and speed."
+    },
+    {
+      "scene": "force",
+      "speaker": "narrator",
+      "text": "Same car, same corner: twice the speed needs four times the turning force.",
+      "pause_after": 0.24,
+      "action": "Fixed car and circle radius. Angular speed doubles; force arrow becomes exactly four times as long. Only F=mv\u00b2/r, v/2v, F/4F appear as notation."
+    },
+    {
+      "scene": "end",
+      "speaker": "narrator",
+      "text": "So friction isn't just slowing you down. It's how you stay in control.",
+      "pause_after": 0.4,
+      "action": "Ordinary walking restored: woman and dog move with controlled steps; captions deliver the final sentence."
+    }
+  ],
+  "revision": "User requested direct everyday examples, male voices, captions/diagram notation only, better action animation.",
+  "spoken_word_count": 115
+}

@@ -1,0 +1,399 @@
+{
+  "schema_version": "1",
+  "title": "Reverse a Linked List Without Losing It",
+  "segments": [
+    {
+      "segment_id": "s1",
+      "speaker_role": "stewie",
+      "spoken_text": "Peter, you flipped one arrow and lost two whole nodes. How?",
+      "fact_ids": [
+        "save"
+      ],
+      "delivery": "curious"
+    },
+    {
+      "segment_id": "s2",
+      "speaker_role": "peter",
+      "spoken_text": "Easy. Previous is None, so I pointed node one's next pointer at None.",
+      "fact_ids": [
+        "reverse"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s3",
+      "speaker_role": "stewie",
+      "spoken_text": "Bold. And node two? Unreachable. You flipped before saving.",
+      "fact_ids": [
+        "save"
+      ],
+      "delivery": "sarcastic"
+    },
+    {
+      "segment_id": "s4",
+      "speaker_role": "peter",
+      "spoken_text": "Fine. Save the next pointer first, so two stays reachable. Then flip one's next pointer to None.",
+      "fact_ids": [
+        "save",
+        "reverse"
+      ],
+      "delivery": "emphatic"
+    },
+    {
+      "segment_id": "s5",
+      "speaker_role": "stewie",
+      "spoken_text": "Then previous moves to one, and current moves to two?",
+      "fact_ids": [
+        "advance"
+      ],
+      "delivery": "curious"
+    },
+    {
+      "segment_id": "s6",
+      "speaker_role": "peter",
+      "spoken_text": "Yep. Node two: save three, point two back at one.",
+      "fact_ids": [
+        "save",
+        "reverse"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s7",
+      "speaker_role": "stewie",
+      "spoken_text": "Then advance, without losing anything this time. Growth.",
+      "fact_ids": [
+        "advance"
+      ],
+      "delivery": "sarcastic"
+    },
+    {
+      "segment_id": "s8",
+      "speaker_role": "peter",
+      "spoken_text": "Node three: save None, point three at two, step forward.",
+      "fact_ids": [
+        "save",
+        "reverse",
+        "advance"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s9",
+      "speaker_role": "stewie",
+      "spoken_text": "So the new head is current?",
+      "fact_ids": [
+        "return"
+      ],
+      "delivery": "curious"
+    },
+    {
+      "segment_id": "s10",
+      "speaker_role": "peter",
+      "spoken_text": "Nope, current is None. Return previous: three, two, one. Saving first meant nothing vanished.",
+      "fact_ids": [
+        "return",
+        "save"
+      ],
+      "delivery": "emphatic"
+    }
+  ],
+  "events": [
+    {
+      "action": "intro",
+      "node": 0,
+      "cue": {
+        "segment_id": "s2",
+        "phrase": "Previous is None",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "save",
+      "node": 0,
+      "cue": {
+        "segment_id": "s4",
+        "phrase": "Save the next pointer first",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "reverse",
+      "node": 0,
+      "cue": {
+        "segment_id": "s4",
+        "phrase": "flip one's next pointer",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "advance",
+      "node": 0,
+      "cue": {
+        "segment_id": "s5",
+        "phrase": "previous moves to one",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "save",
+      "node": 1,
+      "cue": {
+        "segment_id": "s6",
+        "phrase": "save three",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "reverse",
+      "node": 1,
+      "cue": {
+        "segment_id": "s6",
+        "phrase": "point two back at one",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "advance",
+      "node": 1,
+      "cue": {
+        "segment_id": "s7",
+        "phrase": "Then advance",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "save",
+      "node": 2,
+      "cue": {
+        "segment_id": "s8",
+        "phrase": "save None",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "reverse",
+      "node": 2,
+      "cue": {
+        "segment_id": "s8",
+        "phrase": "point three at two",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "advance",
+      "node": 2,
+      "cue": {
+        "segment_id": "s8",
+        "phrase": "step forward",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "finish",
+      "node": 2,
+      "cue": {
+        "segment_id": "s10",
+        "phrase": "Return previous",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    }
+  ],
+  "teaching_beats": [],
+  "image_requests": [],
+  "shots": [
+    {
+      "shot_id": "sh1",
+      "segment_id": "s1",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "One flip, two nodes lost?",
+      "labels": [
+        "1 \u2192 None",
+        "2 \u2192 3",
+        "unreachable"
+      ],
+      "camera": "push",
+      "layout": "insert",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "save"
+      ],
+      "diagram_demo": "broken_first_link"
+    },
+    {
+      "shot_id": "sh2",
+      "segment_id": "s2",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [
+        "prev = None",
+        "curr = 1",
+        "1.next = None"
+      ],
+      "camera": "drift",
+      "layout": "insert",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "reverse"
+      ],
+      "diagram_demo": "broken_first_link"
+    },
+    {
+      "shot_id": "sh3",
+      "segment_id": "s3",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "Flipped before saving",
+      "labels": [
+        "2 \u2192 3 lost"
+      ],
+      "camera": "pull",
+      "layout": "split",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "save"
+      ],
+      "diagram_demo": "broken_first_link"
+    },
+    {
+      "shot_id": "sh4",
+      "segment_id": "s4",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "Save, then flip",
+      "labels": [
+        "nxt = curr.next",
+        "curr.next = prev",
+        "nxt = 2"
+      ],
+      "camera": "push",
+      "layout": "insert",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "save",
+        "reverse"
+      ]
+    },
+    {
+      "shot_id": "sh5",
+      "segment_id": "s5",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [
+        "prev = 1",
+        "curr = 2"
+      ],
+      "camera": "pan_right",
+      "layout": "insert",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "advance"
+      ]
+    },
+    {
+      "shot_id": "sh6",
+      "segment_id": "s6",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [
+        "nxt = 3",
+        "2.next = 1"
+      ],
+      "camera": "push",
+      "layout": "split",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "save",
+        "reverse"
+      ]
+    },
+    {
+      "shot_id": "sh7",
+      "segment_id": "s7",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [
+        "prev = 2",
+        "curr = 3"
+      ],
+      "camera": "pan_right",
+      "layout": "insert",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "advance"
+      ]
+    },
+    {
+      "shot_id": "sh8",
+      "segment_id": "s8",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [
+        "nxt = None",
+        "3.next = 2",
+        "prev = 3",
+        "curr = None"
+      ],
+      "camera": "drift",
+      "layout": "insert",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "save",
+        "reverse",
+        "advance"
+      ]
+    },
+    {
+      "shot_id": "sh9",
+      "segment_id": "s9",
+      "kind": "kinetic",
+      "asset_ids": [],
+      "headline": "Head = current?",
+      "labels": [
+        "curr = None",
+        "prev = 3"
+      ],
+      "camera": "orbit",
+      "layout": "split",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "return"
+      ]
+    },
+    {
+      "shot_id": "sh10",
+      "segment_id": "s10",
+      "kind": "diagram",
+      "asset_ids": [],
+      "headline": "return prev",
+      "labels": [
+        "3 \u2192 2 \u2192 1 \u2192 None",
+        "nothing lost"
+      ],
+      "camera": "pull",
+      "layout": "insert",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "return",
+        "save"
+      ]
+    }
+  ]
+}

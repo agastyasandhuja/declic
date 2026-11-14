@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EntertainmentFeedPage",
+  "type": "object",
+  "required": ["schema_version", "items", "next_cursor"],
+  "properties": {
+    "schema_version": {"const": "1"},
+    "items": {"type": "array", "items": {"$ref": "#/definitions/EntertainmentVideo"}},
+    "next_cursor": {"type": ["string", "null"]}
+  },
+  "definitions": {
+    "PlaybackSource": {
+      "title": "PlaybackSource",
+      "type": "object",
+      "required": ["kind", "asset_id", "url", "expires_at", "mime_type"],
+      "properties": {
+        "kind": {"enum": ["mp4", "hls", "embed"]},
+        "asset_id": {"type": "string", "minLength": 1},
+        "url": {"type": "string", "format": "uri", "pattern": "^https://"},
+        "expires_at": {"type": ["string", "null"], "format": "date-time"},
+        "mime_type": {"type": ["string", "null"]}
+      },
+      "not": {"required": ["headers_ref"]}
+    },
+    "EntertainmentVideo": {
+      "title": "EntertainmentVideo",
+      "type": "object",
+      "required": ["schema_version", "video_id", "provider", "provider_video_id", "source_url", "creator", "caption", "duration_seconds", "playback", "thumbnail_url", "acquired_at", "availability", "acquisition_mode"],
+      "properties": {
+        "schema_version": {"const": "1"},
+        "video_id": {"type": "string", "minLength": 1},
+        "provider": {"enum": ["tiktok", "instagram", "fixture"]},
+        "provider_video_id": {"type": "string", "minLength": 1},
+        "source_url": {"type": ["string", "null"], "format": "uri", "pattern": "^https://"},
+        "creator": {
+          "type": "object",
+          "required": ["handle", "display_name", "attribution_url"],
+          "properties": {
+            "handle": {"type": ["string", "null"]},
+            "display_name": {"type": ["string", "null"]},
+            "attribution_url": {"type": ["string", "null"], "format": "uri", "pattern": "^https://"}
+          }
+        },
+        "caption": {"type": "string"},
+        "duration_seconds": {"type": ["number", "null"], "minimum": 0},
+        "playback": {"$ref": "#/definitions/PlaybackSource"},
+        "thumbnail_url": {"type": ["string", "null"], "format": "uri", "pattern": "^https://"},
+        "acquired_at": {"type": "string", "format": "date-time"},
+        "availability": {"enum": ["ready", "unavailable", "needs_refresh"]},
+        "acquisition_mode": {"enum": ["live", "cached", "fixture"]}
+      }
+    }
+  }
+}

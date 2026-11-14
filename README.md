@@ -4,8 +4,9 @@ An iPhone-first React Native app that mixes short-form entertainment with
 30–60 second lessons generated from a student's Canvas courses. Course schedules,
 upcoming exams, and quiz answers guide the study recommendations.
 
-**Current status:** architecture, ownership guides, and directory scaffold only.
-There is no runnable app or configured cloud infrastructure yet. Technology
+**Current status:** an Expo mobile prototype with a fixture feed, Supabase Auth
+integration and teammate component slots; shared backend/Atlas persistence remain
+pending. See [mobile setup and verification boundaries](apps/mobile/README.md). Technology
 choices below include the adopted MongoDB Atlas database decision; remaining
 defaults and user-confirmed product requirements are identified in the project
 document.
@@ -63,9 +64,9 @@ database connection has been provisioned or tested by this scaffold.
 | fixtures | Synthetic, nonprivate integration samples | Split by subfolder |
 | docs | Product architecture, integration, references, task guides | Split by document |
 
-Empty implementation directories contain tracked .gitkeep files. Each owner
-should replace them with implementation as work begins. Do not assume placeholder
-directories contain generated application code.
+Implementation directories still containing .gitkeep files are placeholders;
+the mobile app now has its own executable workspace. Other owners replace their
+domain placeholders as implementation begins.
 
 ## First deliverable
 
@@ -75,6 +76,10 @@ Other streams work against the contracts and their own fixtures.
 
 ## Running the project
 
-No run commands are available yet. As each service is initialized, its owner must
-add exact install/run/test commands and environment variable names to its local
-README. Do not commit real keys, tokens, Canvas files, or downloaded media.
+Use Node 24 LTS, run `npm ci`, and follow [the mobile README](apps/mobile/README.md)
+to configure the local .env. `npm start` starts Expo; `npm run ios` opens the iOS
+Simulator; `npm run web` opens the browser preview. **Explore the demo** uses
+fixtures without Atlas or FastAPI. Real auth requires Supabase public app config.
+
+Shared services are still initialized by their owners. Do not commit real keys,
+tokens, Canvas files, downloaded media, or generated MP4s.

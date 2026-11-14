@@ -1,0 +1,310 @@
+{
+  "$defs": {
+    "Fact": {
+      "additionalProperties": false,
+      "properties": {
+        "fact_id": {
+          "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+          "title": "Fact Id",
+          "type": "string"
+        },
+        "statement": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Statement",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fact_id",
+        "statement"
+      ],
+      "title": "Fact",
+      "type": "object"
+    },
+    "InstallmentExample": {
+      "additionalProperties": false,
+      "properties": {
+        "unit_price": {
+          "maximum": 10000,
+          "minimum": 4,
+          "title": "Unit Price",
+          "type": "integer"
+        },
+        "installments": {
+          "maximum": 4,
+          "minimum": 2,
+          "title": "Installments",
+          "type": "integer"
+        },
+        "purchases": {
+          "maximum": 3,
+          "minimum": 1,
+          "title": "Purchases",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "unit_price",
+        "installments",
+        "purchases"
+      ],
+      "title": "InstallmentExample",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1",
+      "default": "1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "brief_id": {
+      "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+      "title": "Brief Id",
+      "type": "string"
+    },
+    "lesson_request_id": {
+      "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+      "title": "Lesson Request Id",
+      "type": "string"
+    },
+    "objective_id": {
+      "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+      "title": "Objective Id",
+      "type": "string"
+    },
+    "title": {
+      "maxLength": 90,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "learning_goal": {
+      "maxLength": 1000,
+      "minLength": 1,
+      "title": "Learning Goal",
+      "type": "string"
+    },
+    "subject": {
+      "maxLength": 1000,
+      "minLength": 1,
+      "title": "Subject",
+      "type": "string"
+    },
+    "level": {
+      "maxLength": 1000,
+      "minLength": 1,
+      "title": "Level",
+      "type": "string"
+    },
+    "language": {
+      "const": "en",
+      "default": "en",
+      "title": "Language",
+      "type": "string"
+    },
+    "notation": {
+      "maxLength": 1000,
+      "minLength": 1,
+      "title": "Notation",
+      "type": "string"
+    },
+    "assumed_knowledge": {
+      "items": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 10,
+      "title": "Assumed Knowledge",
+      "type": "array"
+    },
+    "must_cover": {
+      "items": {
+        "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+        "type": "string"
+      },
+      "maxItems": 12,
+      "minItems": 1,
+      "title": "Must Cover",
+      "type": "array"
+    },
+    "must_not_claim": {
+      "items": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 12,
+      "title": "Must Not Claim",
+      "type": "array"
+    },
+    "approved_facts": {
+      "items": {
+        "$ref": "#/$defs/Fact"
+      },
+      "maxItems": 20,
+      "minItems": 1,
+      "title": "Approved Facts",
+      "type": "array"
+    },
+    "input_values": {
+      "items": {
+        "type": "integer"
+      },
+      "maxItems": 5,
+      "title": "Input Values",
+      "type": "array"
+    },
+    "trace_kind": {
+      "default": "linked_list_reverse",
+      "enum": [
+        "linked_list_reverse",
+        "none"
+      ],
+      "title": "Trace Kind",
+      "type": "string"
+    },
+    "presentation": {
+      "default": "reference_v3",
+      "enum": [
+        "guided_v1",
+        "reference_v2",
+        "reference_v3"
+      ],
+      "title": "Presentation",
+      "type": "string"
+    },
+    "format_id": {
+      "enum": [
+        "dialogue_gameplay",
+        "visual_explainer",
+        "space_explainer",
+        "math_explainer"
+      ],
+      "title": "Format Id",
+      "type": "string"
+    },
+    "teaching_approach": {
+      "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+      "title": "Teaching Approach",
+      "type": "string"
+    },
+    "target_duration_seconds": {
+      "default": 45,
+      "maximum": 60,
+      "minimum": 20,
+      "title": "Target Duration Seconds",
+      "type": "integer"
+    },
+    "scope": {
+      "default": "private",
+      "enum": [
+        "private",
+        "shared_generic_candidate"
+      ],
+      "title": "Scope",
+      "type": "string"
+    },
+    "owner_user_id": {
+      "anyOf": [
+        {
+          "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Owner User Id"
+    },
+    "template_version": {
+      "default": "3.0.0",
+      "title": "Template Version",
+      "type": "string"
+    },
+    "math_topic": {
+      "default": "matrix_multiplication",
+      "enum": [
+        "matrix_multiplication",
+        "pythagorean_rearrangement"
+      ],
+      "title": "Math Topic",
+      "type": "string"
+    },
+    "pythagorean_sides": {
+      "anyOf": [
+        {
+          "items": {
+            "maximum": 9,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Pythagorean Sides"
+    },
+    "installment_example": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/InstallmentExample"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "matrix_a": {
+      "items": {
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      },
+      "maxItems": 3,
+      "title": "Matrix A",
+      "type": "array"
+    },
+    "matrix_b": {
+      "items": {
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      },
+      "maxItems": 3,
+      "title": "Matrix B",
+      "type": "array"
+    }
+  },
+  "required": [
+    "brief_id",
+    "lesson_request_id",
+    "objective_id",
+    "title",
+    "learning_goal",
+    "subject",
+    "level",
+    "notation",
+    "assumed_knowledge",
+    "must_cover",
+    "must_not_claim",
+    "approved_facts",
+    "format_id",
+    "teaching_approach"
+  ],
+  "title": "Brief",
+  "type": "object"
+}

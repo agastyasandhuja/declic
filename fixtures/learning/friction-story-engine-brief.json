@@ -1,0 +1,63 @@
+{
+  "schema_version": "1",
+  "brief_id": "friction-story-engine",
+  "lesson_request_id": "synthetic-friction-story",
+  "objective_id": "friction-traction-university",
+  "title": "Friction, traction and turning forces",
+  "learning_goal": "Explain everyday traction through contact friction and relate turning-force demand to speed squared.",
+  "subject": "University mechanics",
+  "level": "Introductory college physics",
+  "language": "en",
+  "notation": "F, v, m, r; F=mv\u00b2/r for a level constant-radius turn",
+  "assumed_knowledge": [
+    "Velocity, acceleration and Newton's second law"
+  ],
+  "must_cover": [
+    "f1",
+    "f2"
+  ],
+  "must_not_claim": [
+    "Friction always opposes an object's velocity",
+    "Objects at rest spontaneously accelerate when friction vanishes",
+    "Normal contact forces or gravity vanish with tangential friction",
+    "Turning force scales linearly with speed",
+    "A frictionless object can never be stopped by a collision"
+  ],
+  "approved_facts": [
+    {
+      "fact_id": "f1",
+      "statement": "Contact friction resists relative sliding or its tendency between surfaces; static friction can act in the direction of an object's motion, as in walking or traction."
+    },
+    {
+      "fact_id": "f2",
+      "statement": "On an ideal level surface with no net horizontal force and negligible drag, an already moving object maintains its horizontal velocity until an external contact or other force changes it. Removing friction does not start motion from rest."
+    },
+    {
+      "fact_id": "f3",
+      "statement": "In ordinary walking, a planted foot pushes the ground backward and static friction from the ground pushes the person forward. With zero shoe-ground friction the shoe cannot transmit that horizontal traction and can slip."
+    },
+    {
+      "fact_id": "f4",
+      "statement": "Tire-road friction permits braking and turning. With zero tangential tire-road force a moving car can continue sliding despite locked wheels, or leave a curved path along its tangent. A collision still exerts normal contact forces."
+    },
+    {
+      "fact_id": "f5",
+      "statement": "On a level unbanked constant-radius turn, tire-road friction supplies inward force F=mv\u00b2/r. Holding mass and radius fixed, doubling speed requires four times the inward force. Rolling without slipping requires sufficient available static friction."
+    },
+    {
+      "fact_id": "f6",
+      "statement": "When hands only pinch the smooth vertical sides of an object without supporting it from below, contact friction can support its weight. With zero friction it can fall under gravity despite the horizontal pinching forces. Likewise, holding a taut vertical rope for climbing relies on tangential grip."
+    },
+    {
+      "fact_id": "f7",
+      "statement": "This counterfactual removes tangential contact friction while retaining gravity, normal/contact forces and rigid assemblies. Short slides neglect air drag. Humor may depict minor everyday mishaps, but must preserve these causal constraints."
+    }
+  ],
+  "trace_kind": "none",
+  "format_id": "visual_explainer",
+  "presentation": "reference_v3",
+  "teaching_approach": "real_world_story",
+  "target_duration_seconds": 45,
+  "scope": "shared_generic_candidate",
+  "owner_user_id": null
+}

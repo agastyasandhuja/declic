@@ -1,0 +1,195 @@
+{
+  "schema_version": "1",
+  "title": "Blocked, not broken",
+  "segments": [
+    {
+      "segment_id": "s1",
+      "speaker_role": "narrator",
+      "spoken_text": "What stops an enzyme? Here, an inhibitor sits in the active site, blocking substrate.",
+      "fact_ids": [
+        "competitive"
+      ],
+      "delivery": "curious"
+    },
+    {
+      "segment_id": "s2",
+      "speaker_role": "narrator",
+      "spoken_text": "Without the inhibitor, substrate binds. In induced fit, enzyme and substrate both change shape.",
+      "fact_ids": [
+        "binding"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s3",
+      "speaker_role": "narrator",
+      "spoken_text": "In this cleavage example, one substrate becomes two products that leave.",
+      "fact_ids": [
+        "reaction"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s4",
+      "speaker_role": "narrator",
+      "spoken_text": "The enzyme returns to its original state, unconsumed, ready to catalyze again.",
+      "fact_ids": [
+        "reuse"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s5",
+      "speaker_role": "narrator",
+      "spoken_text": "This competitive inhibitor occupies that same site. While bound, it excludes substrate, yet the enzyme stays intact.",
+      "fact_ids": [
+        "competitive"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s6",
+      "speaker_role": "narrator",
+      "spoken_text": "With inhibitor concentration unchanged, more substrate competes for free enzyme and can reduce competitive inhibition.",
+      "fact_ids": [
+        "concentration"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s7",
+      "speaker_role": "narrator",
+      "spoken_text": "Even with the inhibitor gone, heat can denature the enzyme, reshaping its pocket. Blocked is not broken.",
+      "fact_ids": [
+        "denature",
+        "competitive"
+      ],
+      "delivery": "emphatic"
+    }
+  ],
+  "events": [],
+  "teaching_beats": [],
+  "image_requests": [],
+  "shots": [
+    {
+      "shot_id": "sh1",
+      "segment_id": "s1",
+      "kind": "space",
+      "diagram_demo": "trace",
+      "motion_scene": "none",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "push",
+      "layout": "full",
+      "space_mode": "enzyme_hook",
+      "fact_ids": [
+        "competitive",
+        "schematic"
+      ]
+    },
+    {
+      "shot_id": "sh2",
+      "segment_id": "s2",
+      "kind": "space",
+      "diagram_demo": "trace",
+      "motion_scene": "none",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "drift",
+      "layout": "full",
+      "space_mode": "enzyme_fit",
+      "fact_ids": [
+        "binding",
+        "schematic"
+      ]
+    },
+    {
+      "shot_id": "sh3",
+      "segment_id": "s3",
+      "kind": "space",
+      "diagram_demo": "trace",
+      "motion_scene": "none",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "pull",
+      "layout": "full",
+      "space_mode": "enzyme_reaction",
+      "fact_ids": [
+        "reaction",
+        "schematic"
+      ]
+    },
+    {
+      "shot_id": "sh4",
+      "segment_id": "s4",
+      "kind": "space",
+      "diagram_demo": "trace",
+      "motion_scene": "none",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "pan_right",
+      "layout": "full",
+      "space_mode": "enzyme_reuse",
+      "fact_ids": [
+        "reuse",
+        "schematic"
+      ]
+    },
+    {
+      "shot_id": "sh5",
+      "segment_id": "s5",
+      "kind": "space",
+      "diagram_demo": "trace",
+      "motion_scene": "none",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "push",
+      "layout": "full",
+      "space_mode": "enzyme_compete",
+      "fact_ids": [
+        "competitive",
+        "schematic"
+      ]
+    },
+    {
+      "shot_id": "sh6",
+      "segment_id": "s6",
+      "kind": "space",
+      "diagram_demo": "trace",
+      "motion_scene": "none",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "pan_left",
+      "layout": "split",
+      "space_mode": "enzyme_concentration",
+      "fact_ids": [
+        "concentration",
+        "schematic"
+      ]
+    },
+    {
+      "shot_id": "sh7",
+      "segment_id": "s7",
+      "kind": "space",
+      "diagram_demo": "trace",
+      "motion_scene": "none",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [],
+      "camera": "orbit",
+      "layout": "full",
+      "space_mode": "enzyme_denature",
+      "fact_ids": [
+        "denature",
+        "competitive",
+        "schematic"
+      ]
+    }
+  ]
+}
