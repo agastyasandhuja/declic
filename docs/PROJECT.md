@@ -70,6 +70,8 @@ a different explanation of the same objective.
 Production-scale scraping, exact replication of a personal FYP, native TikTok UI
 injection, Screen Time gating, creator/social-sharing UI, a trained recommender,
 and comprehensive automated pedagogical verification are not demo requirements.
+Research-backed personalization is a planned post-demo direction (section 11),
+with data collection and synthetic evaluation as preparatory work.
 Shared lesson reuse is in scope even without a public share button.
 
 ## 4. Proposed system boundaries
@@ -370,6 +372,89 @@ topics get a neutral mastery prior, not an assumed failure.
 The user can inspect an explanation such as “Reviewing linked-list reversal:
 missed a question; relevant to your upcoming DSA midterm.” Do not call a date
 confirmed if it is only inferred.
+
+### Planned extension: research-backed personalization
+
+Status: proposed roadmap, November 14, 2026; not an implemented or validated
+learning benefit. Retain the deterministic scheduler above as the demo policy,
+evaluation baseline, and fallback. Personalization should learn what to review,
+which explanation works, and when to insert it into the app's entertainment feed.
+It does not imply control of the native TikTok/Reels feed or access to a personal FYP.
+
+| Decision | Proposed method | Intended experience |
+|---|---|---|
+| Which ready template/approach? | Contextual bandit, starting with LinUCB | Adapt explanations to the person, topic and current knowledge while exploring alternatives |
+| Study now or continue entertainment? | Bounded insertion policy; later evaluate an action-centered contextual bandit | Find receptive moments within progressive density and spacing limits |
+| Which objective needs review? | Calibrated half-life regression alongside course relevance and prerequisites | Revisit material as recall becomes less likely, using a different explanation when useful |
+
+For template selection, context can include objective difficulty, prior quiz
+history, recent formats, validated foreground completion/skips and session stage.
+Choose only among authorized, ready, compatible variants. Start from pooled
+estimates and conservative exploration so sparse individual histories do not
+produce confident preferences. LinUCB balances predicted reward with uncertainty;
+it was demonstrated for news recommendation, not instructional video efficacy.
+Do not assign a permanent learning-style label: someone may prefer dialogue for
+an introduction but learn a pointer operation better from a worked visual example.
+
+For insertion, treat entertainment as the baseline action and estimate the benefit
+of inserting a lesson in the current context. Action-centered bandit research in
+mobile health motivates this experiment; it does not prove optimal educational
+timing. Preserve the progressive session target, density caps, minimum spacing,
+course fairness and bounded inventory debt. An adaptive policy must not optimize
+away study content or flood the feed. Explicit user preferences should constrain
+the policy once the corresponding UI and contract are agreed with Adi.
+
+For review scheduling, half-life regression models recall as
+`P(recall) = 2^(-elapsed_time / estimated_half_life)`, with both time quantities in
+the same units. Graded retrieval history informs the estimate; watching a video
+does not establish recall. The original evidence is from language learning, so
+course-concept calibration is required before replacing the simple review rule.
+Keep unknown mastery neutral and preserve exam-scope evidence and prerequisites.
+
+### Measurement and evidence requirements
+
+Keep enjoyment and learning as separate outcomes. Completion, skips and explicit
+helpfulness feedback are experience signals; delayed recall and new questions
+testing the same objective measure retention and transfer. Rewatching may indicate
+interest or confusion. Immediate correctness alone is insufficient, and a missed
+follow-up is missing data rather than an incorrect answer. Spoken self-checks
+without a submitted answer must not manufacture graded attempts.
+
+Use retained learning per active minute as a candidate primary outcome, with
+absolute learning gain, course coverage, user-reported experience and abandonment
+as companion measures. Define reward weights, follow-up windows and success
+thresholds before a pilot; no numerical weights are established by the papers.
+Delayed rewards need an explicit attribution rule across intervening exposures.
+Evaluate template selection first while holding insertion stable, then evaluate
+timing separately to avoid changing both factors without interpretable evidence.
+
+Before adaptive deployment, log policy/version, decision context, eligible actions,
+selected action and its selection probability, issued occurrence IDs, actual
+exposures and linked outcomes. Keep owner-scoped records in Atlas, without raw
+course text or credentials. Randomize only within eligible constraints and retain
+the deterministic baseline as a comparison. Offline policy evaluation requires
+support for the evaluated actions in the logged policy; deterministic logs alone
+cannot establish the benefit of untried actions. Report uncertainty, missing
+follow-ups and differences in topic difficulty rather than attributing them to
+template quality. Synthetic adaptation demonstrates mechanics, not learning gains.
+
+### Delivery and integration
+
+1. **Demo foundation:** deterministic scheduling, multiple reviewed formats,
+   validated exposure events, and clearly labeled synthetic evaluation.
+2. **Early pilot:** versioned decision logging, shared starting estimates, a small
+   template bandit and delayed quizzes; compare against the fixed baseline.
+3. **Longer term:** calibrate recall scheduling and evaluate bounded adaptive
+   insertion with repeated real use before claiming improvements.
+
+Implement within the existing recommendations/quizzes modules and Atlas; no new
+service, synchronous generation or stack replacement is proposed. Current v1
+contracts remain unchanged. Proposed decision records, collection/index drafts,
+new feedback events and delayed-assessment semantics must follow the contract
+change protocol before implementation. Agastya owns integration, coordinates
+mobile feedback/preferences with Adi and objective metadata with Amogh.
+See the [research references](REFERENCES.md#adaptive-recommendations-and-learning)
+and [post-demo to-do list](tasks/AGASTYA.md#milestone-g7--research-backed-personalization-post-demo).
 
 ## 12. Quiz behavior and mastery
 
