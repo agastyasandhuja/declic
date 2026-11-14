@@ -20,6 +20,7 @@ import httpx
 from app.modules.auth.service import AuthFailure, SupabaseVerifier
 from .instagram import InstagramReelsProvider, make_instagram_client, provider_failure, quiet_instagram
 from .live import LiveInstagramCatalog
+from .instagram_login import login_interactively, login_with_browser_session
 from .service import CatalogFailure
 
 ROOT = Path(__file__).resolve().parents[5]
@@ -30,6 +31,7 @@ SESSION_FIELDS = {'uuids', 'mid', 'ig_u_rur', 'ig_www_claim', 'authorization_dat
 DEVICE_FIELDS = {'uuids', 'mid', 'device_settings', 'user_agent', 'country', 'country_code',
                  'locale', 'timezone_offset', 'timezone_name', 'push_disabled'}
 DEVICE_COOKIES = {'mid', 'csrftoken', 'ig_did', 'ig_nrcb'}
+DEVICE_REGISTRATION_FIELDS = {'usdid', 'kid', 'private_key', 'registered'}
 LOGIN_ERRORS = {
     'ChallengeRequired': ('INSTAGRAM_CHECKPOINT_REQUIRED', 'Complete the verification in the official Instagram app, then retry manually.'),
     'AccountContactPointRequired': ('INSTAGRAM_CHECKPOINT_REQUIRED', 'Complete the account verification in the official Instagram app.'),
@@ -163,6 +165,15 @@ def device_settings(settings):
     cookies = settings.get('cookies') or {}
     result['cookies'] = {key: value for key, value in cookies.items() if key in DEVICE_COOKIES}
     result['authorization_data'] = {}
+    # A stable device also needs its SDK registration key, not only UUIDs.
+    # This device credential cannot identify an account; keep it in this same
+    # private server-side file and exclude all unrelated nested fields.
+    registration = settings.get('usdid')
+    if isinstance(registration, dict) and registration.get('private_key'):
+        if any(not isinstance(registration.get(key), str) or len(registration[key]) > 16384
+               for key in ('usdid', 'kid', 'private_key')) or type(registration.get('registered')) is not bool:
+            raise ConnectionFailure('INSTAGRAM_DEVICE_UNAVAILABLE', 'The SDK returned an invalid device registration profile.')
+        result['usdid'] = {key: registration[key] for key in DEVICE_REGISTRATION_FIELDS}
     return result
 
 
@@ -222,10 +233,11 @@ def main():
     parser.add_argument('--owner-user-id', help='Trusted operator only: UUID copied from the signed-in app, instead of local app login.')
     parser.add_argument('--surface', choices=('discover', 'connected'), default='discover')
     parser.add_argument('--check', action='store_true', help='Verify two pages using the saved session, without logging in again.')
+    parser.add_argument('--browser-session', action='store_true', help='Use a sessionid cookie from your own signed-in browser at a hidden local prompt; no Instagram password login.')
     args = parser.parse_args()
     if not args.check and not sys.stdin.isatty():
         parser.error('Run this in your own Terminal for hidden credential prompts.')
-    provider, client, password, code = None, None, '', ''
+    provider, client, password, session_id = None, None, '', ''
     report = {'schema_version': '1', 'started_at': datetime.now(timezone.utc).isoformat(),
               'authenticated': False, 'pages_retrieved': 0, 'unique_reels': 0, 'has_more': False,
               'stage': 'setup'}
@@ -260,9 +272,11 @@ def main():
             # challenge interrupts it. A later manual retry uses the same device.
             save_device_profile(profile_path, owner, username, args.surface, initial_settings)
             report['device_profile_saved'] = True
-            password = getpass.getpass('Instagram password (hidden): ')
-            code = getpass.getpass('Current Instagram 2FA code, or Enter if disabled (hidden): ').strip()
-            if not username or not password:
+            if args.browser_session:
+                session_id = getpass.getpass('Instagram sessionid cookie from your own signed-in browser (hidden; never paste in chat): ').strip()
+            else:
+                password = getpass.getpass('Instagram password (hidden): ')
+            if not (session_id if args.browser_session else password):
                 raise ConnectionFailure('INSTAGRAM_INPUT_REQUIRED', 'Enter the Instagram credentials locally.')
             def deadline(_signum, _frame):
                 raise TimeoutError()
@@ -270,9 +284,8 @@ def main():
                 old_alarm = signal.signal(signal.SIGALRM, deadline)
                 signal.alarm(180)
             try:
-                with quiet_instagram():
-                    accepted = client.login(username, password, verification_code=code)
-                    settings = client.get_settings()
+                settings = (login_with_browser_session(client, username, session_id, report)
+                            if args.browser_session else login_interactively(client, username, password, report))
             except BaseException:
                 # Best-effort device updates must never mask the typed login
                 # rejection. Raw challenge responses and authentication cookies
@@ -285,8 +298,6 @@ def main():
                     pass
                 raise
             save_device_profile(profile_path, owner, username, args.surface, settings)
-            if not accepted or not client.user_id:
-                raise ConnectionFailure('INSTAGRAM_LOGIN_REJECTED', 'Instagram did not return an authenticated session. Review the account locally.')
             report['stage'] = 'save_instagram_session'
             save_connection(args.connection, owner, settings, args.surface)
             surface = args.surface
@@ -317,7 +328,7 @@ def main():
             failure = error
         elif isinstance(error, KeyboardInterrupt):
             failure = ConnectionFailure('CANCELLED', 'Local setup was cancelled.')
-        elif report['stage'] == 'instagram_login':
+        elif report['stage'] in {'instagram_login', 'verify_instagram_session'}:
             kind = type(error).__name__
             if kind in LOGIN_ERRORS or kind in {'ClientError', 'ClientConnectionError', 'ClientRequestTimeout',
                     'ClientJSONDecodeError', 'ClientIncompleteReadError', 'ClientThrottledError',
@@ -336,10 +347,12 @@ def main():
         if isinstance(failure, ConnectionFailure) and failure.http_status is not None:
             report['http_status'] = failure.http_status
         print(f"Stopped during {report['stage']}: {failure.code}. {failure.message}")
+        if report.get('login_request_phase'):
+            print(f"Login request step: {report['login_request_phase']}; HTTP status: {report.get('provider_http_status', 'unavailable')}.")
         print('No automatic Instagram login or checkpoint retries. Do not paste passwords, cookies or raw errors into chat.')
         return 1
     finally:
-        password = code = ''
+        password = session_id = ''
         if old_alarm is not None:
             signal.alarm(0); signal.signal(signal.SIGALRM, old_alarm)
         if provider:

@@ -131,3 +131,18 @@ See `docs/status/AGASTYA.md` for commands actually run and the current evidence.
 Synthetic tests do not prove a student's Canvas permissions, Instagram checkpoint
 behavior, Gemini access, or physical iPhone playback. Keep server `.env` files,
 provider sessions, source documents and generated media out of commits.
+
+If Instagram rejects password login or requires an SMS/checkpoint continuation,
+use the verified local browser-session helper described in `docs/ADI_INSTAGRAM_LIVE.md`.
+It binds the saved session to your authenticated app account. Then hand that private
+file to the integrated backend without pasting cookies into chat or mobile config:
+
+```sh
+python3 scripts/run-demo.py import-instagram --connection-file /absolute/path/to/connection.json
+```
+
+This checks that the bound app user exists in the configured Supabase project,
+encrypts the session in Atlas and queues a refresh. Start workers to fill the feed;
+`VIDEO_GENERATION_ENABLED=false` keeps paid video rendering paused independently.
+The in-app code field accepts current authenticator codes; SMS continuation stays
+in the local interactive helper so a code is never submitted against a new challenge.
