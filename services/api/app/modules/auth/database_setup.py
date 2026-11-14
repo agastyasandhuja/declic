@@ -16,7 +16,9 @@ def apply_domain_drafts(database):
             existing = list(database.list_collections(filter={'name': spec['name']}))
             if not existing:
                 database.create_collection(spec['name'], validator=spec['validator'], validationLevel='strict', validationAction='error')
-            elif existing[0]['options'].get('validator') != spec['validator']:
+            elif (existing[0]['options'].get('validator') != spec['validator']
+                  or existing[0]['options'].get('validationLevel', 'strict') != 'strict'
+                  or existing[0]['options'].get('validationAction', 'error') != 'error'):
                 raise RuntimeError(f"{spec['name']}: existing validator differs; integrator must plan a backfill/migration.")
             collection = database[spec['name']]
             for index in spec['indexes']:

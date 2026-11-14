@@ -1,5 +1,66 @@
 # Adi status
 
+## Atlas provisioning preparation — November 14, 2026
+
+User direction: Adi may handle shared cloud provisioning while preserving teammate
+workflows. The user is applying for the GitHub Education student pack/credits and
+asked to defer connecting/provisioning until access is ready. **No Atlas project,
+cluster, database user, IP rule or cloud connection was created.**
+
+- Inspected the latest published `feature/agastya-learning-engine` snapshot
+  `c84f6d1ec2c2f7c45b1b85b3721d50711c95a5c5`, including AGASTYA_API status,
+  config/database/migrations, pyproject and uv.lock. Agastya's shared runtime and
+  ordered migrations **already exist there**. Earlier notes below describe this
+  checkout's older state. Shared runtime/driver/migration ownership stays Agastya's;
+  Adi takes Atlas project/cluster/access/connectivity preparation only.
+- Confirmed environment names MONGODB_URI / MONGODB_DATABASE and shared default
+  database `hackumass`. Matched Adi's owned .env.example and dev lock to that
+  default and the existing PyMongo **4.15.5** pin. FastAPI 0.162.7, httpx 0.28.1,
+  jsonschema 4.26.0 and Pydantic 2.14.3 match the inspected shared lock. Existing
+  local provider environments were preserved; no shared manifest was changed.
+- Added [Atlas runbook](../ADI_ATLAS_SETUP.md) and an owned standalone preflight
+  command. Default mode is read-only; explicit flags reuse owned additive setup
+  and verify majority commit/snapshot rollback in a fresh synthetic collection,
+  cleaning up only that collection. URI/password/raw driver errors are withheld;
+  reports are ignored, mode 0600. TLS verification is required for Atlas URIs.
+- Added validation-enforcement checking. Existing conflicting validator/warn/off
+  policies are refused rather than silently rewritten. No core/video/academic
+  collection or migration is edited by this helper.
+- Confirmed permission split from official docs and actual migration source:
+  runtime readWrite on hackumass; migration readWrite+dbAdmin on hackumass because
+  Agastya's runner uses collMod. Proposed narrow network/project/user choices are
+  documented for later review, not applied. No paid tier/credits were used.
+- Searched available integrations and suggested MongoDB Atlas; it was not
+  installed/connected when checked. Browser fallback reached the Atlas login
+  page. After the user deferred setup, that temporary tab was closed. Existing
+  Supabase tabs and the user's education application were untouched.
+- Dependency handoff: promote jsonschema from shared dev to runtime dependencies
+  when mounting Adi's modules. Core injects Database.mongo into Adi repositories;
+  its wrapper is not itself a PyMongo Database. No teammate messages were sent.
+- Remote Adi branch was renamed to `adi-private-phone-feed`; confirmed with
+  git ls-remote. This preparation is on `codex/adi-atlas-readiness`, preserving the renamed
+  delivery branch and teammate feature branches.
+
+Actual verification in isolated `.local/atlas-readiness/venv`:
+
+```bash
+MONGODB_TEST_URI='mongodb://127.0.0.1:27028/?replicaSet=adi_atlas_preflight' PYTHONPATH=services/api .local/atlas-readiness/venv/bin/python -m unittest discover -s services/api/app/modules/auth/tests -v
+```
+
+**13/13 passed** on a temporary real MongoDB 8.0.38 replica set with PyMongo 4.15.5.
+This includes the five existing database/HTTP checks, three auth checks, three
+preflight configuration/redaction checks and two real preflight checks. Full CLI
+flags, read-only preservation, repeatable owned setup, synthetic transaction
+commit/rollback/cleanup and refusal to overwrite an existing validation policy
+were verified. `--help`, `pip check`, wire-validator drift check and `git diff
+--check` passed. This is local compatibility evidence, not hosted Atlas acceptance.
+The dedicated loopback test server was stopped after testing.
+
+Next when credits/access are ready: select/reuse the team project, review the
+Free/M0 deployment and exact database/network grants, configure server-only URIs,
+run hosted preflight, and apply Agastya's existing ordered migrations from his
+integrated runtime. Actual live Atlas transaction/TLS verification remains open.
+
 ## Current A1–A3 delivery — November 14, 2026
 
 The independent implementation through A3 is substantially built and locally

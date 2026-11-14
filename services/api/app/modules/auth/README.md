@@ -39,7 +39,7 @@ PYTHONPATH=services/api .local/adi-dev/venv/bin/python -m unittest discover -s s
 The lock is an **isolated development** environment, including the optional
 Instagram probe. Shared manifest/lock integration stays with Agastya. Requested
 runtime versions: fastapi 0.162.7, httpx 0.28.1, jsonschema 4.26.0,
-pymongo 4.17.0; local runner uvicorn 0.54.0. instagrapi 3.2.12 is optional probe
+pymongo 4.15.5 (Agastya's existing shared pin); local runner uvicorn 0.54.0. instagrapi 3.2.12 is optional probe
 work, not required for fixture API/profile persistence.
 
 Database tests require a disposable MongoDB server. They never touch the named
@@ -67,3 +67,20 @@ It reads MONGODB_URI/MONGODB_DATABASE from the environment, creates missing
 collections/indexes, and refuses a conflicting existing validator. It never drops
 data/indexes or silently replaces another stream's schema. Use a migration after
 auditing any existing collections; see the owned domain backfill notes.
+
+
+## Atlas provisioning handoff
+
+See [Adi's Atlas setup runbook](../../../../../docs/ADI_ATLAS_SETUP.md).
+The standalone `python -m app.modules.auth.atlas_preflight` command is read-only
+by default; it checks connectivity, owned schema/index enforcement and existing
+migration markers. Explicit `--apply-owned-drafts` / `--write-test` flags handle
+only owned additive setup and a fresh synthetic transaction probe. It does not
+replace the shared client or migration runner. Cloud provisioning is deferred
+until the user's GitHub Education/credit access is ready.
+
+The isolated development lock now uses the existing shared PyMongo 4.15.5 pin;
+compatibility was verified on a real local replica set. The published shared
+runtime already exists on Agastya's branch. Its `Database.mongo` is the injection
+point for this repository. When mounting these adapters, Agastya needs jsonschema
+4.26.0 as a runtime dependency (currently development-only in his manifest).

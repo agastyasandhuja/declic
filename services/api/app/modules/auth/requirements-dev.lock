@@ -22,7 +22,7 @@ pycparser==3.12
 pycryptodomex==3.24.2
 pydantic==2.14.3
 pydantic_core==2.50.4
-pymongo==4.17.0
+pymongo==4.15.5
 PySocks==1.7.1
 referencing==0.37.0
 requests==2.34.2
