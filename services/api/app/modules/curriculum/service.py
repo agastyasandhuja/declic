@@ -20,13 +20,24 @@ class AcademicService:
         self.clock = clock
 
     def get_profile(self, user_id):
-        profile = load_profile(self.storage_dir, user_id)
+        profile = load_profile(self.storage_dir, user_id, include_sources=False)
         if profile is None:
             return None
         return {key: value for key, value in profile.items() if not key.startswith("_")}
 
     def get_validated_plans(self, user_id):
-        profile = load_profile(self.storage_dir, user_id)
+        profile = load_profile(self.storage_dir, user_id, include_sources=False)
+        return self._validated_plans(user_id, profile)
+
+    def get_feed_snapshot(self, user_id):
+        """Project profile and plans from the same revision with one private read."""
+        profile = load_profile(self.storage_dir, user_id, include_sources=False)
+        if profile is None:
+            return None, []
+        public = {key: value for key, value in profile.items() if not key.startswith("_")}
+        return public, self._validated_plans(user_id, profile)
+
+    def _validated_plans(self, user_id, profile):
         if profile is None:
             return []
         plans = profile.get("_plans")

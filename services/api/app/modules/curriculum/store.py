@@ -71,13 +71,15 @@ def save_profile(
         return write_json(folder / "profile.json", profile)
 
 
-def load_profile(storage_dir: Path, user_id: str) -> dict | None:
+def load_profile(storage_dir: Path, user_id: str, *, include_sources=True) -> dict | None:
     if _atlas is not None:
-        return _atlas.load_profile(user_id)
+        return _atlas.load_profile(user_id, include_sources=include_sources)
     path = _user_folder(storage_dir, user_id) / "profile.json"
     if not path.exists():
         return None
     profile = json.loads(path.read_text(encoding="utf-8"))
+    if not include_sources:
+        profile.pop("_sources", None)
     return profile if profile.get("user_id") == user_id else None
 
 
