@@ -9,13 +9,45 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import Lock
-from urllib.parse import quote, urlsplit
+from urllib.parse import quote, unquote, urlsplit
 
 import httpx
 
 from .generation.providers import ProviderError, request_json
 from .media import sha256
 from .pipeline import artifact_digests
+
+
+def storage_response_error(response, *, verifying=False):
+    """Classify fixed storage diagnostics without exposing upstream bodies/keys."""
+    try:
+        body = response.json()
+    except ValueError:
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    embedded = str(body.get("statusCode", ""))
+    status = int(embedded) if embedded.isdigit() and len(embedded) == 3 else response.status_code
+    code = body.get("code") or body.get("error") or ""
+    code = re.sub(r"[\s_-]", "", code).casefold() if isinstance(code, str) else ""
+    if (
+        response.status_code == 413
+        or status == 413
+        or code in {"entitytoolarge", "payloadtoolarge"}
+    ):
+        return ProviderError("STORAGE_FILE_TOO_LARGE")
+    if status in {401, 403}:
+        return ProviderError("STORAGE_ACCESS_DENIED")
+    transient = status in {408, 429} or status >= 500
+    if verifying:
+        return ProviderError("STORAGE_VERIFY_FAILED", transient or status == 404)
+    if response.status_code in {400, 409} and code in {
+        "duplicate",
+        "resourcealreadyexists",
+        "keyalreadyexists",
+    }:
+        return None  # Only a known immutable-key conflict permits byte verification.
+    return ProviderError("STORAGE_UPLOAD_FAILED", transient)
 
 
 class SupabaseVideoStorage:
@@ -53,24 +85,33 @@ class SupabaseVideoStorage:
             **self.headers,
             "Content-Type": mimetypes.guess_type(file.name)[0] or "application/octet-stream",
         }
-        response = self.client.post(url, content=data, headers=headers)
-        if response.status_code not in {200, 201, 400, 409}:
-            raise ProviderError("STORAGE_UPLOAD_FAILED", response.status_code >= 500)
+        try:
+            response = self.client.post(url, content=data, headers=headers)
+        except httpx.TransportError:
+            raise ProviderError("STORAGE_UPLOAD_FAILED", True) from None
+        if response.status_code not in {200, 201}:
+            error = storage_response_error(response)
+            if error is not None:
+                raise error
         # Verify bytes even after an ambiguous response/retry; never trust success alone.
         h = hashlib.sha256()
         count = 0
-        with self.client.stream(
-            "GET",
-            f"{self.url}/storage/v1/object/authenticated/{self.bucket}/{key}",
-            headers=self.headers,
-        ) as check:
-            if check.status_code != 200:
-                raise ProviderError("STORAGE_VERIFY_FAILED")
-            for chunk in check.iter_bytes():
-                count += len(chunk)
-                if count > len(data):
-                    raise ProviderError("STORAGE_SIZE_MISMATCH")
-                h.update(chunk)
+        try:
+            with self.client.stream(
+                "GET",
+                f"{self.url}/storage/v1/object/authenticated/{self.bucket}/{key}",
+                headers=self.headers,
+            ) as check:
+                if check.status_code != 200:
+                    check.read()
+                    raise storage_response_error(check, verifying=True)
+                for chunk in check.iter_bytes():
+                    count += len(chunk)
+                    if count > len(data):
+                        raise ProviderError("STORAGE_SIZE_MISMATCH")
+                    h.update(chunk)
+        except httpx.TransportError:
+            raise ProviderError("STORAGE_VERIFY_FAILED", True) from None
         if count != len(data) or h.hexdigest() != sha256(file):
             raise ProviderError("STORAGE_DIGEST_MISMATCH")
         return {"key": key, "sha256": h.hexdigest(), "size": count}
@@ -92,10 +133,70 @@ class SupabaseVideoStorage:
             raise ValueError("Unexpected signed URL")
         url = self.url + "/storage/v1" + signed
         with self._cache_lock:
-            if len(self._signed_cache) >= 512:
+            if len(self._signed_cache) >= 1024:
                 self._signed_cache.pop(next(iter(self._signed_cache)))
             self._signed_cache[key] = (time.monotonic() + 120, url)
         return url
+
+
+    def signed_urls(self, keys):
+        """Batch already-authorized asset paths; this cache never grants ownership."""
+        keys = list(dict.fromkeys(keys))
+        if len(keys) > 600:
+            raise ValueError("At most 200 videos may be signed per catalog request")
+        started = time.monotonic()
+        with self._cache_lock:
+            result = {
+                key: self._signed_cache[key][1]
+                for key in keys
+                if key in self._signed_cache and self._signed_cache[key][0] > started
+            }
+        missing = [key for key in keys if key not in result]
+        if not missing:
+            return result
+        # Refresh siblings too: a slow request must not age cached URLs past
+        # their advertised client lease. Fully cached batches make no request.
+        missing = keys
+        data = request_json(
+            self.client,
+            "POST",
+            f"{self.url}/storage/v1/object/sign/{self.bucket}",
+            headers=self.headers,
+            json={"expiresIn": 900, "paths": missing},
+        )
+        if not isinstance(data, list) or len(data) != len(missing):
+            raise ProviderError("STORAGE_SIGN_FAILED", True)
+        fresh = {}
+        for row in data:
+            if not isinstance(row, dict):
+                raise ProviderError("STORAGE_SIGN_FAILED", True)
+            key, signed = row.get("path"), row.get("signedURL")
+            if (
+                not isinstance(key, str)
+                or key not in missing
+                or key in fresh
+                or row.get("error")
+                or not isinstance(signed, str)
+            ):
+                raise ProviderError("STORAGE_SIGN_FAILED", True)
+            parsed = urlsplit(signed)
+            if (
+                parsed.scheme
+                or parsed.netloc
+                or parsed.fragment
+                or unquote(parsed.path) != f"/object/sign/{self.bucket}/{key}"
+            ):
+                raise ProviderError("STORAGE_SIGN_FAILED", True)
+            fresh[key] = self.url + "/storage/v1" + signed
+        with self._cache_lock:
+            for key, url in fresh.items():
+                if key not in self._signed_cache and len(self._signed_cache) >= 1024:
+                    self._signed_cache.pop(next(iter(self._signed_cache)))
+                # 900s signatures, <=120s reuse, and a 600s client lease leave
+                # >=180s headroom. Start before the request, not after its latency.
+                self._signed_cache[key] = (started + 120, url)
+        result.update(fresh)
+        return result
 
 
 def publish_validated_variant(

@@ -14,7 +14,8 @@ def test_shared_topic_is_projected_to_each_owned_objective_and_refreshes(databas
     video = {"video_id": "v", "objective_id": "topic"}
     repo = SimpleNamespace(list_videos=lambda owner, ids: [video], video=lambda vid, owner: video)
     reader = BoundVideoReader(SimpleNamespace(repository=repo), database)
-    reader._project = lambda owner, value: value
+    reader._project = lambda owner, value, signed: value
+    reader._sign_owned = lambda videos: {}
     assert {v["objective_id"] for v in reader.list_variants("alice", ["course_a", "course_b"])} == {
         "course_a",
         "course_b",
