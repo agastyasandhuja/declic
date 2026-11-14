@@ -9,6 +9,8 @@ export function InstagramConnection() {
   const [status, setStatus] = useState('disconnected');
   const [username, setUsername] = useState('');
   const [sessionId, setSessionId] = useState('');
+  const [editing, setEditing] = useState(false);
+  const connected = status === 'connected';
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -46,8 +48,9 @@ export function InstagramConnection() {
         body: { username: name, session_id: value },
       });
       setSessionId('');
+      setEditing(false);
       setStatus(result.status);
-      setMessage('Connected. Reels are preparing in the background.');
+      setMessage(editing ? 'Instagram session updated.' : 'Connected. Reels are preparing in the background.');
     } catch {
       setMessage('Unable to verify the Instagram session. Check that the cookie is current and belongs to this username, then retry.');
     } finally {
@@ -72,10 +75,13 @@ export function InstagramConnection() {
     <View style={[s.card, styles.card]}>
       <Text accessibilityRole="header" style={styles.heading}>Instagram</Text>
       <Text style={s.subtitle}>
-        {status === 'connected' ? 'Your Instagram session is connected.' : status === 'reconnect_required' ? 'Reconnect with a current session cookie.' : 'Connect your Instagram session for this demo.'}
+        {connected ? 'Your Instagram session is connected.' : status === 'reconnect_required' ? 'Reconnect with a current session cookie.' : 'Connect your Instagram session for this demo.'}
       </Text>
-      {status === 'connected' ? (
-        <Button title="Disconnect Instagram" busy={busy} secondary onPress={() => void disconnect()} />
+      {connected && !editing ? (
+        <>
+          <Button title="Update session cookie" disabled={busy} onPress={() => { setMessage(null); setEditing(true); }} />
+          <Button title="Disconnect Instagram" busy={busy} secondary onPress={() => void disconnect()} />
+        </>
       ) : (
         <>
           <Text style={s.subtitle}>Sign in to Instagram in your browser, then copy the value of the sessionid cookie from its storage inspector.</Text>
@@ -106,7 +112,8 @@ export function InstagramConnection() {
             placeholderTextColor={theme.colors.muted}
             style={s.input}
           />
-          <Button title="Connect Instagram" busy={busy} onPress={() => void connect()} />
+          <Button title={editing ? 'Save session cookie' : 'Connect Instagram'} busy={busy} onPress={() => void connect()} />
+          {editing && <Button title="Cancel" disabled={busy} secondary onPress={() => { setSessionId(''); setMessage(null); setEditing(false); }} />}
         </>
       )}
       {message && <Text accessibilityRole="alert" style={s.subtitle}>{message}</Text>}
