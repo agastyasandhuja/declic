@@ -59,6 +59,8 @@ class EntertainmentCandidate(ReadModel):
     source_url: HTTPSURL | None = None
     creator: Creator = Field(default_factory=Creator)
     caption: str = Field(default="", max_length=10000)
+    like_count: int | None = Field(default=None, strict=True, ge=0, le=9007199254740991)
+    comment_count: int | None = Field(default=None, strict=True, ge=0, le=9007199254740991)
     duration_seconds: float | None = Field(default=None, gt=0, le=86400)
     playback: Playback
     thumbnail_url: HTTPSURL | None = None

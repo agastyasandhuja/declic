@@ -1,5 +1,9 @@
 # Shared contracts — v1 proposal
 
+November 14 additive entertainment metadata: optional nullable `like_count` and
+`comment_count` now pass through the catalog and unified-feed projection. Existing
+records remain compatible; provider counts are never fabricated when unavailable.
+
 These are normative wire/interface proposals for parallel implementation, not
 implemented APIs. Runtime JSON schemas, Python models and TypeScript types are
 to be added by each domain owner under [schemas](schemas/README.md).

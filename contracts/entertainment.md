@@ -36,6 +36,12 @@ Required fields:
 | availability | ready / unavailable / needs_refresh | Feed eligibility |
 | acquisition_mode | live / cached / fixture | Honest demo provenance |
 
+Optional additive fields `like_count` and `comment_count` are nullable nonnegative
+integers no larger than 9007199254740991. They are provider snapshots, not local
+reaction totals. Missing/hidden counts remain null or absent; clients must not
+display an invented zero. Instagram thumbnails use credential-free HTTPS media
+CDN URLs and may expire with the catalog; they are presentation hints, not playback.
+
 PlaybackSource:
 
 - kind: mp4 / hls / embed.

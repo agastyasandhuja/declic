@@ -81,6 +81,27 @@ def provider_failure(error):
                           'Instagram is temporarily unavailable. Keep watching loaded clips and retry shortly.')
 
 
+def _engagement_count(value):
+    # Hidden/unreported counts are unknown, never a fabricated zero.
+    return value if type(value) is int and 0 <= value <= 9007199254740991 else None
+
+
+def _thumbnail(value):
+    if not value:
+        return None
+    try:
+        url = str(value)
+        parsed = urlsplit(url)
+        if (parsed.scheme == 'https' and parsed.hostname
+                and parsed.hostname.endswith(('.cdninstagram.com', '.fbcdn.net'))
+                and not parsed.username and not parsed.password and not parsed.fragment
+                and parsed.port in (None, 443)):
+            return url
+    except ValueError:
+        pass
+    return None
+
+
 def normalize_reel(media, now):
     """Allowlist a directly playable Reel; signed URLs get a conservative freshness lease."""
     if media.media_type != 2 or media.product_type != 'clips':
@@ -102,7 +123,10 @@ def normalize_reel(media, now):
         'provider_video_id': identifier, 'source_url': f'https://www.instagram.com/reel/{code}/',
         'creator': {'handle': handle, 'display_name': f'@{handle}', 'attribution_url': f'https://www.instagram.com/{handle}/'},
         'caption': (media.caption_text or '')[:4000], 'duration_seconds': duration,
-        'thumbnail_url': None, 'acquired_at': now.isoformat(), 'availability': 'ready',
+        'like_count': _engagement_count(getattr(media, 'like_count', None)),
+        'comment_count': _engagement_count(getattr(media, 'comment_count', None)),
+        'thumbnail_url': _thumbnail(getattr(media, 'thumbnail_url', None)),
+        'acquired_at': now.isoformat(), 'availability': 'ready',
         'acquisition_mode': 'live', 'playback': {'kind': 'mp4', 'asset_id': f'instagram:{identifier}:mp4',
             'url': url, 'expires_at': (now + timedelta(minutes=5)).isoformat(), 'mime_type': 'video/mp4'},
     }])[0]

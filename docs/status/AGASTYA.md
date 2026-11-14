@@ -1746,3 +1746,17 @@ retains bounded state rather than increasing it indefinitely. The probe made one
 read after cooldown and printed only counts/types/lengths. Cursor regression and
 existing live-adapter synthetic checks: **34 passed**. Live recovery is pending
 deployment of the patched worker.
+
+
+### Reel engagement metadata — November 14
+
+User-requested visible like/comment totals now pass from the Instagram adapter
+through the allowlisted catalog and unified feed. Optional nullable integer fields
+`like_count` / `comment_count` preserve unknown/hidden values; old catalog rows
+remain compatible. Safe Instagram CDN thumbnails populate the existing field
+for adjacent-card presentation. No provider write or extra per-Reel request is added.
+
+Validation: 40 focused metadata/provider tests passed; generated contracts match
+and `git diff --check` passed. Ruff passes for the new test and feed projection;
+existing entertainment modules retain their pre-existing import/line-length lint.
+Live metadata awaits the next normal catalog refresh and phone UI integration.

@@ -29,6 +29,8 @@ export interface EntertainmentVideo {
     attribution_url: string | null;
   };
   caption: string;
+  like_count?: number | null;
+  comment_count?: number | null;
   duration_seconds: number | null;
   playback: PlaybackSource;
   thumbnail_url: string | null;
