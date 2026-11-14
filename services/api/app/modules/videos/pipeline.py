@@ -79,7 +79,7 @@ def generation_recipe(*, fixture=False, custom_scene=False):
         },
         "scene_api": "trusted-trace-2" if custom_scene else "authored-trace-1",
         "renderer_image": os.getenv(
-            "VIDEO_RENDER_IMAGE", "hackumass-renderer:reference-v9-semantic"
+            "VIDEO_RENDER_IMAGE", "hackumass-renderer:reference-v10-dialogue"
         ),
         "renderer_source": digest(
             {

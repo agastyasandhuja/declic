@@ -32,7 +32,8 @@ let lastProgress=0;
 await renderMedia({...common,composition,onProgress:({renderedFrames})=>{if(renderedFrames-lastProgress>=150){lastProgress=renderedFrames;console.log(`Rendered ${renderedFrames}/${lesson.frame_count}`)}},codec:'h264',audioCodec:'aac',pixelFormat:'yuv420p',sampleRate:48000,colorSpace:'bt709',
  outputLocation:path.join(output,'lesson.mp4'),concurrency:2,crf:20,
  scale:process.env.RENDER_SCALE==='0.5'?.5:1,
- ffmpegOverride:({args})=>[...args.slice(0,-1),'-threads','2','-movflags','+faststart',args.at(-1)]});
+ // Bound busy gameplay footage below the demo storage upload ceiling, even at 60s.
+ ffmpegOverride:({args})=>[...args.slice(0,-1),'-maxrate:v','6M','-bufsize:v','12M','-threads','2','-movflags','+faststart',args.at(-1)]});
 }
 await puppeteerInstance.close({silent:true});
 fs.writeFileSync(path.join(output,'render-result.json'),JSON.stringify({state:'succeeded',frames:lesson.frame_count}));
