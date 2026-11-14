@@ -22,6 +22,10 @@ class AcademicImportTests(unittest.TestCase):
         repo = Path(__file__).resolve().parents[6]
         inventory = json.loads((repo / "fixtures/academics/canvas_resources.json").read_text())
 
+        inventory["/api/v1/courses/17/assignments"].append(
+            {"id": 9, "name": "Lab: list reversal", "due_at": "2099-11-18T23:00:00Z"}
+        )
+
         def canvas(url, headers, timeout):
             parsed = urlsplit(url)
             self.assertEqual(parsed.hostname, "canvas.example")
@@ -41,13 +45,19 @@ class AcademicImportTests(unittest.TestCase):
         self.assertTrue(sources["file"].content_hash)
         self.assertIn("file: some excerpts unavailable", resolver.course_info("17")["missing_sources"])
 
+
         def gemini(url, body, headers):
             prompt = str(body)
             self.assertIn("Save the next pointer", prompt)
             self.assertNotIn("fake-token", prompt)
             if "Allowed suggested_formats" in prompt:
+                import re
+
+                content = json.loads(body)['contents'][0]['parts'][0]['text']
+                target = re.search(r'"id": "(asmt_[a-f0-9]+)"', content)[1]
                 return gemini_response({"lessons": [{
-                    "objective_title": "Reverse a list", "learning_goal": "Trace pointer updates",
+                    "objective_title": "Reverse a list", "learning_goal": "Trace list reversal",
+                    "target_topic": "list reversal", "target_assessment_id": target,
                     "unit_title": "Pointers", "target_duration_seconds": 45,
                 }]})
             return gemini_response({
@@ -65,12 +75,12 @@ class AcademicImportTests(unittest.TestCase):
             with self.assertRaises(PermissionError):
                 service.import_profile("other", resolver)
             profile = service.import_profile("owner", resolver)
-            midterm, final = profile["assessments"]
+            midterm, final, _ = profile["assessments"]
             self.assertEqual(midterm["scheduled"]["precision"], "date")
             self.assertIsNone(final["scheduled"]["date"])
             self.assertEqual(len(service.get_validated_plans("owner")), 1)
             self.assertEqual(service.get_validated_plans("other"), [])
-            self.assertEqual(service.get_course_bindings("owner")[0]["source_refs"], [page.source_id])
+            self.assertEqual(service.get_course_bindings("owner")[0]["source_refs"], [sources["canvas_course"].source_id])
             self.assertEqual(service.resolve_source_context("owner", [page.source_id])[0]["text"], page.text)
             with self.assertRaises(LookupError):
                 service.resolve_source_context("other", [page.source_id])

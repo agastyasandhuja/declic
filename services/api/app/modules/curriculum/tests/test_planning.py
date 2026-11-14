@@ -107,3 +107,55 @@ class PlanCourseTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TimelinePlanningTests(unittest.TestCase):
+    def test_only_verified_current_exam_topics_are_planned(self):
+        from datetime import datetime, timezone
+
+        from app.modules.curriculum.timing import priority_targets
+
+        def assessment(identifier, day, topic, status="explicit"):
+            return {
+                "assessment_id": identifier, "title": identifier, "kind": "midterm",
+                "scheduled": {"date": day, "precision": "date", "evidence_status": status,
+                              "timezone": "America/New_York"},
+                "scope_status": "explicit", "covered_topics": [topic],
+            }
+
+        course = {**COURSE, "external_course_id": "sample"}
+        old = assessment("past", "2026-09-15", "earlier topic")
+        current = assessment("current", "2026-11-14", "line integrals")
+        unknown = assessment("undated", None, "vector fields", "unknown")
+        tests = [old, current, unknown]
+        now = datetime(2026, 11, 15, 2, tzinfo=timezone.utc)
+        proposals = [
+            {"objective_title": topic, "learning_goal": f"Practice {topic}",
+             "target_assessment_id": target, "target_topic": topic}
+            for target, topic in [
+                ("past", "earlier topic"),
+                ("current", "earlier topic"),
+                ("undated", "vector fields"),
+                ("current", "line integrals"),
+            ]
+        ]
+        requests = plan_course(course, UNITS, tests, client(proposals), now=now)["requests"]
+        self.assertEqual([request["title"] for request in requests], ["line integrals"])
+        self.assertEqual(requests[0]["assessment_ids"], ["current"])
+        self.assertEqual(requests[0]["exam_scope_status"], "explicit")
+        # An older topic becomes relevant again when the current exam lists it.
+        current["covered_topics"].append("earlier topic")
+        requests = plan_course(course, UNITS, tests, client(proposals), now=now)["requests"]
+        self.assertEqual({request["title"] for request in requests}, {"earlier topic", "line integrals"})
+        self.assertEqual(priority_targets(tests, now.replace(hour=6)), [])
+        self.assertEqual(plan_course(course, UNITS, tests, None,
+                                     now=now.replace(hour=6))["requests"], [])
+
+    def test_numbered_homework_does_not_supply_a_topic(self):
+        from app.modules.curriculum.timing import target_topic_is_supported
+
+        assignment = {"kind": "assignment", "title": "HW 16.1"}
+        self.assertFalse(target_topic_is_supported("HW 16.1", assignment))
+        self.assertFalse(target_topic_is_supported("Lagrange multipliers", assignment))
+        assignment["title"] = "HW 16.1: Lagrange multipliers"
+        self.assertTrue(target_topic_is_supported("Lagrange multipliers", assignment))

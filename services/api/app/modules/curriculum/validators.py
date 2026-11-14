@@ -177,13 +177,31 @@ def validate_extraction(raw: dict, authorized_ids: set[str], *,
         if key in seen_dates and seen_dates[key] != when["date"] and when["date"] and seen_dates[key]:
             warnings.append(f"assessment '{name}': conflicting dates {seen_dates[key]} vs {when['date']}")
         seen_dates.setdefault(key, when["date"])
+        topics = [t for t in (assessment.get("covered_topics") or []) if isinstance(t, str) and t.strip()]
+        scope = _enum(assessment.get("scope_status"), _EVIDENCE, "unknown")
+        if evidence is not None:
+            # Only retain literal coverage mentioned alongside this assessment in
+            # a cited source. Other course material cannot establish exam scope.
+            chunks = []
+            for ref in refs:
+                for line in evidence[ref].splitlines():
+                    for match in re.finditer(re.escape(name), line, re.I) if name else ():
+                        tail = line[match.end():match.end() + 300]
+                        if re.search(r"\b(?:covers?|coverage|topics?|material|units?)\b", tail, re.I):
+                            chunks.append(tail.casefold())
+            topics = [topic for topic in topics if any(
+                re.search(r"(?<!\w)" + re.escape(topic.casefold()) + r"(?!\w)", chunk)
+                for chunk in chunks
+            )]
+            if not topics:
+                scope = "unknown"
         assessments.append(
             {
                 "title": name,
                 "kind": _enum(assessment.get("kind"), _KIND, "other"),
                 "scheduled": when,
-                "scope_status": _enum(assessment.get("scope_status"), _EVIDENCE, "unknown"),
-                "covered_topics": [t for t in (assessment.get("covered_topics") or []) if isinstance(t, str)],
+                "scope_status": scope,
+                "covered_topics": topics,
                 "source_refs": refs,
             }
         )

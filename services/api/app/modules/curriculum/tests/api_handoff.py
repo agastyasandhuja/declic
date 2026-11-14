@@ -102,3 +102,39 @@ def test_academic_handoff(tmp_path):
         assert client.patch(path, json=correction, headers=owner).status_code == 200
         assert client.patch(path, json=correction, headers=owner).status_code == 409
         assert client.get(plan_path, headers=owner).status_code == 404
+
+
+def test_canvas_reader_expires_a_saved_plan_without_reimport():
+    from datetime import datetime, timezone
+
+    class SavedProfile:
+        def get_profile(self, owner):
+            return {
+                "revision": 1,
+                "courses": [{"course_id": "calculus", "external_course_id": "123",
+                             "title": "Calculus", "timezone": "America/New_York"}],
+                "assessments": [{
+                    "course_id": "calculus", "assessment_id": "exam", "kind": "midterm",
+                    "title": "Midterm 2", "scope_status": "explicit",
+                    "covered_topics": ["line integrals"],
+                    "scheduled": {"date": "2026-11-14", "precision": "date",
+                                  "evidence_status": "explicit", "timezone": "America/New_York"},
+                }],
+            }
+
+        def get_validated_plans(self, owner):
+            return [{"profile_revision": 1, "course_id": "calculus", "requests": [{
+                "title": "line integrals", "timeline_topic": "line integrals",
+                "objective_id": "line-integrals", "assessment_ids": ["exam"],
+                "exam_scope_status": "explicit", "prerequisite_objective_ids": [],
+            }, {
+                "title": "Lagrange multipliers", "objective_id": "old-lesson",
+                "assessment_ids": [], "exam_scope_status": "unknown",
+                "prerequisite_objective_ids": [],
+            }]}]
+
+    now = datetime(2026, 11, 15, 2, tzinfo=timezone.utc)
+    reader = FeedAcademicReader(SavedProfile(), clock=lambda: now)
+    assert [item.objective_id for item in reader.list_objectives("owner")] == ["line-integrals"]
+    now = now.replace(hour=6)
+    assert reader.list_objectives("owner") == []

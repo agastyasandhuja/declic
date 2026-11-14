@@ -8,8 +8,10 @@ client is injected so tests can run with a fake and never touch the network.
 from __future__ import annotations
 
 import hashlib
+import re
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .client.gemini import GeminiClient, parse_json_object
 from .prompts.extract import SYSTEM_INSTRUCTION, build_extraction_prompt
@@ -17,6 +19,11 @@ from .schemas import EXTRACTION_SCHEMA, SCHEMA_VERSION
 from .sources import Resolver, select_excerpts
 from .store import latest_revision, save_profile
 from .validators import validate_extraction
+from .timing import _parse
+
+
+def _title_key(title: str) -> str:
+    return " ".join(title.casefold().split())
 
 
 def _sid(*parts: str) -> str:
@@ -124,8 +131,57 @@ def build_profile(
         )
         for unit in extraction["units"]:
             units.append({"unit_id": f"unit_{_sid(course_id, unit['title'], str(unit['order']))}", "course_id": course_id, **unit})
-        for assessment in extraction["assessments"]:
-            assessments.append({"assessment_id": f"asmt_{_sid(course_id, ' '.join(assessment['title'].casefold().split()))}", "course_id": course_id, **assessment})
+        by_title = {_title_key(item["title"]): item for item in extraction["assessments"]}
+        if hasattr(resolver, "assignments_for_course"):
+            overview_id = resolver.sources_for_course(course_id)[0].source_id
+            for assignment in resolver.assignments_for_course(course_id):
+                key = _title_key(assignment.name)
+                due = _parse(assignment.due_at)
+                if not key or (not due and not assignment.looks_like_exam):
+                    continue
+                kind = ("midterm" if "midterm" in key else "final" if "final" in key
+                        else "other" if assignment.looks_like_exam else "assignment")
+                item = by_title.setdefault(key, {
+                    "title": assignment.name, "scope_status": "unknown", "covered_topics": [],
+                    "source_refs": [overview_id], "scheduled": {},
+                })
+                item["kind"] = kind
+                if assignment.looks_like_exam:
+                    item["is_exam"] = True
+                if item.get("date_conflict"):
+                    continue
+                zone = info.get("timezone") or extraction["timezone"]
+                if due and due.utcoffset() is not None:
+                    try:
+                        due = due.astimezone(ZoneInfo(zone)) if zone else due
+                    except (ValueError, ZoneInfoNotFoundError):
+                        zone = None
+                    existing = item["scheduled"].get("date")
+                    if assignment.looks_like_exam and existing and existing != due.date().isoformat():
+                        item["date_conflict"] = True
+                        warnings.append(f"{course_id}: conflicting assessment schedule")
+                        item["scheduled"] = {}
+                    else:
+                        item["scheduled"] = {
+                            "date": due.date().isoformat(), "timestamp": due.isoformat(),
+                            "timezone": zone, "precision": "datetime", "evidence_status": "explicit",
+                            "source_refs": [overview_id],
+                        }
+                if not item["scheduled"]:
+                    item["scheduled"] = {
+                        "date": None, "timestamp": None, "timezone": zone,
+                        "precision": "unknown", "evidence_status": "unknown", "source_refs": [],
+                    }
+        for key, assessment in by_title.items():
+            kind = assessment["kind"]
+            if kind == "other":
+                if re.search(r"\bmidterms?\b", key):
+                    assessment["kind"] = "midterm"
+                elif re.search(r"\bfinal(?: exam)?\b", key):
+                    assessment["kind"] = "final"
+                elif re.search(r"\b(?:exam|test)\b", key):
+                    assessment["is_exam"] = True
+            assessments.append({"assessment_id": f"asmt_{_sid(course_id, key)}", "course_id": course_id, **assessment})
 
     profile = {
         "schema_version": SCHEMA_VERSION,

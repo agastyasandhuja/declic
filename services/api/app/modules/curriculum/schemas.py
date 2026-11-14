@@ -108,6 +108,8 @@ PLAN_SCHEMA: dict = {
                         "description": "true if enrichment/practice NOT confirmed as exam coverage",
                     },
                     "exam_related": {"type": "boolean"},
+                    "target_assessment_id": {"type": "string"},
+                    "target_topic": {"type": "string"},
                     "prerequisite_titles": {"type": "array", "items": {"type": "string"}},
                     "suggested_formats": {
                         "type": "array",

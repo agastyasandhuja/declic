@@ -285,3 +285,27 @@ app = create_app(
   network runs completed live extraction and planning.
 - No live OAuth, shared worker/outbox, Atlas, video generation, or iPhone
   acceptance was run. No commits, merges, PRs, emails, or MongoDB changes.
+
+## Timeline follow-up (2026-11-14)
+
+- Canvas lesson planning now requires a verified upcoming target. The next
+  dated exam wins when its scope is supported. A dated assignment can be a
+  fallback when it identifies a real topic. Generic labels and chapter numbers
+  alone are insufficient. Canvas assignment timestamps are imported directly,
+  and exam scope needs evidence specific to the exam. The academic reader
+  rechecks deadlines at read time and suppresses expired or legacy unlinked
+  lessons. Date-only assessments use the course-local day, falling back to
+  America/New_York for this institutional demo when no timezone is available.
+- The first live timeline run extracted three courses. One extraction returned
+  GeminiError. Planning proposed three lessons based on numbered homework
+  labels. Review of that result prompted a stricter filter and a regression
+  test for labels such as HW 16.1. That live run preceded the stricter filter.
+- Production wiring still needs an owner-scoped Canvas sync on connect and
+  a refresh on login or a periodic worker, plus feed invalidation/reselection
+  for already-prefetched entries when academic eligibility changes. The
+  academic reader enforces time eligibility on fresh candidate reads.
+- Final verification passed 32 curriculum and 29 Canvas unit tests, plus two
+  synthetic core composition checks (including feed expiry without reimport).
+  Replaying the saved live output through the tightened filter rejected all
+  three numbered-homework candidates. No second live model run was performed
+  after that filter change.

@@ -29,7 +29,7 @@ SYSTEM_INSTRUCTION = (
 )
 
 
-def build_plan_prompt(course: dict, units: list[dict], assessments: list[dict], formats: list[str], sources=()) -> str:
+def build_plan_prompt(course: dict, units: list[dict], assessments: list[dict], formats: list[str], sources=(), *, targets=None) -> str:
     """Give Gemini the validated, already-sourced course profile as compact JSON."""
     compact = {
         "course_title": course.get("title"),
@@ -52,8 +52,23 @@ def build_plan_prompt(course: dict, units: list[dict], assessments: list[dict], 
         ],
     }
     focus = ""
+    if targets is not None:
+        compact["assessments"] = []
+        compact["upcoming_targets"] = [
+            {"id": item["assessment_id"], "title": item["title"], "kind": item["kind"],
+             "date": item["scheduled"]["date"], "covered_topics": item.get("covered_topics", [])}
+            for item in targets
+        ]
+        focus = (
+            "\nUse only upcoming_targets for lessons. Set target_assessment_id to an exact listed id "
+            "and target_topic to a verbatim covered topic or a named subject in the graded-work title. "
+            "Generic labels such as Homework or Quiz are insufficient. Name the exact topic in the "
+            "learning goal. Old material can explain a listed target. Return an empty lessons array "
+            "when no topic can be grounded.\n"
+        )
+
     timing = course.get("timing")
-    if timing and timing.get("upcoming"):
+    if targets is None and timing and timing.get("upcoming"):
         soon = "; ".join(f"{i['due_date']} ({i['days_until']}d): {i['name']}" for i in timing["upcoming"][:5])
         focus = (
             "\n\nREAL-TIME PRIORITY — this student's nearest upcoming graded work "

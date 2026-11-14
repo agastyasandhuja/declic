@@ -11,8 +11,10 @@ date) is reported as undated, never guessed.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ..canvas.assignments import Assignment
 
@@ -21,7 +23,8 @@ def _parse(ts: str | None) -> datetime | None:
     if not ts:
         return None
     try:
-        return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        value = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        return value if value.utcoffset() is not None else None
     except ValueError:
         return None
 
@@ -100,3 +103,55 @@ def schedule_text(assignments: list[Assignment], now: datetime | None = None) ->
         lines.append("Exams listed without a date in Canvas (do not guess a date): "
                      + ", ".join(undated_exams))
     return "\n".join(lines)
+
+
+def upcoming_assessments(assessments, now, course_timezone=None):
+    """Return verified future targets, with exams ahead of ordinary graded work."""
+    targets = []
+    for assessment in assessments:
+        scheduled = assessment.get("scheduled", {})
+        if (assessment.get("date_conflict") or scheduled.get("evidence_status")
+                not in {"explicit", "user_confirmed"}):
+            continue
+        if scheduled.get("precision") == "datetime":
+            deadline = _parse(scheduled.get("timestamp"))
+            if deadline is None or deadline.utcoffset() is None or deadline <= now:
+                continue
+        elif scheduled.get("precision") == "date":
+            try:
+                zone = ZoneInfo(scheduled.get("timezone") or course_timezone or "America/New_York")
+                day = date.fromisoformat(scheduled["date"])
+                if day < now.astimezone(zone).date():
+                    continue
+                # Sort at the end of the local day without exposing a fabricated timestamp.
+                deadline = datetime.combine(day + timedelta(days=1), time.min, zone)
+            except (KeyError, TypeError, ValueError, OverflowError, ZoneInfoNotFoundError):
+                continue
+        else:
+            continue
+        exam = assessment["kind"] in {"midterm", "final"} or assessment.get("is_exam") is True
+        targets.append((not exam, deadline, assessment["assessment_id"], assessment))
+    return [target[-1] for target in sorted(targets, key=lambda target: target[:3])]
+
+
+def priority_targets(assessments, now, course_timezone=None):
+    """Focus on the next dated exam when its scope is known, else upcoming graded work."""
+    upcoming = upcoming_assessments(assessments, now, course_timezone)
+    exams = [item for item in upcoming if item["kind"] in {"midterm", "final"} or item.get("is_exam")]
+    if exams and exams[0].get("covered_topics") and exams[0].get("scope_status") in {"explicit", "user_confirmed"}:
+        return exams[:1]
+    return [item for item in upcoming if item not in exams][:5]
+
+
+def target_topic_is_supported(topic, target):
+    """Require a literal topic in the target title or its verified coverage."""
+    key = " ".join(topic.casefold().split())
+    generic = r"(?:assignment|homework|hw|quiz|exam|lab|project|problem set|midterm|final)(?:\s*#?\s*\d+(?:[.\-]\d+)*)?"
+    if not any(c.isalpha() for c in key) or re.fullmatch(generic, key):
+        return False
+    if target.get("scope_status") in {"explicit", "user_confirmed"}:
+        if key in {" ".join(value.casefold().split()) for value in target.get("covered_topics", [])}:
+            return True
+    return not (target["kind"] in {"midterm", "final"} or target.get("is_exam")) and bool(
+        re.search(r"(?<!\w)" + re.escape(key) + r"(?!\w)", " ".join(target["title"].casefold().split()))
+    )

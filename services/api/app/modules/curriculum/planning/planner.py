@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 
 from ..client.gemini import GeminiClient, parse_json_object
 from ..prompts.plan import SYSTEM_INSTRUCTION, build_plan_prompt
+from ..timing import priority_targets, target_topic_is_supported
 from ..sources import select_excerpts
 from ..schemas import LESSON_FORMATS, PLAN_SCHEMA, SCHEMA_VERSION
 
@@ -58,23 +59,43 @@ def _assessment_ids(objective_title: str, assessments: list[dict]) -> list[str]:
     return hits
 
 
-def plan_course(course: dict, units: list[dict], assessments: list[dict], client: GeminiClient, sources=()) -> dict:
+def plan_course(course: dict, units: list[dict], assessments: list[dict], client: GeminiClient, sources=(), *, now=None) -> dict:
     """Run one Gemini planning call for a course and assemble a validated plan."""
-    prompt = build_plan_prompt(course, units, assessments, LESSON_FORMATS, sources)
-    result = client.generate_json(
-        system_instruction=SYSTEM_INSTRUCTION, user_content=prompt, response_schema=PLAN_SCHEMA
-    )
-    raw = parse_json_object(result.text)
+    timeline_required = bool(course.get("external_course_id"))
+    targets = priority_targets(assessments, now or datetime.now(timezone.utc), course.get("timezone")) if timeline_required else None
+    if timeline_required and not targets:
+        raw, usage = {}, {}
+    else:
+        prompt = build_plan_prompt(course, units, assessments, LESSON_FORMATS, sources, targets=targets)
+        result = client.generate_json(
+            system_instruction=SYSTEM_INSTRUCTION, user_content=prompt, response_schema=PLAN_SCHEMA
+        )
+        raw, usage = parse_json_object(result.text), result.usage
     course_id = course["course_id"]
 
     # First pass: title -> objective_id, so prerequisites can reference them.
-    proposals = [p for p in (raw.get("lessons") or []) if isinstance(p, dict) and isinstance(p.get("objective_title"), str) and p["objective_title"].strip()][:3]
+    proposals = [p for p in (raw.get("lessons") or []) if isinstance(p, dict) and isinstance(p.get("objective_title"), str) and p["objective_title"].strip()]
     title_to_oid = {p["objective_title"].strip(): _oid(course_id, p["objective_title"]) for p in proposals}
 
     requests, seen = [], set()
     for proposal in proposals:
         title = proposal["objective_title"].strip()
         oid = title_to_oid[title]
+        target = None
+        if timeline_required:
+            topic = proposal.get("target_topic")
+            target = next((item for item in targets
+                           if item["assessment_id"] == proposal.get("target_assessment_id")
+                           and isinstance(topic, str) and target_topic_is_supported(topic, item)), None)
+            if target is None or proposal.get("is_suggested_practice"):
+                continue
+            topic = topic.strip()
+            # Use the supported topic as the authoritative title. Keep the
+            # proposed goal only when it also names that topic.
+            goal = proposal.get("learning_goal")
+            if not isinstance(goal, str) or topic.casefold() not in goal.casefold():
+                continue
+
         if oid in seen:  # dedupe by meaning/level within the course
             continue
         seen.add(oid)
@@ -97,19 +118,28 @@ def plan_course(course: dict, units: list[dict], assessments: list[dict], client
             evidence = "inferred"
 
         linked_ids = _assessment_ids(title, assessments) if exam_related else []
+        if target:
+            linked_ids = [target["assessment_id"]]
+            source_refs = list(dict.fromkeys(
+                target.get("source_refs", []) + target["scheduled"].get("source_refs", [])
+            ))
+            evidence = "explicit"
         linked = [a for a in assessments if a["assessment_id"] in linked_ids]
+        exam_links = [a for a in linked if a["kind"] in {"midterm", "final"} or a.get("is_exam")]
+
         requests.append(
             {
                 "lesson_request_id": "lr_" + hashlib.sha256(f"{course_id}\x1f{oid}".encode()).hexdigest()[:12],
                 "objective_id": oid,
                 "binding_id": "bind_" + hashlib.sha256(f"{course_id}\x1f{oid}".encode()).hexdigest()[:12],
                 "unit_id": matched_unit.get("unit_id"),
-                "title": title,
+                "title": topic if target else title,
                 "learning_goal": proposal.get("learning_goal", "") if isinstance(proposal.get("learning_goal"), str) else "",
                 "prerequisite_objective_ids": prereq_ids,
                 "source_refs": source_refs,
                 "evidence_status": evidence,
-                "exam_scope_status": _exam_scope(bool(linked), linked),
+                "exam_scope_status": _exam_scope(bool(exam_links), exam_links) if target else _exam_scope(bool(linked), linked),
+                **({"timeline_topic": topic} if target else {}),
                 "assessment_ids": linked_ids,
                 "importance": importance,
                 "suggested_formats": formats,
@@ -123,6 +153,15 @@ def plan_course(course: dict, units: list[dict], assessments: list[dict], client
             }
         )
 
+        if len(requests) == 3:
+            break
+
+    requested_ids = {request["objective_id"] for request in requests}
+    for request in requests:
+        request["prerequisite_objective_ids"] = [
+            oid for oid in request["prerequisite_objective_ids"] if oid in requested_ids
+        ]
+
     plan_id = "plan_" + hashlib.sha256(course_id.encode()).hexdigest()[:12]
     return {
         "schema_version": SCHEMA_VERSION,
@@ -132,7 +171,8 @@ def plan_course(course: dict, units: list[dict], assessments: list[dict], client
         "status": "validated",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "requests": requests,
-        "usage": result.usage,
+        "warnings": ["No lesson matched a verified upcoming target"] if timeline_required and not requests else [],
+        "usage": usage,
     }
 
 
@@ -140,6 +180,7 @@ def build_lesson_plans(profile: dict, client: GeminiClient, resolver=None) -> li
     """Plan every ready course in the profile. One failing course is skipped
     with a warning recorded on the returned plan (empty requests)."""
     plans = []
+    now = datetime.now(timezone.utc)
     for course in profile["courses"]:
         if course.get("import_status") != "ready":
             continue
@@ -148,7 +189,7 @@ def build_lesson_plans(profile: dict, client: GeminiClient, resolver=None) -> li
         assessments = [a for a in profile["assessments"] if a["course_id"] == course_id]
         try:
             sources = select_excerpts(resolver.sources_for_course(course_id), 16_000) if resolver else []
-            plan = plan_course(course, units, assessments, client, sources)
+            plan = plan_course(course, units, assessments, client, sources, now=now)
         except Exception as err:  # noqa: BLE001 — isolate one course
             plan = {
                 "schema_version": SCHEMA_VERSION,

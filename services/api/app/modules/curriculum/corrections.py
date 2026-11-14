@@ -15,6 +15,7 @@ def apply_overrides(profile):
             continue
         if "date" in change:
             value = change["date"]
+            assessment.pop("date_conflict", None)
             assessment["scheduled"] = {
                 "date": value, "timestamp": None,
                 "timezone": assessment["scheduled"].get("timezone"),

@@ -139,3 +139,16 @@ The local profile snapshot stores the ready-event payload alongside its
 validated plans. Shared outbox publication and persistent job registration
 are integration handoffs. The local router does not expose provider secrets,
 raw blobs, or internal events.
+
+## Canvas timeline eligibility
+
+Canvas-backed lesson requests may include `timeline_topic`, the topic supported
+by a cited upcoming assessment. For this personalized feed, the academic reader
+requires a current linked target and rechecks eligibility against the request-time
+clock. An offset-bearing deadline expires at its actual instant. A date-only
+deadline stays eligible through the course-local day. Unknown and conflicting
+dates do not qualify as upcoming. The next dated exam takes priority when its
+covered topics are supported. Otherwise another dated assignment can supply a
+topic when its title or supported coverage names one. A generic assignment or exam
+title alone does not establish any topic. Legacy Canvas lesson requests without
+a timeline topic require reimport before feed use.
