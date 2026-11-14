@@ -68,3 +68,8 @@ workspace lock prevents a second batch coordinator from doubling concurrency.
 Logs stay under `work/logs`. Final audio is normalized to −16 LUFS/−1 dBTP by an
 audio-only encode before the unchanged technical media validation. No new voice
 request is needed for that delivery adjustment.
+
+On the measured 14-CPU Docker VM, each of the two renderer processes receives
+4 CPUs and 3 GiB RAM; frame concurrency stays two per process. This resource-only
+adjustment does not change the visual source fingerprint or invalidate approved
+frames. Do not increase process count or memory just to match available CPUs.

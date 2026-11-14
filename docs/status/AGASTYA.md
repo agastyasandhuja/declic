@@ -1802,3 +1802,14 @@ Validation: 41 focused metadata/provider tests passed; generated contracts match
 and `git diff --check` passed. Ruff passes for the new test and feed projection;
 existing entertainment modules retain their pre-existing import/line-length lint.
 Live metadata awaits the next normal catalog refresh and phone UI integration.
+
+### 2026-11-14 — bounded demo renderer CPU quota
+
+Parent measured the Docker VM at 14 available CPUs with both active renderers
+throttled at their 2-CPU quotas. Raised the two owned final-source renderers and
+the next-job launcher to 4 CPUs each; retained exactly two render processes,
+3 GiB per-container memory, two frame workers, no network and all isolation
+limits. The first completed 3D job previously took 250 seconds; the first 2D job
+162 seconds. These are baselines, not a claimed speedup. Visual renderer source
+f4fed794 and all approved frame inputs remain unchanged. No new narration or
+model call is needed for this resource adjustment.
