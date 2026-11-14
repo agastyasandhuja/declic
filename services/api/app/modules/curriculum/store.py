@@ -10,6 +10,18 @@ from threading import RLock
 
 LOCK = RLock()
 
+# When set (use_atlas), profiles and plans are stored in MongoDB Atlas instead of
+# local JSON files. storage_dir is then ignored. Local JSON stays the fallback.
+_atlas = None
+
+
+def use_atlas(database) -> None:
+    """Route profile/plan persistence to Atlas using an injected PyMongo Database."""
+    global _atlas
+    from .atlas_store import AtlasAcademicStore
+
+    _atlas = AtlasAcademicStore(database) if database is not None else None
+
 
 def _user_folder(storage_dir: Path, user_id: str) -> Path:
     if not user_id:
@@ -44,12 +56,17 @@ def save_profile(storage_dir: Path, user_id: str, profile: dict, *, reimport=Fal
 
             profile["revision"] = latest_revision(storage_dir, user_id) + 1
             restore_corrections(storage_dir, user_id, profile)
+        if _atlas is not None:
+            _atlas.save_profile(user_id, profile)
+            return storage_dir
         folder = _user_folder(storage_dir, user_id)
         write_json(folder / f"profile-{profile['revision']}.json", profile)
         return write_json(folder / "profile.json", profile)
 
 
 def load_profile(storage_dir: Path, user_id: str) -> dict | None:
+    if _atlas is not None:
+        return _atlas.load_profile(user_id)
     path = _user_folder(storage_dir, user_id) / "profile.json"
     if not path.exists():
         return None
@@ -60,10 +77,15 @@ def load_profile(storage_dir: Path, user_id: str) -> dict | None:
 def save_plans(storage_dir: Path, user_id: str, plans: list[dict]) -> Path:
     if any(plan.get("user_id") != user_id for plan in plans):
         raise PermissionError("plan owner mismatch")
+    if _atlas is not None:
+        _atlas.save_plans(user_id, plans)
+        return storage_dir
     return write_json(_user_folder(storage_dir, user_id) / "plans.json", plans)
 
 
 def load_plans(storage_dir: Path, user_id: str) -> list[dict]:
+    if _atlas is not None:
+        return _atlas.load_plans(user_id)
     path = _user_folder(storage_dir, user_id) / "plans.json"
     if not path.exists():
         return []
