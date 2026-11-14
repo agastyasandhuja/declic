@@ -28,16 +28,61 @@ not establish successful real authentication.
 | Feed accessible without Canvas | Passed for the development fixture demo in the iPhone simulator. No Canvas, Atlas or FastAPI dependency. | Recheck the same feed after real sign-in and on the physical iPhone; those paths remain unverified. |
 | API rejects missing/invalid tokens and caller-selected identity | Not implemented/validated by this prototype. Client token handling is unit-tested, but services/api/app/modules/auth is still a scaffold. | Adi implements verify_access_token; Agastya integrates get_current_user and router assembly. Test missing, invalid, expired and forged tokens plus cross-user access against protected routes. |
 
-Prioritize the remaining A1 Auth and authorization work before provider acquisition
-(A2). The prototype also contains part of A3 playback and A4 integration slots;
-those additions do not complete A1 acceptance. Atlas profile/catalog persistence
-remains deferred by user direction. Token verification and basic Auth acceptance
-can proceed independently of that database work.
+The remaining A1 Auth and authorization work is still required. The user has now
+selected a limited A2 Instagram experiment in parallel; serving private provider
+feeds to app users must wait for protected API authentication. The prototype also
+contains part of A3 playback and A4 integration slots; those additions do not
+complete A1 acceptance. Atlas profile/catalog persistence remains deferred.
+Token verification and basic Auth acceptance can proceed independently of Atlas.
 
 Audit verification: reread the current implementations and test coverage, and
 reran root `npm run typecheck`, `npm test` and `npm run contracts:check`:
 all passed, including 14/14 tests. No new live Auth or device test is implied
 by this audit.
+
+## A2 Instagram experiment — prepared, live test pending
+
+- User requires account-specific entertainment and chose Instagram with their
+  existing account's history. TikTok-Api was researched, not live-tested; its
+  public-data approach was deferred. This is an explicit user-directed change
+  from the initial TikTok-first experiment order, not a failed TikTok test.
+- Reviewed current primary sources: [instagrapi Reels readers](https://github.com/subzeroid/instagrapi/blob/master/instagrapi/mixins/timeline.py),
+  [login/session documentation](https://github.com/subzeroid/instagrapi/blob/master/docs/usage-guide/interactions.md),
+  [login migration](https://github.com/subzeroid/instagrapi/blob/master/docs/usage-guide/login-migration.md),
+  and [Meta's Instagram Platform](https://developers.facebook.com/documentation/instagram-platform).
+  Source exposes clips/discover and clips/connected under an account session.
+  This is not proof of the same personalized stream/ranking as Instagram's app.
+- Added [a standalone probe and run guide](../../services/api/app/modules/entertainment/experiments/README.md)
+  within Adi's entertainment module. One SDK login call, then a single small Reels
+  page; up to five unique clips, with captions/creator/duration/URL candidates.
+  No mobile source switch, API route, Atlas work or shared Python manifest change.
+- Credential entry uses hidden local terminal prompts. No password/cookie/session
+  file is saved. Provider logs/raw exceptions are suppressed; account verification
+  errors stop without automatic checkpoint resolution. Normal login may include
+  the SDK's CAA fallback. Explicit likes/follows/posts/messages/seen-state calls and
+  media downloads are absent; normal login/feed requests can affect provider state.
+- Local catalog data remains under ignored .local/instagram-probe with private
+  permissions. A separate report contains stage/counts/error class, without raw
+  payloads, account identifiers or session credentials. Actual data is not a fixture.
+- Commands run: `python3 -m venv .local/instagram-probe/venv`; isolated
+  `python -m pip install instagrapi==3.2.12` from PyPI succeeded. Version verified
+  from PyPI metadata; `python -m pip check` passed. This isolated install is not
+  Agastya's shared service dependency manifest; integration dependency request is
+  instagrapi 3.2.12 for a later accepted adapter, pending live results.
+- Probe `--help` passed. `python -m unittest discover -s
+  services/api/app/modules/entertainment/experiments -p 'test_*.py' -v`: 3/3 passed.
+  Tests cover Reels filtering/deduplication, private output permissions/location,
+  and withholding simulated credentials/provider errors from reports and stdout.
+  `git check-ignore` confirms both output files are ignored. No live provider
+  request was made by these tests.
+- Computer-use access to Terminal was rejected by the tool's safety restriction.
+  No alternative control path was attempted. The user must run the documented
+  command in their own Terminal to enter credentials privately.
+- A2 item 1 (real clips/metadata): pending local login and a successful response.
+  Item 2 (normalized EntertainmentVideo): not implemented by this raw-metadata
+  probe. Item 3 (actual iPhone playback), item 4 (expiry/outage/pagination) and
+  confirmation of account-specific recommendations remain untested. Item 5 is
+  this preparation record; append actual live results when available.
 
 ## Delivered
 

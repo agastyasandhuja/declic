@@ -82,9 +82,18 @@ persistence. The user's current database deferral does not mark them complete.
 
 ## Milestone A2 — provider acquisition experiment
 
-Test TikTok-Api first, instagrapi as an alternative. Both are unofficial Python
-libraries, not guaranteed working services. Keep them behind the same adapter.
-The initial feed may be nonpersonalized.
+User direction updated November 14, 2026: prioritize Instagram through instagrapi
+because account-specific recommendations are required. Use the existing account
+selected by the user for the first session test. TikTok-Api was researched but
+not live-tested; the user deferred that experiment because its logged-out data
+does not meet this requirement. Both are unofficial Python libraries, not
+guaranteed working services. Keep providers behind the same adapter.
+
+The [local Instagram probe](../../services/api/app/modules/entertainment/experiments/README.md)
+is prepared and tested with fakes. Live retrieval awaits local credential entry.
+Test logged-in Reels discovery, not only user_clips (a creator's posted Reels).
+Authenticated recommendations must be compared with the account's usual feed;
+do not claim exact native-app ranking or personalization from a method name.
 
 Separate discovery from playback validation:
 
@@ -96,6 +105,8 @@ Separate discovery from playback validation:
 
 TikTok-Api documents trending.videos; instagrapi documents user_clips, feed helpers,
 and clip downloads. Do not claim access to a personal FYP from a trending response.
+instagrapi's explore_reels/reels methods target clips/discover and clips/connected;
+their existence is source evidence, not a live integration or personalization test.
 Provider login/cookies remain on the backend. Prefer a demo account if credentials
 are required. Never embed social account passwords or cookies in the mobile app.
 
