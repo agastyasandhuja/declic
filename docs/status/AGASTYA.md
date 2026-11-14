@@ -1586,3 +1586,10 @@ version until explicitly regenerated; this change applies to subsequent renders.
 
 Focused production reference-template validation: **12 passed**. Independent
 source review found no blocker. No experimental voxel checks were run.
+
+The final dialogue completed media review but exceeded the storage service's
+upload size limit (HTTP 400 with provider status 413). The renderer now caps
+video bitrate at 6 Mbps with a 12 Mb buffer so 60-second gameplay clips remain
+within the demo delivery budget. This retains 1080×1920, 30fps and aligned audio.
+The completed fifth file is being compressed and revalidated without another
+script, voice, or model generation call.
