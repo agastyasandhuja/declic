@@ -266,7 +266,7 @@ class ConnectionTests(unittest.TestCase):
                 print(marker)
                 return True
             def get_settings(self):
-                return {'cookies': {'sessionid': marker}, 'password': password}
+                return {'uuids': {'phone_id': 'synthetic-device'}, 'cookies': {'sessionid': marker}, 'password': password}
         provider = Provider([ProviderPage([reel(1)], 'private-next'), ProviderPage([reel(2)], None)])
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / 'connection.json'
