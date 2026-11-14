@@ -423,3 +423,64 @@ The interfaces, fixtures, and outstanding integration work remain documented abo
   changed documents, 17 local links/anchors, balanced code fences and 13 unchecked
   personalization tasks. No runtime tests or provider/device checks were run for
   this documentation-only change; INTEGRATION.md acceptance remains required.
+
+## Atlas branch integration — November 14, 2026
+
+Fetched every remote branch and merged all distinct heads into the learning-engine
+history: main `8beaca9`, Adi Atlas `7b2d229` (includes his mobile/private-feed and
+Instagram branches), and Amogh `ebe424a`. `git branch -r --no-merged HEAD` is empty.
+Merged in an isolated worktree before updating the active branch; preserved both
+sides of the main/status conflict and the user's uncommitted video work.
+
+### Implemented
+
+- `app.runtime:create_app`: one Mongo client, Supabase identity bridge, profile and
+  entertainment routers, entertainment projection into the unified feed, shared
+  authentication/rate limiting, and safe owner-error responses.
+- Core current-user dependency supports Adi's asynchronous verifier and existing
+  synchronous fakes without running synchronous database calls on the event loop.
+- Ordered `003_identity_entertainment` delegates to Adi's installer. Startup checks
+  existing schema/index readiness read-only, including Adi's preinstalled schemas.
+- `jsonschema==4.26.0` is now a runtime dependency; regenerated lock offline and
+  retained `pymongo==4.15.5`. Production requires stable catalog cursor signing.
+- Cross-stream integration repair: Amogh's PowerPoint slide-label f-string used a
+  backslash expression unsupported on the shared Python 3.11 runtime. Replaced
+  only that expression with equivalent concatenation; no ingestion behavior change.
+  This compatibility edit is recorded here for Amogh's handoff.
+
+### Commands actually run and results
+
+From `services/api`, using the existing API Python environment:
+
+- `python -m pytest tests app/modules/auth/tests -q` with both
+  `API_TEST_MONGODB_URI` and `MONGODB_TEST_URI` pointing at the disposable loopback
+  replica set: **55 passed**. Includes integrated HTTP auth/catalog/feed,
+  cross-user access, restart persistence, duplicate/conflicting migrations and
+  real transaction/validator checks. Supabase HTTP is mocked, not live login.
+- `python -m pytest app/modules/curriculum/tests app/modules/canvas/tests -q`:
+  **81 passed** after the syntax compatibility fix.
+- `python -m pytest app/modules/curriculum/tests/api_handoff.py app/modules/entertainment/experiments/test_preview_api.py -q`:
+  **10 passed**, synthetic external-provider responses.
+- `python -m pytest app/modules/videos/tests -q`: **72 passed, 4 skipped** without
+  the Mongo test variable. Reran `test_atlas_repository.py` with
+  `VIDEO_TEST_MONGODB_URI` against the disposable replica set: **4 passed**.
+- Optional Instagram probe suite: **4 passed, 1 failed** because `instagrapi` is
+  absent from the shared environment. It is an optional provider experiment,
+  not an integrated-runtime dependency; no Instagram retrieval was attempted.
+- Ruff on changed core/runtime/tests, `uv lock --check --offline`, and
+  `git diff --check`: passed. Local MongoDB was 8.0.38 on port 27029, with random
+  test databases cleaned by the suites; no application/Atlas data was modified.
+
+### Configuration and remaining work
+
+Adi's hosted initialization evidence is in `docs/ADI_ATLAS_SETUP.md`. In this
+checkout, `services/api/.env` has an empty `MONGODB_URI`; hosted preflight stopped
+before connecting. Requested the working local env-file path (no secrets in chat).
+No hosted runtime, real Supabase login, deployment, or iPhone acceptance is claimed.
+
+Run instructions are in `services/api/README.md`. Configure the Atlas URI and
+Supabase publishable auth configuration to start `app.runtime:create_app`.
+Academics remains Amogh's local snapshot persistence; his Atlas schemas/repository
+are still needed. Video Storage signing, academic router composition, generation
+handoff and quiz content provisioning remain separate integration work. This
+change does not invent academic database schemas or publish media.

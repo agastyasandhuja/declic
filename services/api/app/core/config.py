@@ -23,6 +23,14 @@ class Settings(BaseSettings):
             "MONGODB_DATABASE", "API_MONGODB_DATABASE", "mongodb_database"
         ),
     )
+    supabase_url: str | None = Field(
+        default=None, validation_alias=AliasChoices("SUPABASE_URL", "supabase_url")
+    )
+    supabase_publishable_key: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SUPABASE_PUBLISHABLE_KEY", "supabase_publishable_key"),
+    )
+    catalog_cursor_secret: SecretStr | None = Field(default=None, min_length=32)
     fixture_database_path: Path = Path(".local/api-fixture.db")
     fixture_token: SecretStr | None = None
     cors_origins: list[str] = Field(default_factory=list)

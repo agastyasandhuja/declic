@@ -134,3 +134,43 @@ where that test-database creation/cleanup is not authorized. The app's ordinary
 Format/lint only this chat's files; do not run repository-wide auto-fixes while
 other agents are working. Validation evidence is in
 [Agastya API status](../../docs/status/AGASTYA_API.md).
+
+
+## Integrated Atlas runtime (November 14)
+
+Run from `services/api` after configuring the ignored server `.env`:
+`MONGODB_URI`, `MONGODB_DATABASE`, `SUPABASE_URL`, and
+`SUPABASE_PUBLISHABLE_KEY`. Production also requires a stable random
+`API_CATALOG_CURSOR_SECRET` (32+ characters). Do not substitute a Storage
+service-role key for the publishable auth key.
+
+```sh
+uv sync --locked
+uv run --locked python -m app.modules.auth.atlas_preflight --env-file .env
+uv run --locked python -m app.core.migrate --apply --include-videos --include-identity-catalog
+uv run --locked uvicorn app.runtime:create_app --factory --host 0.0.0.0 --port 8000
+```
+
+The migration command is an explicit operator action using the migration
+credential. It delegates Adi's schemas to his installer; existing conflicting
+validators fail without overwriting them. The runtime performs read-only schema
+checks and uses the shared MongoDB client for profiles, entertainment catalogs,
+feed sessions, quizzes and jobs. It performs no seeding or provider retrieval.
+Use a database-scoped runtime credential when serving traffic.
+
+`app.runtime:create_app` mounts `/v1/me`, `/v1/entertainment/feed`, playback,
+unified feed, quiz and progress routes. All use the same verified Supabase
+subject and core rate limiter. Auth HTTP is asynchronous; synchronous database
+work runs in the thread pool. Empty/expired owned catalogs produce an empty
+unified feed rather than loading another user's catalog. Catalog records must
+first be published through Adi's `CatalogRepository.replace_catalog` service.
+
+`app.main:create_app` remains the injectable fixture/integration factory.
+Amogh's academic code is merged and its handoff test passes, but his current
+persistence is local JSON, not Atlas. Academic routers and the video Storage
+reader are still explicitly supplied through that factory; this entry point does
+not claim course-to-video generation or hosted Storage playback is integrated.
+
+Auth verification follows the existing owner adapter's
+[Auth-server verification endpoint](https://supabase.com/docs/guides/auth/jwts#verifying-with-a-shared-secret-signing-key).
+No provider secrets, real student records or media are needed for integration tests.

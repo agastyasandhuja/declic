@@ -1,7 +1,8 @@
 """Internal consumer seam for Adi's verifier; no signup or JWT implementation here."""
 
 import secrets
-from dataclasses import dataclass
+from collections.abc import Awaitable
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from app.core.config import Settings
@@ -12,10 +13,11 @@ from app.core.errors import APIError
 class Principal:
     user_id: str
     timezone: str = "UTC"
+    identity_data: dict | None = field(default=None, repr=False, compare=False)
 
 
 class IdentityVerifier(Protocol):
-    def verify_access_token(self, token: str) -> Principal: ...
+    def verify_access_token(self, token: str) -> Principal | Awaitable[Principal]: ...
 
 
 class UnconfiguredIdentity:

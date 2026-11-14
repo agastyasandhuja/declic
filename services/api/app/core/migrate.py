@@ -9,6 +9,7 @@ from app.core.time import iso, utc_now
 
 MIGRATION_ID = "001_api_learning_runtime"
 VIDEO_MIGRATION_ID = "002_video_indexes"
+IDENTITY_CATALOG_MIGRATION_ID = "003_identity_entertainment"
 
 
 def definitions():
@@ -117,10 +118,28 @@ def apply_video_indexes(database: Database):
     )
 
 
-def apply_ordered(database: Database, *, include_videos: bool = False):
+def apply_identity_catalog(database: Database):
+    if database.mongo is None:
+        raise ValueError("Identity/catalog setup requires MongoDB")
+    if database.mongo.api_migrations.find_one({"_id": MIGRATION_ID}) is None:
+        raise ValueError("Apply API migration 001 before identity/catalog migration 003")
+    from app.modules.auth.database_setup import apply_domain_drafts
+
+    apply_domain_drafts(database.mongo)
+    database.mongo.api_migrations.update_one(
+        {"_id": IDENTITY_CATALOG_MIGRATION_ID},
+        {"$set": {"applied_at": iso(utc_now())}}, upsert=True,
+    )
+
+
+def apply_ordered(
+    database: Database, *, include_videos: bool = False, include_identity_catalog: bool = False
+):
     apply(database)
     if include_videos:
         apply_video_indexes(database)
+    if include_identity_catalog:
+        apply_identity_catalog(database)
 
 
 if __name__ == "__main__":
@@ -131,11 +150,17 @@ if __name__ == "__main__":
         action="store_true",
         help="Also apply the video owner's index setup after the API migration",
     )
+    parser.add_argument("--include-identity-catalog", action="store_true")
     args = parser.parse_args()
     database = Database(Settings())
     try:
-        apply_ordered(database, include_videos=args.include_videos)
+        apply_ordered(
+            database, include_videos=args.include_videos,
+            include_identity_catalog=args.include_identity_catalog,
+        )
         print("API collection validators and indexes applied")
+        if args.include_identity_catalog:
+            print("Identity and entertainment owner schemas/indexes applied")
         if args.include_videos:
             print("Video owner indexes applied")
     finally:

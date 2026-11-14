@@ -88,7 +88,7 @@ def _file_text(suffix, data):
             if len(slides) > 200 or sum(entry.file_size for entry in slides) > MAX_FILE_BYTES:
                 return None
             return "\n".join(
-                f"Slide {re.search(r'(\d+)\.xml', entry.filename)[1]}: " +
+                "Slide " + re.search(r"(\d+)\.xml", entry.filename)[1] + ": " +
                 " ".join(node.text for node in ElementTree.fromstring(archive.read(entry)).iter()
                          if node.tag == "{http://schemas.openxmlformats.org/drawingml/2006/main}t"
                          and node.text)

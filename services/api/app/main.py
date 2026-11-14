@@ -36,10 +36,12 @@ def create_app(
     videos: VideoReader | None = None,
     quiz_reader: QuizReader | None = None,
     domain_routers: tuple[APIRouter, ...] = (),
+    close_database: bool = False,
+    require_identity_catalog: bool = False,
     clock=utc_now,
 ) -> FastAPI:
     settings = settings or Settings()
-    owns_database = database is None
+    owns_database = database is None or close_database
     database = database or Database(settings)
     if settings.environment == "fixture":
         from app.core.fixtures import FixtureCatalog
@@ -59,12 +61,22 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app):
-        if settings.environment in {"test", "fixture"}:
-            database.initialize_local()
-        database.verify_ready()
-        yield
-        if owns_database:
-            database.close()
+        try:
+            if settings.environment in {"test", "fixture"}:
+                database.initialize_local()
+            database.verify_ready()
+            if require_identity_catalog:
+                from app.modules.auth.atlas_preflight import owned_schema_checks
+
+                checks = owned_schema_checks(database.mongo)
+                if not all(all(result.values()) for result in checks.values()):
+                    raise RuntimeError(
+                        "Apply identity/catalog migrations before starting this service"
+                    )
+            yield
+        finally:
+            if owns_database:
+                database.close()
 
     app = FastAPI(
         title="Learning Feed API",

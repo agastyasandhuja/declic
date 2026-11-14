@@ -7,8 +7,8 @@ Supabase's internal Postgres infrastructure for its managed services.
 
 See the [accepted decision](../docs/decisions/001-proposed-atlas-application-data.md).
 API collection validators and executable setup are implemented and tested against
-a local MongoDB replica set. Hosted Atlas configuration and connectivity remain
-unverified. See [API verification](../docs/status/AGASTYA_API.md).
+a local MongoDB replica set. Adi recorded hosted Atlas initialization in [the setup handoff](../docs/ADI_ATLAS_SETUP.md).
+The integrated checkout requires its own configured credentials and connection check. See [API verification](../docs/status/AGASTYA_API.md).
 
 Domain drafts:
 
@@ -84,3 +84,19 @@ Keep answer keys and credentials out of client responses. Authorize private file
 access in the backend before issuing short-lived signed URLs; keep general client
 reads/writes to private buckets disabled unless explicitly scoped by policy.
 Only synthetic seed data belongs in seeds; no real Canvas exports.
+
+
+## Integrated identity and entertainment setup
+
+`uv run --locked python -m app.core.migrate --apply --include-videos --include-identity-catalog`
+adds ordered step `003_identity_entertainment`, delegating to Adi's existing
+`apply_domain_drafts(Database.mongo)`. This step requires 001; video step 002 is
+independently optional. It creates missing schemas/indexes, refuses conflicting
+existing validators, and writes its success marker only after setup succeeds.
+Already-applied Adi schemas are safe to rerun. API startup never applies migrations.
+
+The configured HTTP factory is `app.runtime:create_app`; it checks both core
+migration readiness and actual owned identity/catalog validators/indexes. This
+accepts Adi's previously installed schemas without requiring a new marker just
+to start the API. Academics still has no Atlas schema/repository in the merged
+branch and is not initialized by this command.
