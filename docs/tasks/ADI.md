@@ -109,7 +109,7 @@ Live-feed follow-up, November 14: implemented an owner-bound server session,
 on-demand provider paging, retry-stable app cursors, leftovers/deduplication,
 known-asset playback re-resolution, and bounded rolling mobile prefetch. The
 existing saved four-Reel adapter remains finite. See [live setup](../ADI_INSTAGRAM_LIVE.md).
-Fifty-three synthetic live/setup backend tests and thirteen existing entertainment
+Fifty-six synthetic live/setup backend tests and thirteen existing entertainment
 tests pass; mobile tests cover 250 clips without exceeding the 100-record window.
 The first connection attempt stopped in app sign-in; the operator-UUID option
 then reached Instagram login, which requested phone approval/verification.
@@ -125,8 +125,17 @@ two live pages containing four unique Reels and a continuation cursor. The phone
 then reached six clips but intermittently played audio with a black picture.
 A separate three-page live probe verified a duplicate-only window followed by a
 new clip. Added first-frame rendering/recovery and bounded paced cursor traversal;
-40 mobile tests, TypeScript, contracts and iOS export pass. Native rendering
-repair, sustained playback and real URL renewal still require phone acceptance.
+The user then confirmed good picture/audio and no black screens through eight,
+later nine clips, with slow continuation and a retry banner. Fixed a shared pacing
+retry budget and now refill metadata toward eight upcoming clips while playing.
+The user reached 17 clips with correct picture/audio but clarified that later
+additions still required Retry. Added automatic continuation across three bounded
+duplicate windows (12 empty pages maximum). 46 mobile tests, TypeScript, contracts
+and iOS export pass. Single-clip resume after backgrounding is device-confirmed;
+final no-tap continuation, unavailable recovery and URL renewal remain open.
+Latest handoff checkpoint: the no-tap retest stalled at six without a retry
+prompt. Continuous live Instagram paging is not accepted; use the explicit
+fixture source for repeatable teammate integration while this is investigated.
 The user approved the authenticated Expo tunnel
 transfer for this phone test. Shared core assembly remains Agastya's work; no
 academic or shared database code was changed.
@@ -138,7 +147,7 @@ Separate discovery from playback validation:
    creator, caption, duration, source URL and candidate video URL fields checked.
 2. Normalize them into EntertainmentVideo objects. **Verified for the saved
    batch:** four records pass the shared v1 schema and feed the local iOS preview.
-3. Verify a playable source for each clip on the actual iPhone. **Partial:** user reached six live clips, then reported intermittent audio-only black pictures; recovery patch awaits device confirmation.
+3. Verify a playable source for each clip on the actual iPhone. **Partial:** user confirmed good picture/audio with no black screens through eight, later nine live clips after the recovery patch. Sustained/lifecycle acceptance remains open.
 4. Test expired/unavailable resources and pagination. **Synthetic/local-cache checks pass:** scoped signed cursors, stale batches, expiry, unavailable records, provider cursor traversal/end/repeat handling. Live later-page acquisition is observed, including duplicate-only windows. Provider URL renewal remains unverified; the probe supports explicit --pages 2 (maximum 3).
 5. Record provider, timestamp, session requirements and results in your status file.
 
@@ -189,7 +198,7 @@ unavailable item. Record what was actually tested.
 | Pause in background/away | Foreground/focus/visibility/manual gates; simulator watch total retained 39s through background/resume and stopped in The lab. Physical audio exclusivity remains open. |
 | Loading/retry/skip/empty recovery | Native failed-item Skip recovered; load, first-frame and post-load stall watchdogs; keyed source surfaces, URL resolution on expiry, paced duplicate-page traversal and cancellable waits. Real renewed Instagram URLs and the black-picture repair require phone verification. |
 | Safe areas/captions | Native layout inspected; three-line captions above tabs, accessible paging alternative. |
-| Small preload buffer | One paused upcoming native player, preferred five-second forward buffer; promotion/reuse tested. Rolling metadata window capped at 100 records, with foreground near-end paging and eviction only behind the selected clip. |
+| Small preload buffer | One paused upcoming native player, preferred five-second forward buffer; promotion/reuse tested. Rolling metadata window capped at 100 records, with foreground refill targeting eight upcoming records and eviction only behind the selected clip. |
 | Attribution/source | Creator display/handle and original-source link. |
 | Separate actual watch/skip events | Media-position deltas, wall bounds and loop accounting exclude stalls/seeks/background. Normal paging emits a distinct skip; local diagnostics only. A4 owns server event delivery. |
 
