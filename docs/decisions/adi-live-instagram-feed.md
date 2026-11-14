@@ -34,6 +34,13 @@ metadata and credential-free HTTPS CDN URLs; provider session material and raw
 provider cursors never leave the server. No likes, follows, posting, downloads or
 explicit Instagram watch/seen-state writes are introduced.
 
+After an observed login-verification interruption, the local helper also saves a
+pending device profile before network login. The same owner/login hash restores
+the same device IDs for manual attempts. These private profiles retain only
+device/CSRF cookies; authentication cookies, authorization data and passwords are
+excluded. They are not ready API connections. Official-app verification stays
+with the user; no automatic checkpoint resolution or login loop is introduced.
+
 ## Paging and recovery
 
 - One provider request per new server page, retaining the remainder when the

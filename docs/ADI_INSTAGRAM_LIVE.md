@@ -50,6 +50,12 @@ The helper saves session/device settings in .local/instagram-live/connection.jso
 credentials: never paste, commit, bundle or upload this file. The saved session is
 restored on subsequent API starts; no automatic login occurs during scrolling.
 The redacted report records only timestamps, counts, status and safe error codes.
+It now records the failing stage (app_login, instagram_login, or reels) and a
+safe HTTP status when applicable. App credential, email-confirmation, timeout,
+configuration and rate-limit failures are distinct. Known Instagram login
+exceptions map to fixed codes, including INSTAGRAM_CHECKPOINT_REQUIRED,
+INSTAGRAM_TWO_FACTOR_REQUIRED and INSTAGRAM_CLIENT_REJECTED. Only allowlisted
+exception class names can appear; raw provider messages never do.
 Two requests alone do not prove useful continuation: verify that later pages add
 unique clips beyond the first batch. A one-page response with no continuation is
 an observed provider end, not successful ongoing pagination.
@@ -58,6 +64,15 @@ On a challenge or rejection, review Instagram on the phone and reconnect locally
 when ready. Do not loop login attempts. Reconnect/replacement requires restarting
 the API so it loads the new owner/session. Keep the old saved catalog untouched
 as a separate, explicitly selected fallback.
+
+Before the first Instagram network login, the helper saves an owner-only device
+profile under .local/instagram-live/device-<opaque-hash>.json. Manual attempts
+using the same app UUID and Instagram username reuse its device identifiers.
+Profiles retain device/CSRF cookies, never authentication cookies, authorization
+data or passwords. They cannot be used by the API as a ready account session.
+Complete approval/verification in the official Instagram app yourself, then make
+one manual retry. The helper never resolves checkpoints automatically. This
+follows the SDK's [device/session reuse guidance](https://github.com/subzeroid/instagrapi/blob/master/docs/usage-guide/best-practices.md).
 
 To recheck the saved session without another login:
 

@@ -1,5 +1,62 @@
 # Adi status
 
+## Local login diagnostics and device continuity — November 14, 2026
+
+The user's first live setup attempt ended with CONNECTION_FAILED after the app
+password prompt. The old report contained no stage or upstream status, so its
+exact Auth rejection cannot be recovered or labeled as a wrong password.
+
+- Read-only configured Supabase Auth settings request: **200**, email provider
+  enabled and signup enabled. No password/sign-in attempt was sent by the agent.
+  Auth dashboard confirmed the user's existing account and canonical UUID; that
+  UUID was supplied through the already-supported trusted operator CLI option,
+  without recording the actual UUID/email in Git or changing account settings.
+- The user-run operator-bound attempt then reached instagram_login and stopped
+  with INSTAGRAM_RECONNECT_REQUIRED, no saved ready session and zero application
+  Reels pages retrieved. The user confirmed a native Instagram approval/verification
+  prompt. This establishes a provider verification step, not an invalid-password
+  diagnosis or successful live feed. Verification remains in the user's official
+  Instagram app; no checkpoint or login retry was automated by the agent.
+- Added fixed stage-specific local diagnostics: app credentials, email confirmation,
+  config, timeout, rate limits and canonical-session verification are distinct;
+  Instagram checkpoints, 2FA, rejected client/login and account restrictions have
+  safe codes. Only fixed allowlisted SDK exception names and HTTP status integers
+  can enter the report. Raw provider payloads/passwords/tokens remain excluded.
+- Fixed a separate partial-config edge case: a URL-only server override no longer
+  discards the mobile publishable-key fallback. This was not identified as the
+  cause of the user's original attempt; neither override was set in the checked
+  agent environment.
+- Persist a private device profile before the first Instagram network login and
+  restore it for later manual attempts with the same app owner/Instagram login.
+  Profiles are owner-only, use opaque filenames/login hashes, retain stable device
+  IDs and device/CSRF cookies, and strip authentication cookies/authorization data
+  and passwords. They cannot activate the API as an authenticated account session.
+  Existing ready-session storage remains separate. No public API field changed.
+- `PYTHONPATH=services/api .local/instagram-probe/venv/bin/python -m unittest
+  discover -s services/api/app/modules/entertainment/tests -v`: **31 passed**.
+  New cases cover safe Auth classifications, canonical ownership, failure stage,
+  no Instagram call on app failure, rejected-credential redaction, device reuse
+  across manual checkpoint failures, owner isolation and private-file errors.
+- Existing entertainment experiment suite: **13 passed**. Isolated `pip check`
+  passed. An offline check using actual instagrapi 3.2.12 confirmed phone/device/
+  Android IDs survive restoration while both clients have no authenticated user
+  and restored authorization_data is empty. No provider request was made by that
+  check. Mobile code/dependencies were unchanged; mobile checks were not rerun.
+- `git diff --check` passed. All 20 relative links in the four changed documents
+  resolved. A 218-file scan found no configured secret values, actual app identity
+  or private catalog values to commit; one existing README title-word collision
+  was reviewed as ordinary text.
+- Earlier Expo process exited with tunnel websocket HTTP 409. Restarted the same
+  approved Expo HTTPS flow once; fresh iOS manifest returned **200**, proxy enabled.
+  Unauthenticated proxy access is still **503 PREVIEW_UNAVAILABLE** while setup
+  awaits a verified Instagram session. Renewed the local automatic API startup
+  wait after the previous 30-minute window expired. Fresh QR/helpers stay ignored.
+
+Remaining: the user completes Instagram's official verification and makes one
+manual attempt with the updated helper. Actual successful account-session paging,
+CDN playback/renewal and the physical-phone scroll scenario remain unverified.
+No shared core/worker/manifest, academic code or Atlas schema/data was changed.
+
 ## Expo phone test prepared — November 14, 2026
 
 The user explicitly approved forwarding the app bearer token and personalized

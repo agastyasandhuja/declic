@@ -26,6 +26,14 @@ def mobile_configuration():
     return values
 
 
+def supabase_configuration():
+    # Resolve each public setting independently so a URL-only server override
+    # doesn't discard the mobile publishable key before setup can explain it.
+    values = mobile_configuration() if not os.environ.get('SUPABASE_URL') or not os.environ.get('SUPABASE_PUBLISHABLE_KEY') else {}
+    return (os.environ.get('SUPABASE_URL') or values.get('EXPO_PUBLIC_SUPABASE_URL', ''),
+            os.environ.get('SUPABASE_PUBLISHABLE_KEY') or values.get('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY', ''))
+
+
 def create_preview_app(verifier=None, catalog=None, profiles=None):
     @asynccontextmanager
     async def lifespan(_app):
@@ -36,8 +44,7 @@ def create_preview_app(verifier=None, catalog=None, profiles=None):
                 catalog.close()
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, redirect_slashes=False, lifespan=lifespan)
     if verifier is None:
-        config = mobile_configuration() if not os.environ.get('SUPABASE_URL') else {}
-        verifier = SupabaseVerifier(os.environ.get('SUPABASE_URL') or config['EXPO_PUBLIC_SUPABASE_URL'], os.environ.get('SUPABASE_PUBLISHABLE_KEY') or config['EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY'])
+        verifier = SupabaseVerifier(*supabase_configuration())
     if catalog is None:
         directory = ROOT / '.local/instagram-probe'
         catalog = SavedCatalog(directory / 'feed.v1.json', directory / 'owner.json')
