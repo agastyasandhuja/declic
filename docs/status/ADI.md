@@ -1,5 +1,235 @@
 # Adi status
 
+## Current A1–A3 delivery — November 14, 2026
+
+The independent implementation through A3 is substantially built and locally
+verified. **A1/A3 are not accepted on a physical iPhone; Atlas cloud is not
+provisioned/connected.** The private Instagram phone handoff remains paused. This
+section supersedes older scaffold/deferral statements in the historical log below.
+
+### Delivered code
+
+- A1: Expo workspace, Supabase auth UX/session provider and secure storage already
+  existed. Added safe transient-refresh behavior (outage does not sign out), a
+  response-body API deadline, normalized-path/origin checks, strict safe error
+  fields and an explicit corrupted-session clearing action. Session restore still
+  uses the existing SDK storage key, preserving installed sessions.
+- Backend: SupabaseVerifier, bearer dependency and identity/entertainment router
+  factories. Authentication derives the subject from Supabase's canonical get-user
+  result; editable metadata/email/query/body IDs cannot impersonate another user.
+  Remote auth outages are retryable 503; missing/forged tokens are 401. Safe errors
+  and no-store responses are demonstrated in the local experiment assembly.
+- Identity persistence: injected ProfileRepository, one app_profiles document per
+  subject, unique owner index, strict validator, IANA timezone/name validation,
+  atomic expected_revision edits and 409 conflicts. GET/PATCH /v1/me are exported;
+  no second password system or duplicated authoritative Auth email is introduced.
+- Entertainment persistence: injected CatalogRepository/CatalogService and an
+  explicit fixture repository. One atomic private batch per subject, max 100
+  normalized clips/32 KiB each, 60–86400-second retention, unique owner and TTL
+  indexes. Reads check owner and expiry before returning records. Normalization
+  strips provider credentials/unknown raw fields and rejects credential URLs.
+- A2: cached feed pagination no longer truncates the rest of a small batch. HMAC
+  cursors bind subject, size and batch revision; stale batches return 409 and
+  foreign/tampered cursors 422. Expired/unavailable resources return 410 playback
+  outcomes. The user-run probe now supports explicit --pages 2 (max 3), with
+  deduplication, cursor traversal/end/repeat guards and bounded requests. This new
+  provider pagination code has **synthetic** tests only; no new Instagram login or
+  retrieval was attempted. The prior four-Reel live evidence remains separate.
+- A3: two bounded native media buffers, exactly one granted active playback and
+  one VideoView; standby stays paused. Preferred upcoming forward buffer is five
+  seconds (an OS buffering preference). Per-slot serialized replacements, stale
+  guards, synchronous visibility/background gating, layout-phase cleanup and
+  15-second load/post-load-stall recovery. Reload releases both native players.
+- Watch time measures media-position movement bounded by wall time, excluding
+  stalls, seeks, long sample gaps, hidden/background intervals. Swipes/accessible
+  paging emit distinct skip observations. Observations remain local; A4 server
+  session/event delivery is not implemented. Attribution/source links, accessible
+  next/reload controls, cancellable pages, stale-cursor reload and stable card
+  indexes across expiring older URLs are present. Metadata is capped at 100.
+- Database domain manifests/backfill notes, wire-derived validator generator,
+  backend .env.example, isolated pinned development dependencies and exact setup
+  guides are supplied. Shared API main/core, shared Python manifest/migrations,
+  teammate packages and their collection drafts were not edited.
+
+### Verification actually performed
+
+| Command/check | Result and limit |
+|---|---|
+| npm run typecheck | PASS, strict TypeScript. |
+| npm test | PASS, 29/29. Includes storage, auth/API refresh and body timeout, buffer promotion/exclusivity/races, watch/stall accounting, source dedup/index stability, private preview gates and a synthetic loopback proxy test. |
+| npm run contracts:check | PASS, generated TypeScript matches owned v1 schemas. |
+| python3 database/domains/entertainment/generate_validator.py --check | PASS, nested Mongo validator matches the v1 wire schema. |
+| PYTHONPATH=services/api .local/instagram-probe/venv/bin/python -m unittest discover -s services/api/app/modules/entertainment/experiments -p 'test_*.py' -v | PASS, 13/13. Probe/fake-provider pages, credential-safe failure reports, ASGI auth/ownership, finite-batch cursor/expiry behavior. No live provider session in these tests. |
+| MONGODB_TEST_URI=mongodb://127.0.0.1:27018 PYTHONPATH=services/api .local/instagram-probe/venv/bin/python -m unittest discover -s services/api/app/modules/auth/tests -v | PASS, 8/8: three auth/config tests plus five real local MongoDB tests. Actual validator/unique/TTL-index creation, repeatable drafts, profile CAS/ownership, atomic cache/stale cursors/expiry and HTTP profile/catalog routes. HTTP Auth transport is synthetic. |
+| .local/instagram-probe/venv/bin/python -m pip check | PASS, no broken requirements. |
+| npx expo-doctor@latest (apps/mobile) | PASS, 20/20. |
+| HACKUMASS_INSTAGRAM_PREVIEW=1 HACKUMASS_PREVIEW_API=0 npx expo export --platform ios --output-dir /private/tmp/hackumass-adi-a3-verified-ios | PASS, final release bundle exports with private preview gated out. Private-catalog markers: zero in release/source; actual public key: zero in reviewable source. The publishable config is expected in the built app. |
+| Configured Supabase canonical user endpoint with synthetic invalid bearer | Actual network result 401 AUTH_INVALID; no valid user/token was requested or guessed. This is not successful real-account protected API acceptance. |
+| Public replacement fixture one-byte Range GET | HTTP 206 video/mp4, Content-Range present; no downloaded media file. |
+| git diff --check | PASS at code checkpoint; repeated before commits. |
+
+MongoDB Community 8.0.38 ARM64 came from the official vendor archive; SHA-256
+5c372533187a7789b6b2f4d7856f0651557dfbed572dbe5f4c23f43578fc74df was verified.
+It ran temporarily on 127.0.0.1:27018 with data/logs under /private/tmp. Tests
+create/drop only fresh adi_test_<random> databases, never application data. No
+system service was installed. This is actual MongoDB, **not Atlas cloud**. Driver
+pymongo 4.17.0 was installed only in the ignored isolated environment.
+
+The initial Python discovery command lacked PYTHONPATH and failed to import app;
+the exact corrected commands above pass. The sandbox denied loopback binding for
+MongoDB/proxy tests initially; permitted loopback execution passed. These setup
+failures are not reported as passing runs.
+
+### Simulator observations
+
+- Started only ordinary fixture Expo on localhost:8081 with both private flags
+  disabled; the old cached private simulator bundle was reloaded to public
+  fixtures. No public Expo tunnel/private API was started.
+- Traversed the five-card fixture feed using accessible next/skip controls; the
+  second fixture page loaded. Recovered from the deliberately missing first clip.
+  Found and fixed two actual UI races: stale status from the prior player and a
+  visibility gate left paused by batched updates. Rechecked the recovery path.
+- The fourth original test asset advanced time but rendered black. Replaced it
+  with reachable shortform_1.mp4; native image rendering and 78s/107s measured
+  activity were observed. Third/fifth clips rendered too; fifth reached 24s.
+- Native app background/resume retained 39s, then resumed from that value rather
+  than adding the background interval. Leaving the feed for The lab stopped local
+  activity updates. Manual pause displayed Play video. This is simulator evidence,
+  not physical-iPhone audio/performance acceptance.
+- Device Hub's drag/scroll automation returned noWindowsAvailable; accessible
+  paging exercised FlatList transitions instead. Sustained real swipe gestures
+  still require the device acceptance below. No alternative UI control tool was
+  used to bypass that limitation.
+- Screenshot: /private/tmp/hackumass-adi-a3.png. Unavailable mode was turned off and
+  the ordinary fixture app was left manually paused. Later code-only hardening
+  (stable expiry indexes/lazy URL resolve) passed typecheck/tests; actual renewed
+  provider media is still unverified. The final hardened build also rendered the
+  first fixture and accumulated 171s; it was manually paused and backgrounded.
+  Expo and temporary MongoDB were then stopped. lsof confirmed no listeners on
+  8081/27018; restart using the run guides rather than an old tunnel URL.
+
+### Delivery commits
+
+- c47d327 — verified identity, owned MongoDB persistence, API/probe tests and setup.
+- f5b33a7 — buffered mobile playback, source/session/API recovery and mobile tests.
+- This status/task update records exact results and the remaining owner/device work.
+- Delivery branch: codex/adi-private-phone-feed in hackumass-14. No main merge or
+  teammate message is part of this delivery. No actual .env, private catalog,
+  provider session, downloaded media or application DB data was staged.
+
+### Teammate readiness and exact handoffs
+
+Amogh can build immediately with the existing mobile FeatureScreenProps, SDK
+user.user_id, authenticated ApiClient, theme and app-owned navigation slots.
+Use the synthetic demo for independent UI. Academic persistence, source/Storage
+policy work and package exports remain Amogh's ownership; no real course data was
+loaded. The UUID subject, never an email, is the cross-domain ownership key.
+
+Agastya can integrate the exported factories/repositories now. Concrete assembly:
+
+```python
+verifier = SupabaseVerifier(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
+current_user = make_current_user(verifier)
+profiles = ProfileRepository(shared_database)
+catalog = CatalogService(CatalogRepository(shared_database), cursor_secret=server_key_bytes)
+app.include_router(create_identity_router(current_user, profiles))
+app.include_router(create_entertainment_router(current_user, catalog))
+```
+
+Core supplies safe common error handlers, a bounded shared PyMongo client/lifetime,
+the same >=32-byte server-only cursor key on all replicas, Atlas secrets and HTTPS
+hosting. Fold owned manifests into ordered migrations; do not silently tighten
+other collections. Runtime dependency requests: fastapi 0.162.7, httpx 0.28.1,
+jsonschema 4.26.0, pymongo 4.17.0; local runner uvicorn 0.54.0. instagrapi 3.2.12
+is optional provider experiment work. No messages were sent to teammates.
+
+Run guides: apps/mobile/README.md, services/api/app/modules/auth/README.md,
+services/api/app/modules/entertainment/README.md. The local fixture API verifies
+real app tokens but serves explicitly synthetic clips; it does not depend on
+Canvas, generation or MongoDB. Production assembly remains with Agastya.
+
+### Remaining setup / acceptance
+
+1. **Atlas cloud:** no MONGODB_URI/database or connected Atlas account/CLI is
+   configured. Agastya still provisions the cluster, backend-scoped DB access,
+   shared client/manifest and ordered migrations; Amogh/Agastya add their owned
+   collections. Owned Adi schemas/repositories are locally tested. Private
+   Supabase Storage buckets/policies/signed asset authorization remain shared
+   backend/domain work; no buckets or policies were claimed ready.
+2. **A1 real account:** user reported signup/email/login on the phone. Controlled
+   authenticated device restart, logout/private-state clearing, invalid credentials,
+   offline recovery and a successful protected /v1/me call remain open. Project
+   confirmation redirect/deep-link allowlisting needs production configuration;
+   email confirmation stays enabled.
+3. **A2 live provider:** existing four-Reel retrieval/relevance evidence is valid.
+   New real pagination, URL renewal, continued personalization and each clip on
+   the physical phone require a fresh user-run provider session. No password,
+   cookie or resumable provider session is stored by the probe.
+4. **A3 physical iPhone:** sustained gesture paging, one audible source,
+   background/resume and unavailable recovery must still be observed there.
+   Simulator/fake-driver evidence is not acceptance. No Android/TestFlight claim.
+5. **Private phone handoff:** keep paused. App owner UUID has not been supplied;
+   the earlier email is not used to authorize. Automatic approval review rejected
+   exposing the private catalog via the public Expo tunnel because that specific
+   data transfer was not approved. It remains disabled; no private batch was
+   exposed. Resume requires the exact app subject and specific transfer approval.
+6. **A4 remains future scope:** unified feed/session/event submission, course and
+   quiz components, quiz gating and revision-based recommendation changes await
+   the owners' exports. No parallel recommender or fake generation was added.
+
+## Earlier private-phone pause checkpoint — November 14, 2026
+
+The user asked to pause after a Bad Gateway error during the physical-phone
+handoff. The private-phone handoff remains paused; the later independent A1–A3 goal resumed implementation and database preparation.
+Phone Expo/tunnel, simulator Expo and the loopback preview API processes were
+stopped. Keep the working tree intact; unfinished work is **uncommitted** on
+`codex/adi-private-phone-feed`, based on pushed preview commit `bdc5139`.
+
+Resume checkpoint:
+
+- Instagram retrieval and saved-batch simulator playback are verified as recorded
+  below. The phone initially opened the public fixture app through the Expo HTTPS
+  tunnel, confirmed by the user and a connected iPhone debug target. Instagram
+  clips have **not** been delivered to the physical phone.
+- The user created an app account, received the confirmation email, hit a
+  localhost redirect error, then successfully signed into the Expo app. This is
+  user-reported real signup/email/login evidence; restart persistence, logout,
+  invalid credentials and offline behavior still need actual acceptance tests.
+- Added (uncommitted) Adi-owned auth service/router, owner-scoped saved-catalog
+  service/router, and temporary local FastAPI assembly under entertainment's
+  experiments. Supabase Auth verifies bearer tokens remotely; catalog access
+  checks a server-local owner subject before reading private data. No Atlas,
+  shared API core/main or Agastya-owned manifest was changed.
+- Added (uncommitted) an opt-in Metro transport proxy to fixed localhost:8000,
+  an Expo HTTPS-origin helper, dynamic app config, and a selectable App user ID
+  in The lab. expo-constants was added via Expo's compatible installer; JS
+  manifest/lockfile changes are part of this unfinished branch.
+- Isolated Python environment additionally installed FastAPI 0.162.7, uvicorn
+  0.54.0, httpx 0.28.1 and jsonschema 4.26.0. These dependencies still need a
+  documented handoff to Agastya; no shared Python manifest was edited.
+- Already-started checks finished before shutdown: TypeScript passed, JS tests
+  19/19 passed, generated-contract check passed, Python probe/API tests 9/9 passed.
+  Real loopback API calls without a token and with an invalid token both returned
+  401 (AUTH_REQUIRED / AUTH_INVALID). Accepted authenticated access and real
+  cross-account isolation are not live-validated; ownership tests used fakes.
+- Owner binding is unfinished. The user provided an email when asked for the
+  app user ID; no UUID was obtained, and no owner.json was created. Do not bind
+  ownership from email or expose the catalog to the first authenticated caller.
+  Obtain the UUID displayed in The lab, validate it, and save it only to ignored
+  .local/instagram-probe/owner.json with private permissions on resume.
+- Automatic approval review rejected enabling HACKUMASS_PREVIEW_API=1 through
+  Expo's public tunnel: the specific transfer of private recommendation metadata
+  and signed media URLs through that external destination lacked explicit user
+  approval. No workaround was attempted. The restored sample tunnel had the
+  private API disabled. Before enabling private exposure, finish reviewable docs /
+  local checks and obtain explicit approval for that concrete transfer.
+- The tunnel hostname changed after restarting. On resume, start the intended
+  approved mode and generate a fresh QR from the actual running URL; do not reuse
+  old QR images. The last phone error was Bad Gateway; its exact cause remains
+  unresolved. Keep private catalogs, account identifiers, tokens and provider data
+  out of Git. Review the temporary assembly/proxy integration impact in a proposed
+  decision and update setup/status before committing this unfinished work.
+
 Updated November 14, 2026. The fixture-first Expo prototype runs in the iPhone 17
 simulator. Native video playback, pause/resume, background/resume, navigation and
 unavailable-clip skip recovery were observed. Supabase authentication is wired;
