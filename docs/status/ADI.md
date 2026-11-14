@@ -1,5 +1,125 @@
 # Adi status
 
+## Integration handoff frozen for Agastya — November 14, 2026
+
+At the user's request, publish the latest Adi source at 7a97920 on
+adi-live-instagram-feed for the team merge/test. It includes the earlier mobile,
+identity, Atlas-readiness and Instagram work; there were no uncommitted source
+changes when this handoff was requested. This follow-up records actual limits
+without changing the tested player or another owner's ranking implementation.
+
+- Device-confirmed: correct picture/audio and immediate play on swipe; no black
+  screens in the reported runs. One clip resumes normally after background/return,
+  with no second audible player. The earlier run reached 17 clips using manual
+  retry. Initial early refill produced nine quickly.
+- Live Instagram automatic continuation is **not accepted**. The latest no-tap
+  phone attempt reached six and stalled without a retry prompt; the user preferred
+  the prior run. Its aggregate snapshot recorded 14 provider reads, 56 normalized
+  items, six unique / 50 duplicates and 12 empty windows; no provider error,
+  pacing deferral, cooldown, reconnect or actual provider end. The precise missing
+  client retry prompt remains unresolved. Do not call the current stream reliably
+  continuous from passing synthetic tests or the earlier manually advanced run.
+- For repeatable integration tests, use the explicit fixture entertainment mode
+  (Explore the demo, or turn Use connected feed off for a signed-in app account).
+  This is synthetic test content. Live Instagram remains an optional owner-bound
+  source; provider credentials/session files are local and not part of the merge.
+  Other app accounts need their own authorized connection to use that source.
+- Adi exports the shared authenticated client, app-owned feature/navigation slots,
+  normalized entertainment feed/playback interfaces and identity adapter. Agastya
+  assembles them with his unified feed/session/events/quiz routes; the temporary
+  local live factory is not shared production API assembly.
+- Last actual checks on this source: 46 mobile, 56 live/setup backend and 13
+  experiment tests passed; TypeScript, versioned contract checks and iOS export
+  (848 modules) passed. No source/dependency change accompanies this handoff note.
+
+Remaining for Adi after integration: live continuation regression above, unavailable
+and URL-renewal device recovery, controlled session restart/logout/offline checks,
+and mounting the owners' academic/mixed-feed/quiz exports. Auth redirect polish
+and custom SMTP remain deferred by the user.
+
+## Earlier refill and per-page pacing — November 14, 2026
+
+The user confirmed the updated phone app has good picture and audio with no black
+screens, reached eight clips, and later loaded a ninth. Clips seven/eight arrived
+slowly; a small retry banner appeared. Native picture recovery is now supported
+by this physical-phone report. Sustained paging and lifecycle acceptance stay open.
+
+### Changes
+
+- Found that the two INSTAGRAM_BUSY retries were shared across an entire traversal
+  of up to four duplicate-only pages. The third pacing deferral could halt a
+  legitimate continuation. The pacing allowance now resets for each page;
+  successful empty-page continuations wait two seconds before the next read.
+  Each window stops at four empty pages or two pacing retries per page.
+  The old phone banner's exact error code was not captured, so this is a verified
+  implementation defect rather than a retrospective upstream-error diagnosis.
+- Metadata refill now starts while the initial short batch is playing and targets
+  eight upcoming records, instead of waiting for the last three. The current clip
+  is preserved; the 100-record window, one active player and one paused native
+  preload remain unchanged. Provider pages are still requested in groups of five.
+- At most two extra transient retries per four-page window handle NETWORK_ERROR,
+  PREVIEW_UNAVAILABLE or INSTAGRAM_UNAVAILABLE, preserving the same cursor.
+  Provider cooldowns up to 30 seconds are respected; longer hints, rate limits,
+  auth/reconnect errors and invalid/stale cursors stop without polling. The backend
+  supplies remaining cooldown time rather than restarting a full delay on each read.
+- Optional domain diagnostics now report only counters and fixed outcomes. The
+  local live factory atomically writes .local/instagram-live/runtime-report.json
+  with mode 0600. It records reads, unique/duplicate counts, pacing deferrals,
+  remaining cooldown and provider-end/repeated-cursor flags. No user/post IDs,
+  URLs, cursors, captions, cookies, keys or raw errors are included, and there is
+  no diagnostics API route. A failed write cannot interrupt the feed. Shared core
+  need not supply this optional callback; its implementation/dependencies were
+  not edited.
+- The user later clarified that clips 11–17 required manual Retry each time,
+  despite fast initial filling and correct picture/audio. This identified a
+  second client policy issue: completing four duplicate-only pages was treated
+  as a terminal error. Added automatic continuation through two additional
+  windows, with two/four-second pauses and the same advanced cursor. A refill
+  stops after at most 12 consecutive empty pages; actual failures/rate limits
+  still propagate immediately after their own bounded policy. No native-player
+  implementation changed. The user also confirmed normal single-clip resume
+  after backgrounding and returning.
+
+### Actual checks and current runtime
+
+- npm test: **46 passed**, including a four-page duplicate run with independent
+  pacing deferrals, bounded temporary-outage retries, respected cooldowns, early
+  refill termination at eight ahead, cancellation and cursor retention. Final
+  cases verify a fresh clip after more than four duplicate pages without manual
+  retry, the 12-page stop and cancellation between automatic windows.
+- Owned live/setup Python unittest suite: **56 passed**, including remaining-delay
+  hints, redacted aggregate metrics and an unwritable-diagnostics failure.
+- Existing experiment suite: **13 passed**. TypeScript and contract checks passed.
+- Current iOS export: **848 modules**, saved-catalog preview disabled, under
+  ignored .local/validation/ios-feed-refill. No dependency/lock changes.
+- Final git diff --check passed, all 20 relative links in the four changed
+  documents resolved, and scans of 222 source / 21 exported files found no actual
+  configured private credentials, app identity or private catalog/session/key
+  values. The existing README title-word collision was reviewed as ordinary text.
+- Restarted this task's API using the existing session. Startup wrote a private
+  zero-count diagnostic snapshot, mode 0600. Expo manifest returned **200**, proxy
+  enabled; public missing/invalid bearer checks were **401 AUTH_REQUIRED/AUTH_INVALID**.
+  The existing QR remains valid. Metro's automatic reload found no connected app,
+  so the user was asked to reopen the experience from that QR for the next test.
+- After reopening, the actual local runtime report recorded nine provider reads,
+  36 normalized items, nine unique items, 27 duplicates and three empty windows;
+  pacing deferrals=0, last_error=null, exhausted=false and no cooldown/reconnect.
+  Nine recent records match the initial clip plus eight-ahead metadata target.
+  These aggregate results confirm successful early refill through the app; the
+  user still needs to verify sustained scrolling beyond nine without manual retry.
+- A later report recorded 31 reads, 124 normalized items, 17 unique records and
+  107 duplicates, with no pacing/provider failure, cooldown, reconnect or feed end.
+  The user confirmed those later additions required manual taps. After the final
+  automatic-window fix, restarted this task's API once using the same saved
+  session to clear test-generation cursors, and requested another no-tap phone
+  test on the same Expo QR. No Instagram password/cookie input was repeated.
+
+Remaining: verify the final automatic-window behavior on the phone without manual
+retry, plus unavailable-item recovery and URL renewal. Picture/audio and
+single-player background/resume are now supported by the user's device report.
+No new provider login or account setting change, shared core edit, Atlas write,
+fallback-to-fixtures substitution or Instagram watch/seen-state write occurred.
+
 ## Phone playback and duplicate-page recovery — November 14, 2026
 
 The user reported that the authenticated live feed initially worked on the real
@@ -1163,3 +1283,33 @@ are ignored under that worktree's `.local/mobile-verify`. There were zero unexpe
 browser errors; 18 Expo web play-abort messages occurred during deliberate
 pause/source replacement. These browser checks do not establish native AVPlayer
 recovery; the next signed build still needs the physical-phone scenario.
+
+## Integrated refill handoff — November 14, 2026
+
+Integrated Adi's frozen source `8982750` (implementation `7a97920`) on top of
+reviewed main `4a0b484`. Preserved the main app's saved-history filtering, mixed
+study/quiz feed, frame recovery, provider continuation across client reloads,
+and current owner-bound server sessions. A fresh client traversal does not reset
+the provider cursor unless its stream is actually exhausted.
+
+Both feed screens now refill toward eight upcoming records. The mixed feed
+stops at a quiz boundary and bounds empty/duplicate occurrence traversal before
+showing a retry action. A shared page reader gives each page two short pacing
+waits and each traversal two transient retries; longer cooldowns and authentication
+or rate-limit errors return to the UI. Removed the standalone screen's additional
+outer retry timer to avoid multiplying that budget or retrying rate limits.
+The entertainment-only adapter also carries the upstream twelve-page duplicate
+window bound. Frame recovery and the quiz wire contract are unchanged.
+
+Validation: Node24 TypeScript passes; 54 mobile tests pass including loopback
+proxy, cancellation, cooldown, per-page pacing, rolling windows and saved history;
+60 entertainment tests pass with synthetic providers. Independent backend review
+resolved `live.py` and reran its 27 focused tests. No live provider/model calls.
+The already-built signed main `4a0b484` app was deliberately not installed while
+the new branch and requested UI restoration were being integrated.
+The synthetic 390×844 browser regression also passes after this merge: eight
+consecutive entertainment clips, study playback, paced page refill, exclusive
+playback, quiz pause/incorrect-answer unlock, visible-frame watch credit, ordered
+events before gate, PAT form, saved clip/profile and restored session. Zero
+unexpected browser errors; the same 18 Expo web play-abort warnings occurred on
+intentional pause/load changes. Physical device acceptance remains separate.

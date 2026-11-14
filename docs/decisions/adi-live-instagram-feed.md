@@ -71,6 +71,13 @@ check, not an assumed property of a signed-in browser.
 - Memory bounds: 100 pending + 100 recently issued records, 20 page-reference
   entries, 2048 deduplication IDs and 128 provider-cursor hashes per connection.
   Mobile keeps at most 100 records and evicts only already-passed cards.
+  Metadata refill targets eight upcoming clips, while native playback retains
+  only its active player and paused next buffer. Duplicate-only page traversal
+  is paced, with two BUSY retries per page and two additional temporary-outage
+  retries per four-page window. Three windows (12 consecutive empty pages) are
+  the automatic refill bound, with pauses between successful duplicate windows.
+  Provider rate limits/auth errors are not polled; long waits require manual retry.
+
 - SDK feed/media calls use one pinned low-level request. The high-level helper
   can swallow errors and private_request can sleep/retry for 60 seconds, so neither
   is used for these reads. TLS is verified, redirects disabled and transport
@@ -83,6 +90,12 @@ check, not an assumed property of a signed-in browser.
   five-minute metadata freshness deadline triggers re-resolution; it is not a
   claim that Instagram guarantees that URL lifetime. Refresh retries are coalesced
   for 30s. Unknown/foreign IDs never trigger a provider lookup.
+
+The local live factory can write aggregate runtime diagnostics in the ignored
+private setup directory. This optional callback contains only counts/fixed states,
+never account/media identity, raw provider data or credentials. It adds no API
+route or service and is not required by shared-core assembly. Diagnostic failure
+cannot fail an authorized feed response.
 
 ## Local and shared handoff
 
