@@ -1,5 +1,6 @@
 """Temporary local assembly; Agastya retains ownership of shared API core/main."""
 from pathlib import Path
+from contextlib import asynccontextmanager
 import os
 from uuid import uuid4
 
@@ -26,7 +27,14 @@ def mobile_configuration():
 
 
 def create_preview_app(verifier=None, catalog=None, profiles=None):
-    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, redirect_slashes=False)
+    @asynccontextmanager
+    async def lifespan(_app):
+        try:
+            yield
+        finally:
+            if hasattr(catalog, 'close'):
+                catalog.close()
+    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, redirect_slashes=False, lifespan=lifespan)
     if verifier is None:
         config = mobile_configuration() if not os.environ.get('SUPABASE_URL') else {}
         verifier = SupabaseVerifier(os.environ.get('SUPABASE_URL') or config['EXPO_PUBLIC_SUPABASE_URL'], os.environ.get('SUPABASE_PUBLISHABLE_KEY') or config['EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY'])
@@ -35,7 +43,10 @@ def create_preview_app(verifier=None, catalog=None, profiles=None):
         catalog = SavedCatalog(directory / 'feed.v1.json', directory / 'owner.json')
     current_user = make_current_user(verifier)
     async def domain_error(_request: Request, error):
-        return JSONResponse(status_code=error.status, content={'error': {'code': error.code, 'message': error.message, 'retryable': error.status >= 500, 'request_id': str(uuid4())}}, headers={'Cache-Control': 'no-store'})
+        headers = {'Cache-Control': 'no-store'}
+        if getattr(error, 'retry_after', None):
+            headers['Retry-After'] = str(error.retry_after)
+        return JSONResponse(status_code=error.status, content={'error': {'code': error.code, 'message': error.message, 'retryable': error.status >= 500, 'request_id': str(uuid4())}}, headers=headers)
     app.add_exception_handler(AuthFailure, domain_error)
     app.add_exception_handler(CatalogFailure, domain_error)
     @app.exception_handler(RequestValidationError)
@@ -60,3 +71,14 @@ def create_fixture_app():
     from app.modules.entertainment.fixtures import FixtureCatalog
     from app.modules.entertainment.service import CatalogService
     return create_preview_app(catalog=CatalogService(FixtureCatalog()))
+
+
+def create_live_app():
+    """Local owner-bound live assembly; shared main.py still belongs to Agastya."""
+    from app.modules.entertainment.instagram_connection import DEFAULT_CONNECTION, open_live_catalog
+    catalog = open_live_catalog(os.environ.get('INSTAGRAM_CONNECTION_FILE', DEFAULT_CONNECTION))
+    try:
+        return create_preview_app(catalog=catalog)
+    except Exception:
+        catalog.close()
+        raise
