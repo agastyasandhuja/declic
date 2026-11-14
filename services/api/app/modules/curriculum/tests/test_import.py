@@ -22,6 +22,11 @@ class AcademicImportTests(unittest.TestCase):
         repo = Path(__file__).resolve().parents[6]
         inventory = json.loads((repo / "fixtures/academics/canvas_resources.json").read_text())
 
+        inventory["/api/v1/courses/17/pages/pointers"].update(
+            title="List reversal pointer notes",
+            body="<p>Save the next pointer before changing the current node's link. "
+                 "Redirect the current node to the previous node to reverse the list.</p>",
+        )
         inventory["/api/v1/courses/17/assignments"].append(
             {"id": 9, "name": "Lab: list reversal", "due_at": "2099-11-18T23:00:00Z"}
         )
@@ -76,10 +81,8 @@ class AcademicImportTests(unittest.TestCase):
             self.assertIsNone(final["scheduled"]["date"])
             self.assertEqual(len(service.get_validated_plans("owner")), 1)
             self.assertEqual(service.get_validated_plans("other"), [])
-            assignment_source = next(source for source in resolver.list_sources()
-                                     if source.title == "Lab: list reversal")
             self.assertEqual(service.get_course_bindings("owner")[0]["source_refs"],
-                             [assignment_source.source_id])
+                             [page.source_id])
             self.assertEqual(service.resolve_source_context("owner", [page.source_id])[0]["text"], page.text)
             with self.assertRaises(LookupError):
                 service.resolve_source_context("other", [page.source_id])

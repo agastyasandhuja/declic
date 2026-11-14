@@ -39,10 +39,16 @@ def import_connection(database, vault, connection):
                 "attempt_id": new_id(),
                 "refresh_version": 0,
                 "retry_after": 0,
+                "playback_refresh_after": 0,
+                "playback_refreshed_video_id": None,
                 "connected_at": iso(utc_now()),
                 "last_sync_at": None,
             },
         )
+        # An imported browser session may belong to a different Instagram
+        # account. Never merge that account's clips with the previous snapshot.
+        if database.mongo is not None:
+            database.mongo.entertainment_catalogs.delete_one({"user_id": owner}, session=tx.session)
         enqueue(
             tx,
             owner_user_id=owner,

@@ -22,7 +22,13 @@ from app.modules.entertainment.instagram_connection import (
 )
 from app.modules.entertainment.instagram_login import login_interactively
 from app.modules.entertainment.pagination import batch_revision
-from app.modules.entertainment.service import CatalogFailure, normalized_items, playable
+from app.modules.entertainment.repository import storage_errors
+from app.modules.entertainment.service import (
+    CatalogFailure,
+    CatalogService,
+    normalized_items,
+    playable,
+)
 from app.workers.queue import enqueue
 
 
@@ -154,6 +160,8 @@ class SocialConnections:
                     "last_sync_at": None,
                     "refresh_version": 0,
                     "retry_after": 0,
+                    "playback_refresh_after": 0,
+                    "playback_refreshed_video_id": None,
                 },
             )
             if self.database.mongo is not None:
@@ -209,6 +217,168 @@ class SocialConnections:
                     input_ref={"connection_id": row["connection_id"]},
                 ),
             )
+
+    @storage_errors
+    def renew_playback(self, owner, video_id):
+        """Renew one already-owned Reel; never fetch caller-selected provider IDs."""
+
+        def claim(tx):
+            catalog = (
+                self.database.mongo.entertainment_catalogs.find_one(
+                    {"user_id": owner}, session=tx.session
+                )
+                or {}
+            )
+            item = next(
+                (item for item in catalog.get("items", []) if item["video_id"] == video_id), None
+            )
+            if item is None:
+                raise CatalogFailure(404, "VIDEO_NOT_FOUND", "This clip is not in your catalog.")
+            if item["provider"] != "instagram":
+                if catalog.get("expires_at", utc_now()) <= utc_now():
+                    raise CatalogFailure(
+                        404, "CATALOG_NOT_FOUND", "No current catalog is connected to this account."
+                    )
+                if playable(item, utc_now()):
+                    return None, item
+                raise CatalogFailure(
+                    410, "PLAYBACK_UNAVAILABLE", "This clip is unavailable or expired."
+                )
+            row = tx.find_one(
+                tables.connections,
+                {"user_id": owner, "provider": "instagram", "status": "connected"},
+            )
+            if not row:
+                raise CatalogFailure(
+                    409, "INSTAGRAM_RECONNECT_REQUIRED", "Reconnect Instagram to refresh this clip."
+                )
+            if row.get("retry_after", 0) > time.time():
+                raise CatalogFailure(
+                    503,
+                    "INSTAGRAM_RATE_LIMITED",
+                    "Instagram is cooling down. Keep watching loaded clips and retry shortly.",
+                )
+            if row.get("playback_refresh_after", 0) > time.time():
+                if row.get("playback_refreshed_video_id") == video_id and playable(item, utc_now()):
+                    return None, item
+                raise CatalogFailure(
+                    503,
+                    "INSTAGRAM_BUSY",
+                    "A clip was just refreshed. Retry shortly or skip this clip.",
+                )
+            tx.update(
+                tables.connections,
+                {"user_id": owner, "provider": "instagram", "connection_id": row["connection_id"]},
+                {"playback_refresh_after": time.time() + 30, "playback_refreshed_video_id": None},
+            )
+            return row, item
+
+        row, item = self.database.run(owner, claim)
+        if row is None:
+            return item["playback"]
+        identifier, version = row["connection_id"], row.get("refresh_version", 0)
+        saved = self.vault.open(owner, "instagram", row["sealed"])
+        provider = InstagramReelsProvider(
+            make_instagram_client(saved["session"]), surface=saved.get("surface", "discover")
+        )
+        try:
+            fresh = normalized_items([provider.refresh(item["provider_video_id"])])[0]
+            if (
+                fresh["video_id"] != video_id
+                or fresh["provider_video_id"] != item["provider_video_id"]
+                or fresh["provider"] != "instagram"
+                or not playable(fresh, utc_now())
+            ):
+                raise CatalogFailure(
+                    410, "PLAYBACK_UNAVAILABLE", "Instagram could not renew this clip. Skip it."
+                )
+            session = {
+                key: value
+                for key, value in provider.client.get_settings().items()
+                if key in SESSION_FIELDS
+            }
+        except CatalogFailure as error:
+
+            def record_failure(tx, error=error):
+                current = tx.find_one(
+                    tables.connections,
+                    {
+                        "user_id": owner,
+                        "provider": "instagram",
+                        "connection_id": identifier,
+                        "status": "connected",
+                    },
+                )
+                if current is not None and current.get("refresh_version", 0) == version:
+                    changes = {"retry_after": time.time() + getattr(error, "retry_after", 30)}
+                    if error.code == "INSTAGRAM_RECONNECT_REQUIRED":
+                        changes["status"] = "reconnect_required"
+                    tx.update(
+                        tables.connections,
+                        {"user_id": owner, "provider": "instagram", "connection_id": identifier},
+                        changes,
+                    )
+
+            self.database.run(owner, record_failure)
+            raise
+        finally:
+            provider.close()
+        sealed = self.vault.seal(owner, "instagram", {**saved, "session": session})
+
+        def publish(tx):
+            current = tx.find_one(
+                tables.connections,
+                {
+                    "user_id": owner,
+                    "provider": "instagram",
+                    "connection_id": identifier,
+                    "status": "connected",
+                },
+            )
+            if current is None:
+                raise CatalogFailure(
+                    409,
+                    "INSTAGRAM_RECONNECT_REQUIRED",
+                    "Instagram connection changed. Reconnect if needed.",
+                )
+            if current.get("refresh_version", 0) != version:
+                raise CatalogFailure(
+                    503, "INSTAGRAM_BUSY", "Your feed refreshed during this request. Retry shortly."
+                )
+            collection = self.database.mongo.entertainment_catalogs
+            catalog = collection.find_one({"user_id": owner}, session=tx.session) or {}
+            items = catalog.get("items", [])
+            if not any(value["video_id"] == video_id for value in items):
+                raise CatalogFailure(
+                    404, "VIDEO_NOT_FOUND", "This clip is no longer in your catalog."
+                )
+            items = normalized_items(
+                [fresh if value["video_id"] == video_id else value for value in items]
+            )
+            now = utc_now()
+            collection.replace_one(
+                {"user_id": owner},
+                {
+                    **catalog,
+                    "items": items,
+                    "revision": batch_revision(items),
+                    "updated_at": now,
+                    "expires_at": now + timedelta(minutes=10),
+                },
+                session=tx.session,
+            )
+            tx.update(
+                tables.connections,
+                {"user_id": owner, "provider": "instagram", "connection_id": identifier},
+                {
+                    "sealed": sealed,
+                    "refresh_version": version + 1,
+                    "playback_refreshed_video_id": video_id,
+                },
+            )
+            return fresh["playback"]
+
+        return self.database.run(owner, publish)
 
     def refresh(self, context):
         owner, identifier = context.owner_user_id, context.input_ref["connection_id"]
@@ -315,6 +485,20 @@ class SocialConnections:
             return {"count": len(items)}
 
         return self.database.run(owner, publish)
+
+
+class ConnectedCatalogService(CatalogService):
+    """Keep feed reads cached; renew known Instagram media only on explicit retry."""
+
+    def __init__(self, repository, social, **kwargs):
+        super().__init__(repository, **kwargs)
+        self.social = social
+
+    def resolve_playback(self, video_id, user):
+        # Feed playback uses cached URLs directly. This endpoint is an explicit
+        # recovery request, including CDN failures before the advertised expiry.
+        # renew_playback preserves cached non-Instagram items and bounds retries.
+        return self.social.renew_playback(user["user_id"], video_id)
 
 
 def create_router(social):

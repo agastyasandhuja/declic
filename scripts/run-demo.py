@@ -20,6 +20,9 @@ def main():
         help="Private session file from the verified local Instagram helper",
     )
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument(
+        "--video-job-id", action="append", help="Workers: repeat for each allowed video job"
+    )
     args = parser.parse_args()
     if not PYTHON.exists():
         parser.error(
@@ -40,6 +43,8 @@ def main():
         ]
     elif args.command == "workers":
         command = [str(PYTHON), "-m", "app.workers.demo"]
+        for job_id in args.video_job_id or []:
+            command.extend(["--video-job-id", job_id])
     elif args.command == "import-instagram":
         command = [str(PYTHON), "-m", "app.core.import_instagram"]
         if args.connection_file:

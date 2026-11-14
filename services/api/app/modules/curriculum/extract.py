@@ -37,10 +37,11 @@ def _course_fingerprint(resolver: Resolver, course_id: str) -> str:
     source's content hash when known, else its Canvas updated_at, plus assignment
     due dates (they drive assessments). If nothing changed, the signature is the
     same and the prior extraction can be reused instead of re-calling Gemini."""
-    parts = []
+    # Invalidate maps produced before PDF text became a required dependency.
+    parts = ["source-extraction-v2-pdf-text"]
     for source in resolver.sources_for_course(course_id):
-        stamp = source.content_hash or getattr(source, "updated_at", None) or ""
-        parts.append(f"{source.source_id}:{stamp}")
+        stamp = source.content_hash or source.source_updated_at or ""
+        parts.append(f"{source.source_id}:{stamp}:{source.title}:{source.locator}")
     getter = getattr(resolver, "assignments_for_course", None)
     if getter:
         for assignment in getter(course_id):
@@ -152,6 +153,9 @@ def build_profile(
         prior = prev_courses.get(course_id)
         if (prior and prior.get("sources_fingerprint") == fingerprint
                 and prior.get("import_status") in {"ready", "partial"}):
+            restore = getattr(resolver, "restore_extracted_sources", None)
+            if restore:
+                restore(course_id, previous.get("_sources", []))
             courses.append({**prior, "sources_fingerprint": fingerprint})
             units.extend(prev_units.get(course_id, []))
             assessments.extend(prev_assessments.get(course_id, []))

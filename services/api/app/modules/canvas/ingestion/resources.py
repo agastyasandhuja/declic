@@ -13,6 +13,8 @@ from pathlib import PurePosixPath
 from urllib.parse import quote
 from xml.etree import ElementTree
 
+from pypdf import PdfReader
+
 from ..client.http import CanvasAuthError, CanvasClient, CanvasError
 
 MAX_FILE_BYTES = 8 * 1024 * 1024
@@ -96,14 +98,13 @@ def _file_text(suffix, data):
             )
     if suffix == ".pdf" and data.startswith(b"%PDF-"):
         try:
-            from pypdf import PdfReader
             reader = PdfReader(io.BytesIO(data), strict=True)
             return "\n".join(
                 f"Page {index}: {page.extract_text() or ''}"
                 for index, page in enumerate(islice(reader.pages, 20), 1)
             )
         except Exception:
-            # Optional parser, encrypted/corrupt PDF, or unsupported encoding.
+            # Encrypted/corrupt PDF or unsupported encoding; keep inline fallback.
             return None
     return None
 

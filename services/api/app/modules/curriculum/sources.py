@@ -21,8 +21,6 @@ from ..canvas.assignments import Assignment, fetch_assignments
 from ..canvas.client.http import CanvasAuthError, CanvasClient, CanvasError
 from ..canvas.courses import fetch_current_courses
 from ..canvas.ingestion.resources import FILE_MEDIA, MAX_FILE_BYTES, _file_text, fetch_resources, parse_html
-from xml.etree import ElementTree
-from zipfile import BadZipFile
 from ..canvas.ingestion.uploads import load_sources, read_text
 from .timing import schedule_text
 
@@ -163,6 +161,22 @@ class CanvasSourceResolver:
 
     def remember_selected_sources(self, course_id, source_ids):
         self._selected[course_id] = list(source_ids)
+
+    def restore_extracted_sources(self, course_id, previous_sources):
+        """Reuse private text only after the caller verifies the inventory fingerprint."""
+        current = {source.source_id: source for source in self.sources_for_course(course_id)}
+        restored = []
+        for previous in previous_sources:
+            source = current.get(previous.get("source_id"))
+            if (source is None or previous.get("course_id") != course_id
+                    or source.resource_type != "file" or not previous.get("text")):
+                continue
+            self._opened[course_id, source.source_id] = replace(
+                source, text=previous["text"][:MAX_EXCERPT_CHARS],
+                content_hash=previous.get("content_hash"),
+            )
+            restored.append(source.source_id)
+        self.remember_selected_sources(course_id, restored)
 
     def sources_for_planning(self, course_id):
         sources = self.sources_for_course(course_id)

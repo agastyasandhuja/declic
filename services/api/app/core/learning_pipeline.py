@@ -5,6 +5,11 @@ from itertools import zip_longest
 from app.core import collections as tables
 from app.core.time import iso, utc_now
 from app.modules.canvas.client.http import CanvasAuthError
+from app.modules.curriculum.source_quality import (
+    InsufficientTeachingEvidence,
+    teaching_sources,
+    validate_teaching_lesson,
+)
 from app.modules.curriculum.sources import CanvasSourceResolver
 from app.modules.quizzes.generation import prepare_lesson
 from app.modules.quizzes.schemas import QuizDefinition
@@ -119,6 +124,9 @@ class LearningPipeline:
         request = self._request(context)
         if request is None:
             return {"state": "superseded"}
+        sources = self.academics.resolve_source_context(owner, request["source_refs"])
+        if not teaching_sources(sources):
+            return self._unavailable(context, request["objective_id"])
         ready = self.database.read(
             lambda tx: tx.find_one(
                 tables.quiz_bank,
@@ -141,9 +149,20 @@ class LearningPipeline:
             )
         )
         if ready and binding:
+            topic = self.database.read(
+                lambda tx: tx.find_one(
+                    tables.topics, {"user_id": owner, "topic_id": binding["topic_id"]}
+                )
+            )
+            try:
+                validate_teaching_lesson((topic or {}).get("lesson", {}))
+            except InsufficientTeachingEvidence:
+                return self._unavailable(context, request["objective_id"])
             return {"topic_id": binding["topic_id"], "reused": True}
-        sources = self.academics.resolve_source_context(owner, request["source_refs"])
-        lesson = prepare_lesson(self.client, request, sources)
+        try:
+            lesson = prepare_lesson(self.client, request, sources)
+        except InsufficientTeachingEvidence:
+            return self._unavailable(context, request["objective_id"])
         self.connections.client(owner, context.input_ref["connection_id"])
         canonical = lesson.model_dump()
         definition = QuizDefinition(
@@ -213,6 +232,22 @@ class LearningPipeline:
             return {"state": "superseded"}
         return {"topic_id": topic["topic_id"], "reused": reused}
 
+    def _unavailable(self, context, objective_id):
+        def revoke(tx):
+            self._guard_connection(tx, context)
+            tx.update(
+                tables.quiz_bank,
+                {
+                    "user_id": context.owner_user_id,
+                    "objective_id": objective_id,
+                    "profile_revision": context.input_ref["profile_revision"],
+                },
+                {"active": False},
+            )
+
+        self.database.run(context.owner_user_id, revoke)
+        return {"state": "unavailable", "reason": "INSUFFICIENT_TEACHING_EVIDENCE"}
+
     def reteach(self, context):
         # The alternate visual/dialogue pair shares a canonical topic, never a
         # foreign user's lesson. Repeated requests reuse the same generation keys.
@@ -249,6 +284,13 @@ class LearningPipeline:
         if not topic:
             raise LookupError("Topic unavailable")
         lesson, topic_id = topic["lesson"], topic["topic_id"]
+        try:
+            validate_teaching_lesson(lesson)
+            sources = self.academics.resolve_source_context(owner, lesson.get("source_ids", []))
+            if not teaching_sources(sources):
+                raise InsufficientTeachingEvidence("Teaching sources unavailable")
+        except (InsufficientTeachingEvidence, LookupError):
+            return {"state": "unavailable", "reason": "INSUFFICIENT_TEACHING_EVIDENCE"}
         facts = [{"fact_id": f"f{i}", "statement": fact} for i, fact in enumerate(lesson["facts"])]
         recipe = generation_recipe()
         jobs = []

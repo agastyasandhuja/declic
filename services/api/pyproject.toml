@@ -13,6 +13,7 @@ dependencies = [
   "python-dotenv==1.2.4",
   "instagrapi==3.2.12",
   "pycryptodomex==3.24.2",
+  "pypdf==7.1.0",
 ]
 
 [dependency-groups]
