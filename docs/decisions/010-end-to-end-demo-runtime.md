@@ -52,8 +52,12 @@ no grounded objectives but real teaching excerpts exist, one bounded Gemini call
 may recover up to three practice concepts with two distinct exact source quotes
 each. Those units remain private, source-bound and unknown in exam scope. PDF
 glyph corruption is not silently corrected, and learning outcomes are not lesson
-facts. Identical approved fact sets within the existing owner/compatibility scope
-reuse one canonical topic even if their generated headings differ.
+facts. Identical sets of at least two distinct nonempty approved facts reuse one
+canonical topic even if generated headings or subject labels differ. This exact
+fact exception still requires the same owner, level, language, notation, embedding
+model and compatibility version. Cosine-only reuse continues to require matching
+subject labels too. Each objective keeps its own source and quiz binding; the
+canonical lesson is not overwritten. No cross-user reuse is introduced.
 
 Generic course visuals opt into `Brief.visual_strategy=semantic_diagram`. This
 adds bounded authored comparison, sequence and cause/effect diagrams with at most

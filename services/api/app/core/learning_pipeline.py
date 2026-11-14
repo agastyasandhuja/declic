@@ -298,6 +298,13 @@ class LearningPipeline:
             ("visual_explainer", "visual_story"),
             ("dialogue_gameplay", "conversation"),
         ]:
+            visual_guidance = (
+                "Every semantic diagram must use comparison mode with no edges. "
+                "Do not invent causal arrows or state-transition sequences."
+                if format_id == "visual_explainer"
+                else "Every shot must set semantic_diagram to null. This is a "
+                "dialogue_gameplay lesson, not a semantic-diagram explainer."
+            )
             brief = Brief(
                 brief_id=topic_id + "_" + approach,
                 lesson_request_id=topic_id,
@@ -309,7 +316,14 @@ class LearningPipeline:
                 notation="general",
                 assumed_knowledge=[],
                 must_cover=[fact["fact_id"] for fact in facts],
-                must_not_claim=["Do not claim confirmed exam coverage."],
+                must_not_claim=[
+                    "Do not claim confirmed exam coverage.",
+                    visual_guidance,
+                    "Do not exceed ten words in the first spoken segment. Use a concrete "
+                    "mid-thought hook, then explain the facts in later segments. Plan "
+                    "75-155 spoken words overall.",
+                    "Do not introduce examples or mechanisms absent from the approved facts.",
+                ],
                 approved_facts=facts,
                 trace_kind="none",
                 format_id=format_id,
