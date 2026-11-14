@@ -31,7 +31,7 @@ Existing root `.env` values are also loaded. Set server-only values:
 - `ANTHROPIC_API_KEY`, `VIDEO_CLAUDE_MODEL` (default `claude-sonnet-4-5`),
   `ELEVENLABS_API_KEY`, and the narrator/Peter/Stewie voice IDs.
 - `VIDEO_RENDER_IMAGE`: the image built using the renderer's documented Docker
-  instructions. Existing local image: `hackumass-renderer:reference-v9-semantic`.
+  instructions. Existing local image: `hackumass-renderer:reference-v10-dialogue`.
 
 Place the local licensed/demo assets in `.local/video-assets` as described in the
 video README. They are intentionally excluded from Git. Run Docker before workers.

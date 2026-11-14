@@ -1546,3 +1546,23 @@ or goals differ. Final consolidated API verification after these changes:
 provider calls. The first two accepted live videos reached full rendering after
 content/frame checks; a rejected causal diagram is being replaced with comparison
 visuals. Private storage publication and native quiz verification remain pending.
+
+
+### Phone acceptance and dialogue presentation feedback
+
+The student confirmed video, audio, and quiz submission work in the installed
+iPhone app with their connected Canvas/Instagram account. Four private live
+videos are published; the fifth dialogue is still in generation at this update.
+This acceptance is user-reported, separate from synthetic automated checks.
+
+The student requested lower Peter/Stewie captions and useful visual explanation
+instead of isolated topic labels. Reference dialogue now places word captions at
+y=1450 on the 1080×1920 canvas. Text-only kinetic shots show gameplay, character,
+and captions; authored image/diagram shots remain available. Other formats keep
+their existing overlays. The isolated v10 renderer image was built and stills of
+the actual Promise dialogue were rendered and visually inspected, without model
+calls or re-generating narration. Already published MP4s remain their recorded
+version until explicitly regenerated; this change applies to subsequent renders.
+
+Focused production reference-template validation: **12 passed**. Independent
+source review found no blocker. No experimental voxel checks were run.

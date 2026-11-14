@@ -67,7 +67,7 @@ const Diagram=({lesson,shot}:{lesson:any,shot:any})=>{
 const WordCaptions=({lesson}:{lesson:any})=>{
  const t=useCurrentFrame()/30;
  const caption=lesson.captions.find((g:any)=>g.start<=t&&t<g.end);
- return <PopCaptions caption={caption} now={t} top={lesson.format_id==='dialogue_gameplay'?235:1450}/>;
+ return <PopCaptions caption={caption} now={t} top={1450}/>;
 };
 const ActiveCharacter=({lesson}:{lesson:any})=>{
  const t=useCurrentFrame()/30,segment=lesson.segments.find((s:any)=>s.start<=t&&t<s.end)||lesson.segments.at(-1);
@@ -96,7 +96,8 @@ export const ReferenceLesson=({lesson}:{lesson:any})=>{
    <div style={{fontSize:dialogue?31:39,color:'#ffdf82',lineHeight:1.5,marginTop:12}}>{shot.labels.map((label:string,i:number)=><div key={i}>{label}</div>)}</div>
   </div>}
   {shot.kind==='diagram'&&(shot.semantic_diagram?<SemanticDiagram shot={shot}/>:lesson.installment_example?<PaymentScene lesson={lesson} shot={shot}/>:shot.motion_scene&&shot.motion_scene!=='none'?<DecisionScene shot={shot}/>:<Diagram lesson={lesson} shot={shot}/>)}
-  {shot.kind==='kinetic'&&<div style={{position:'absolute',top:580,left:80,right:120,textAlign:'center',fontSize:83,lineHeight:1.08,fontWeight:850,textShadow:'0 6px 25px #000',transform:`scale(${.94+.06*clamp(shotAge*4)})`}}>{shot.headline}<div style={{fontSize:54,color:'#81e9f5',marginTop:36,lineHeight:1.5}}>{shot.labels.map((label:string,i:number)=><div key={i}>{label}</div>)}</div></div>}
+  {/* Dialogue uses captions alone for text-only shots; meaningful images and diagrams remain. */}
+  {shot.kind==='kinetic'&&!dialogue&&<div style={{position:'absolute',top:580,left:80,right:120,textAlign:'center',fontSize:83,lineHeight:1.08,fontWeight:850,textShadow:'0 6px 25px #000',transform:`scale(${.94+.06*clamp(shotAge*4)})`}}>{shot.headline}<div style={{fontSize:54,color:'#81e9f5',marginTop:36,lineHeight:1.5}}>{shot.labels.map((label:string,i:number)=><div key={i}>{label}</div>)}</div></div>}
   {space&&lesson.presentation!=='reference_v3'&&shot.kind==='space'&&shot.headline&&<div style={{position:'absolute',left:90,right:120,top:330,textAlign:'center',fontSize:46,fontWeight:650,letterSpacing:1,opacity:clamp(shotAge*2)*Math.min(1,(shot.end-t)*2),textShadow:'0 4px 15px #000'}}>{shot.headline}</div>}
   {dialogue&&<ActiveCharacter lesson={lesson}/>}
   <WordCaptions lesson={lesson}/>
