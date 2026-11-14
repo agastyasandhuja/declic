@@ -94,7 +94,7 @@ def schedule_text(assignments: list[Assignment], now: datetime | None = None) ->
     for a in dated[-25:]:  # recent + upcoming window
         due = _parse(a.due_at)
         when = "upcoming" if due >= now else "past"
-        lines.append(f"  - {due.date().isoformat()} ({when}): {a.name}")
+        lines.append(f"  - {a.name} | Due: {due.isoformat()} ({when})")
     undated_exams = [a.name for a in assignments if a.looks_like_exam and not a.due_at]
     if undated_exams:
         lines.append("Exams listed without a date in Canvas (do not guess a date): "

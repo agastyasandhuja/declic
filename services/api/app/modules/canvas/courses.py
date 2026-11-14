@@ -11,21 +11,15 @@ ever returns courses that student is enrolled in.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
 from .client.http import CanvasClient, CanvasUnavailable
 
-_TAG = re.compile(r"<[^>]+>")
-_WS = re.compile(r"\s+")
+from .ingestion.resources import parse_html
 
 
 def _plain_text(html: str | None) -> str:
-    """Crude tag strip for a human-readable preview only. M2 does real,
-    security-grade HTML sanitization before anything is stored or sent to a model."""
-    if not html:
-        return ""
-    return _WS.sub(" ", _TAG.sub(" ", html)).strip()
+    return " ".join(parse_html(html)[0].split())
 
 
 @dataclass(frozen=True)
@@ -59,12 +53,16 @@ def _course_params() -> list[tuple[str, str]]:
     ]
 
 
+def fetch_current_courses(client: CanvasClient):
+    for row in client.paginate("/api/v1/courses", _course_params()):
+        if isinstance(row, dict) and row.get("id") is not None:
+            yield row
+
+
 def fetch_course_syllabi(client: CanvasClient):
     """Yield (external_course_id, course_name, full_syllabus_text|None) for the
     student's current courses. Full text (not a preview) for Gemini extraction."""
-    for raw in client.paginate("/api/v1/courses", _course_params()):
-        if not isinstance(raw, dict) or raw.get("id") is None:
-            continue
+    for raw in fetch_current_courses(client):
         text = _plain_text(raw.get("syllabus_body")) or None
         yield str(raw["id"]), str(raw.get("name") or ""), text
 

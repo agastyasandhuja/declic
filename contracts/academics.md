@@ -108,3 +108,34 @@ At least three courses: DSA linked lists, probability, and accounting. Include
 one explicit exam, one date-only assessment, one unknown scope, a suggested
 algorithm, a missing slide deck, and a conflicting date warning. Source IDs must
 resolve within the synthetic fixture set. Do not fabricate actual UMass course data.
+
+## Local development adapter
+
+The owner routers compose through Agastya's `create_app(domain_routers=...)`.
+Both use the shared verified principal, except the OAuth callback, which uses
+the single-use state. The routes share one local jobs instance.
+
+- `POST /v1/canvas/connect` accepts `{"institution":"https://canvas.example"}`
+  for the server-configured origin. `authorization_url` carries the state;
+  the callback redirects to the configured app URL without credentials.
+- `POST /v1/canvas/sync` and `POST /v1/academics/uploads` require
+  `Idempotency-Key`. The local upload adapter accepts JSON `course_label`,
+  `filename`, and UTF-8 `content` for `.txt` or `.md` (up to 30,000 characters,
+  subject to core request limits). Job states are `queued`, `running`,
+  `succeeded`, and `failed`.
+- `PATCH /v1/academics/profile` accepts `expected_revision` and `changes`, an
+  array of `assessment_id` plus `date` and/or `scope_status`. Omit a field to
+  preserve it. Explicit `date: null` records the student's correction to an
+  undated assessment. Corrections supersede the current plans until reimport
+  and replanning. Local override matching uses course plus normalized assessment
+  title. If extraction omits or renames the assessment, the correction stays
+  stored and applies when the original identity reappears.
+- The existing local pipeline uses source-ID strings as compact `source_refs`.
+  `resolve_source_context` accepts these strings or a structured `SourceRef`
+  with a matching course ID and returns only that owner's current excerpts
+  and metadata. HTTP profile responses omit the private excerpt snapshot.
+
+The local profile snapshot stores the ready-event payload alongside its
+validated plans. Shared outbox publication and persistent job registration
+are integration handoffs. The local router does not expose provider secrets,
+raw blobs, or internal events.

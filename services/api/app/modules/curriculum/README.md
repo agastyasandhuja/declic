@@ -4,12 +4,10 @@ Owner: Amogh. Uses the **Google Gemini API** to turn a student's course material
 into a validated, source-referenced academic profile. Contract:
 [contracts/academics.md](../../../../../contracts/academics.md).
 
-Status: **M3 complete and verified live, end-to-end on real UMass Canvas
-courses.** The primary path pulls the signed-in student's live courses and
-syllabi (via the Canvas token) and sends each to Gemini — no manual upload.
-Upload is only a fallback (`--source upload`). Standard library only (REST
-`generateContent`). No FastAPI routes yet (core not initialized); persistence
-is a local JSON stand-in for the Atlas academics collections.
+The primary path uses a bound developer token for local live testing. It reads
+syllabi, assignments, modules, Pages, course files and bounded calendar windows
+before running Gemini extraction and planning. A private local JSON snapshot
+backs development routes and supports manual corrections across reimports.
 
 ## Model choice
 
@@ -46,7 +44,7 @@ reports the live call as pending. `--source upload` is the fallback.
 ## Pipeline
 
 1. `sources.CanvasSourceResolver` — PRIMARY: the student's live Canvas courses
-   and syllabi as authorized sources. `SourceResolver` is the upload fallback.
+   and course materials as authorized sources. `SourceResolver` is the upload fallback.
 2. `prompts/extract.py` — builds the prompt; course text is untrusted data.
 3. `client/gemini.GeminiClient.generate_json` — the real Gemini call (JSON out).
 4. `validators.validate_extraction` — the trust boundary: drops invented source
@@ -64,5 +62,21 @@ reports the live call as pending. `--source upload` is the fallback.
 
 Gemini receives only text excerpts and authorized source ids — no tokens, no
 tools, no URLs, no database. Its output is validated before it is persisted or
-handed on. Everything is user-scoped. Structured output shapes the JSON; it does
+handed on. Source resolution is user-scoped. Calendar windows span 180 days on either
+side of import. Course file downloads stay on the configured Canvas origin,
+are capped at 8 MiB and 12 supported downloads per course, and never follow
+cross-origin redirects. UTF-8 text and PPTX slide text are supported. PDF text
+extraction uses optional `pypdf` when installed. Unsupported, locked, or
+unavailable content is surfaced in `missing_sources`. Scanned PDFs need OCR.
+
+For API composition, construct `AcademicService(storage_dir, gemini_client)` and
+one `LocalAcademicJobs()`. Pass both router factories to
+`create_app(domain_routers=(...), academics=FeedAcademicReader(service))`. The
+Canvas factory also takes server-only `CanvasSettings` and an optional configured
+`app_return_url`. These routers use the shared `CurrentUser` dependency from
+Agastya's branch. The local job/connection adapters are single-process and
+ephemeral. Profile snapshots persist locally. See the academic contract for the
+development request bodies and the status handoff for production wiring.
+
+ Structured output shapes the JSON; it does
 not establish factual correctness.

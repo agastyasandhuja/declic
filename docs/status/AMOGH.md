@@ -177,3 +177,111 @@ Run from `services/api`:
   run `validate_access --redact`, and record the live result here.
 - If token creation is blocked, demonstrate upload mode and record the blocker.
 - Then M2: inventory modules, pages, files, assignments, calendar events.
+
+## Takeover update (2026-11-14)
+
+Fetched origin while staying on `amoghs-branch` at `a3f0734`. Reviewed
+`origin/feature/agastya-learning-engine` at `c84f6d1` and
+`origin/main` at `8beaca9`. The dated notes above describe the previous
+milestones. The UMass IT developer-key request has already been sent.
+
+### Implemented
+
+- Read-only Canvas inventory for modules and items, published/unlocked Pages,
+  course files and referenced syllabus/Page attachments, student assignments,
+  and course-context calendar events in a ±180-day window. Downloads are
+  origin-pinned, size-bounded, and sequential. Extracts UTF-8 text, PPTX slide
+  text, and PDF text when optional `pypdf` is installed. Records inaccessible
+  sources and preserves other available evidence. Source IDs, hashes, locators,
+  and fetch/revision metadata accompany private excerpts. Files are fetched
+  again on reimport to recheck provider access.
+- Both Gemini stages receive bounded excerpts and references. The extraction
+  validator drops unauthorized citations, requires assessment-specific evidence
+  for dates, retains supported offset-bearing timestamps, and leaves unverified
+  dates unknown. This is conservative and can omit stated dates in formats the
+  evidence matcher cannot verify. Manual date and scope corrections persist
+  under the owner's normalized assessment identity across reimports. A saved
+  correction supersedes old plans pending replanning.
+- Added local `AcademicService`, scoped source resolution, validated plans
+  and bindings, `FeedAcademicReader`, Canvas connection/sync routes, and
+  academic profile/corrections/plan/upload/job routes. Local profile revisions
+  and the current snapshot are saved privately. Local OAuth state, connections
+  and job records are in memory. The developer token is restricted to its
+  configured app user in both the router and CLI.
+
+### Integration handoff
+
+Agastya can compose the local demo with these imports from `services/api`:
+
+```python
+from app.modules.canvas.router import create_router as canvas_router
+from app.modules.curriculum.adapters import FeedAcademicReader
+from app.modules.curriculum.jobs import LocalAcademicJobs
+from app.modules.curriculum.router import create_router as academic_router
+from app.modules.curriculum.service import AcademicService
+
+academic = AcademicService(private_storage_dir, gemini_client)
+jobs = LocalAcademicJobs()
+app = create_app(
+    settings=api_settings,
+    identity=identity_verifier,
+    academics=FeedAcademicReader(academic),
+    domain_routers=(
+        canvas_router(canvas_settings, academic, jobs, app_return_url=app_return_url),
+        academic_router(academic, jobs),
+    ),
+)
+```
+
+- Agastya owns production assembly: register durable Canvas sync and academic
+  upload handlers using `JobContext.owner_user_id` and reference-only inputs.
+  Fence publication with the lease and connection revision, heartbeat between
+  provider calls, and adapt job lookup to the verified owner. Replace the
+  single-process storage adapter when database work resumes. Persist and
+  publish the validated revision via `core.events.publish` in the same
+  transaction, using `profile_id` as aggregate ID and reference-only
+  `profile_id`, `revision`, `course_ids`, `plan_ids` as payload. Local runs
+  create the payload in the snapshot. Shared outbox delivery is pending.
+- Video generation can read `get_validated_plans(owner)` and
+  `resolve_source_context(owner, refs)`. The video owner's
+  `resolve_generation_brief` integration still needs an approved-facts
+  builder that converts these references into its validated `Brief` schema.
+  No generation or playback was invoked.
+- Adi can map the wire requests in `contracts/academics.md` to
+  `AcademicsApiClient` and mount the existing React Native components.
+- Live OAuth requires the UMass developer key and redirect configuration.
+  The callback/replay boundary was exercised with a fake token exchange.
+  The local router transitions expired/revoked connections to reconnect;
+  durable OAuth token storage/refresh remains deployment work. Disable raw
+  access logging on the callback so query parameters stay out of logs.
+- Optional PDF support needs a shared dependency decision. Scans need OCR.
+  Cross-origin downloads are unavailable under the current origin-pinned policy.
+
+### Verification on this takeover
+
+- From `services/api`, `python3 -m unittest discover -s app/modules/canvas/tests`
+  passed 29 tests. `python3 -m unittest discover -s app/modules/curriculum/tests`
+  passed 30. The synthetic import covers module items, a sanitized Page, an
+  available text file, an origin-rejected file, PPTX extraction, calendar context,
+  date-only evidence, an undated exam, correction replay, and owner isolation.
+- Archived Agastya's fetched commit into a temporary directory and overlaid only
+  the owner modules. `python -m pytest -q app/modules/curriculum/tests/api_handoff.py`
+  passed with Agastya's actual `create_app` and auth dependency, the SQLite
+  fixture backend, synthetic identity, fake Gemini and fake Canvas OAuth.
+  Covered router injection, callback replay, upload idempotency, authenticated
+  profile/plan/job reads, cross-user denials and stale revision rejection.
+  The TestClient dependency emitted one deprecation warning.
+- `node --experimental-strip-types --test packages/mobile-academics/tests/format.test.ts`
+  passed 7 tests. `git diff --check` passed.
+- `python3 -m app.modules.curriculum.run_demo --plan` exited 0 against live
+  UMass Canvas and Gemini with the developer token. The final run used a
+  temporary environment with optional `pypdf`. Four courses were ready,
+  with 21 module and 46 Page excerpts and nine lesson objectives across all
+  four courses. Four course overview excerpts were usable. Fourteen file
+  records surfaced but none yielded extractable text, and no matching
+  calendar events were returned for the tested courses/window. File and
+  calendar behavior is therefore covered by synthetic evidence only.
+  An earlier sandboxed attempt failed to reach Canvas. Both authorized
+  network runs completed live extraction and planning.
+- No live OAuth, shared worker/outbox, Atlas, video generation, or iPhone
+  acceptance was run. No commits, merges, PRs, emails, or MongoDB changes.

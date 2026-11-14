@@ -14,7 +14,7 @@ from pathlib import Path
 from .client.gemini import GeminiClient, parse_json_object
 from .prompts.extract import SYSTEM_INSTRUCTION, build_extraction_prompt
 from .schemas import EXTRACTION_SCHEMA, SCHEMA_VERSION
-from .sources import Resolver
+from .sources import Resolver, select_excerpts
 from .store import latest_revision, save_profile
 from .validators import validate_extraction
 
@@ -28,8 +28,8 @@ def extract_course(
 ) -> dict:
     """Run one real Gemini extraction for a single course and validate it."""
     sources = resolver.sources_for_course(course_id)
-    authorized_ids = {s.source_id for s in sources}
-    usable = [s for s in sources if s.has_text]
+    usable = select_excerpts(sources, 36_000)
+    evidence = {s.source_id: s.text for s in usable}
 
     if not usable:
         return {
@@ -40,7 +40,7 @@ def extract_course(
             "usage": {},
         }
 
-    label_hint = usable[0].title
+    label_hint = sources[0].title
     prompt = build_extraction_prompt(label_hint, usable)
     result = client.generate_json(
         system_instruction=SYSTEM_INSTRUCTION,
@@ -48,7 +48,8 @@ def extract_course(
         response_schema=EXTRACTION_SCHEMA,
     )
     raw = parse_json_object(result.text)
-    clean = validate_extraction(raw, authorized_ids)
+    clean = validate_extraction(raw, set(evidence), evidence=evidence,
+                                source_timezone=_course_info(resolver, course_id).get("timezone"))
     return {
         "course_id": course_id,
         "import_status": "ready",
@@ -56,6 +57,11 @@ def extract_course(
         "warnings": clean["warnings"],
         "usage": result.usage,
     }
+
+
+def _course_info(resolver, course_id):
+    getter = getattr(resolver, "course_info", None)
+    return getter(course_id) if getter else {}
 
 
 def build_profile(
@@ -72,6 +78,9 @@ def build_profile(
     upload-store SourceResolver (fallback). One failing course does not abort the
     others; its status is recorded.
     """
+    owner = getattr(resolver, "owner_user_id", None)
+    if owner is not None and owner != user_id:
+        raise PermissionError("source resolver owner mismatch")
     course_ids = resolver.course_ids()
     if not course_ids:
         raise ValueError("no sources available for this user (no Canvas courses or uploads)")
@@ -84,11 +93,12 @@ def build_profile(
     total_usage = {"prompt_tokens": 0, "candidates_tokens": 0}
 
     for course_id in course_ids:
+        info = _course_info(resolver, course_id)
         try:
             outcome = extract_course(course_id, resolver, client)
         except Exception as err:  # noqa: BLE001 — isolate one course's failure
             warnings.append(f"course {course_id}: extraction failed ({type(err).__name__})")
-            courses.append({"course_id": course_id, "import_status": "error", "title": None})
+            courses.append({"course_id": course_id, "import_status": "error", "title": None, **info})
             continue
 
         usage = outcome.get("usage") or {}
@@ -98,7 +108,7 @@ def build_profile(
 
         extraction = outcome["extraction"]
         if extraction is None:
-            courses.append({"course_id": course_id, "import_status": outcome["import_status"], "title": None})
+            courses.append({"course_id": course_id, "import_status": outcome["import_status"], "title": None, **info})
             continue
 
         courses.append(
@@ -109,12 +119,13 @@ def build_profile(
                 "term": extraction["term"],
                 "timezone": extraction["timezone"],
                 "textbooks": extraction["textbooks"],
+                **{key: value for key, value in info.items() if value is not None},
             }
         )
         for unit in extraction["units"]:
             units.append({"unit_id": f"unit_{_sid(course_id, unit['title'], str(unit['order']))}", "course_id": course_id, **unit})
         for assessment in extraction["assessments"]:
-            assessments.append({"assessment_id": f"asmt_{_sid(course_id, assessment['title'])}", "course_id": course_id, **assessment})
+            assessments.append({"assessment_id": f"asmt_{_sid(course_id, ' '.join(assessment['title'].casefold().split()))}", "course_id": course_id, **assessment})
 
     profile = {
         "schema_version": SCHEMA_VERSION,
@@ -124,6 +135,8 @@ def build_profile(
         "status": "validated",
         "generated_at": generated_at,
         "course_ids": course_ids,
+        "unit_ids": [unit["unit_id"] for unit in units],
+        "assessment_ids": [item["assessment_id"] for item in assessments],
         "courses": courses,
         "units": units,
         "assessments": assessments,
@@ -132,6 +145,10 @@ def build_profile(
         "warnings": warnings,
         "usage": total_usage,
     }
+    from .corrections import restore_corrections
+
     if persist:
-        save_profile(storage_dir, user_id, profile)
+        save_profile(storage_dir, user_id, profile, reimport=True)
+    else:
+        restore_corrections(storage_dir, user_id, profile)
     return profile

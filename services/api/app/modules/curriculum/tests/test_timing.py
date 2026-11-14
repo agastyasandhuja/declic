@@ -52,8 +52,8 @@ class TimingTests(unittest.TestCase):
         text = schedule_text([a("Quiz 8", "2026-11-18T03:59:59Z"),
                               a("Old HW", "2026-10-01T03:59:59Z"),
                               a("Midterm 1", None)], now=NOW)
-        self.assertIn("upcoming): Quiz 8", text)
-        self.assertIn("past): Old HW", text)
+        self.assertIn("Quiz 8 | Due: 2026-11-18T03:59:59+00:00 (upcoming)", text)
+        self.assertIn("Old HW | Due: 2026-10-01T03:59:59+00:00 (past)", text)
         self.assertIn("without a date", text)
 
 

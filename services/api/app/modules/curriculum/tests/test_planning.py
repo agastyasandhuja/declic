@@ -25,7 +25,7 @@ UNITS = [{"course_id": "c1", "unit_id": "u1", "title": "Linked lists", "order": 
           "objectives": ["reversal"], "source_refs": ["src_canvas_c1_syllabus"]}]
 ASSESSMENTS = [{"course_id": "c1", "assessment_id": "a1", "title": "Midterm 1", "kind": "midterm",
                 "scheduled": {"date": "2026-10-14"}, "scope_status": "explicit",
-                "covered_topics": ["linked lists reversal"], "source_refs": []}]
+                "covered_topics": ["Reverse a singly linked list"], "source_refs": []}]
 
 
 class PlanCourseTests(unittest.TestCase):

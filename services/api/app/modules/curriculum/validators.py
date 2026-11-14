@@ -12,7 +12,9 @@ Unknown stays null.
 from __future__ import annotations
 
 import re
-from datetime import date as date_cls
+import calendar
+from datetime import date as date_cls, datetime, time
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from typing import Any
 
 _EVIDENCE = {"explicit", "inferred", "unknown"}
@@ -48,6 +50,11 @@ def _academic_date(raw: dict, timezone: str | None, warnings: list[str], where: 
     """Build a contract AcademicDate, never manufacturing a time from a date."""
     date_value = _valid_date(raw.get("date"))
     time_value = raw.get("time") if isinstance(raw.get("time"), str) and _TIME_RE.match(raw.get("time") or "") else None
+    if time_value:
+        try:
+            time.fromisoformat(time_value)
+        except ValueError:
+            time_value = None
     evidence = _enum(raw.get("date_evidence"), _EVIDENCE, "unknown")
 
     if time_value and not date_value:
@@ -58,8 +65,9 @@ def _academic_date(raw: dict, timezone: str | None, warnings: list[str], where: 
 
     if not date_value:
         precision, timestamp = "unknown", None
-    elif time_value:
-        precision, timestamp = "datetime", f"{date_value}T{time_value}:00"
+    elif time_value and timezone:
+        precision = "datetime"
+        timestamp = datetime.fromisoformat(f"{date_value}T{time_value}").replace(tzinfo=ZoneInfo(timezone)).isoformat()
     else:
         precision, timestamp = "date", None
 
@@ -68,17 +76,78 @@ def _academic_date(raw: dict, timezone: str | None, warnings: list[str], where: 
         "timestamp": timestamp,
         "timezone": timezone,
         "precision": precision,
-        "evidence_status": evidence if date_value else ("unknown" if not date_value else evidence),
+        "evidence_status": evidence if date_value else "unknown",
     }
 
 
-def validate_extraction(raw: dict, authorized_ids: set[str]) -> dict:
+def _ground_date(when, title, excerpts, timezone, warnings):
+    """Require a dated row or sentence naming this assessment in a cited excerpt."""
+    value = when["date"]
+    if not value:
+        return when
+    if not title.strip():
+        return _academic_date({}, timezone, warnings, "")
+    day = date_cls.fromisoformat(value)
+    month = f"(?:{calendar.month_name[day.month]}|{calendar.month_abbr[day.month]})"
+    date_pattern = re.compile(
+        rf"(?<![\d/])(?:{value}|{day.month:02d}/{day.day:02d}/{day.year}|"
+        rf"{day.month}/{day.day}/{day.year}|{month}\s+0?{day.day},?\s+{day.year})(?![\d/])",
+        re.I,
+    )
+    title_pattern = re.compile(r"(?<!\w)" + re.escape(title.strip()) + r"(?!\w)", re.I)
+    evidence_lines = []
+    for excerpt in excerpts:
+        lines = excerpt.splitlines()
+        for index, line in enumerate(lines):
+            if not title_pattern.search(line):
+                continue
+            if line.startswith("Event: ") and index + 1 < len(lines):
+                line += " " + lines[index + 1]
+            # Stop before the next assessment or sentence whenever possible.
+            for match in title_pattern.finditer(line):
+                tail = line[match.end():match.end() + 85]
+                tail = re.split(r"[;.!?]|\b(?:TBA|TBD|undated)\b", tail, maxsplit=1, flags=re.I)[0]
+                if date_pattern.search(tail):
+                    evidence_lines.append(tail)
+    if not evidence_lines:
+        warnings.append("Assessment date could not be verified in its cited evidence")
+        return _academic_date({}, timezone, warnings, "")
+    # Structured source timestamps already carry their offset. Preserve their
+    # precision without trusting the model to reproduce their time or offset.
+    for line in evidence_lines:
+        match = re.search(r"(?:Scheduled|Due):\s*(" + value +
+                          r"T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2}))", line)
+        if match:
+            try:
+                exact = datetime.fromisoformat(match[1].replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            localized = exact.astimezone(ZoneInfo(timezone)) if timezone else exact
+            when.update(date=localized.date().isoformat(), timestamp=localized.isoformat(),
+                        precision="datetime", evidence_status="explicit")
+            return when
+    if when["timestamp"]:
+        clock = when["timestamp"][11:16]
+        offset = when["timestamp"][19:]
+        if not any(f"T{clock}:00{offset}" in line or
+                   (offset == "+00:00" and f"T{clock}:00Z" in line) for line in evidence_lines):
+            when.update(timestamp=None, precision="date")
+    return when
+
+
+def validate_extraction(raw: dict, authorized_ids: set[str], *,
+                        evidence: dict[str, str] | None = None, source_timezone=None) -> dict:
     """Return a cleaned extraction plus accumulated warnings."""
     warnings: list[str] = list(raw.get("warnings") or []) if isinstance(raw.get("warnings"), list) else []
 
     title = raw.get("course_title") if isinstance(raw.get("course_title"), str) else ""
     term = raw.get("term") if isinstance(raw.get("term"), str) else None
-    timezone = raw.get("timezone") if isinstance(raw.get("timezone"), str) else None
+    timezone = source_timezone or (raw.get("timezone") if isinstance(raw.get("timezone"), str) else None)
+    try:
+        if timezone:
+            ZoneInfo(timezone)
+    except (ValueError, ZoneInfoNotFoundError):
+        timezone = None
 
     units = []
     for i, unit in enumerate(raw.get("units") or []):
@@ -100,6 +169,10 @@ def validate_extraction(raw: dict, authorized_ids: set[str]) -> dict:
             continue
         name = assessment.get("title", "") if isinstance(assessment.get("title"), str) else ""
         when = _academic_date(assessment, timezone, warnings, f"assessment '{name}'")
+        refs = _clean_ids(assessment.get("source_ids"), authorized_ids, warnings, f"assessment '{name}'")
+        if evidence is not None:
+            when = _ground_date(when, name, [evidence[ref] for ref in refs], timezone, warnings)
+        when["source_refs"] = refs if when["date"] else []
         key = re.sub(r"\s+", " ", name).strip().lower()
         if key in seen_dates and seen_dates[key] != when["date"] and when["date"] and seen_dates[key]:
             warnings.append(f"assessment '{name}': conflicting dates {seen_dates[key]} vs {when['date']}")
@@ -111,7 +184,7 @@ def validate_extraction(raw: dict, authorized_ids: set[str]) -> dict:
                 "scheduled": when,
                 "scope_status": _enum(assessment.get("scope_status"), _EVIDENCE, "unknown"),
                 "covered_topics": [t for t in (assessment.get("covered_topics") or []) if isinstance(t, str)],
-                "source_refs": _clean_ids(assessment.get("source_ids"), authorized_ids, warnings, f"assessment '{name}'"),
+                "source_refs": refs,
             }
         )
 
@@ -129,12 +202,30 @@ def validate_extraction(raw: dict, authorized_ids: set[str]) -> dict:
             }
         )
 
+    # Duplicate mentions of one named assessment share a stable correction ID.
+    # Conflicting dates remain visible via the warning and require review.
+    unique_assessments = {}
+    for item in assessments:
+        key = " ".join(item["title"].casefold().split())
+        existing = unique_assessments.get(key)
+        if existing is None:
+            unique_assessments[key] = item
+            continue
+        existing["source_refs"] = list(dict.fromkeys(existing["source_refs"] + item["source_refs"]))
+        dates = {existing["scheduled"]["date"], item["scheduled"]["date"]} - {None}
+        if len(dates) > 1:
+            existing["scheduled"] = _academic_date({}, timezone, warnings, "")
+            existing["scheduled"]["source_refs"] = []
+            existing["date_conflict"] = True
+        elif not existing.get("date_conflict") and not existing["scheduled"]["date"]:
+            existing["scheduled"] = item["scheduled"]
+
     return {
         "course_title": title,
         "term": term,
         "timezone": timezone,
         "units": units,
-        "assessments": assessments,
+        "assessments": list(unique_assessments.values()),
         "textbooks": textbooks,
         "warnings": warnings,
     }

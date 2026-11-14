@@ -63,22 +63,28 @@ class _SameOriginRedirects(urllib.request.HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-def urllib_transport(origin: str) -> Transport:
+def urllib_transport(origin: str, *, max_bytes: int = 16 * 1024 * 1024) -> Transport:
     opener = urllib.request.build_opener(_SameOriginRedirects(origin))
 
     def send(url: str, headers: Mapping[str, str], timeout: float) -> Response:
+        def read(response):
+            data = response.read(max_bytes + 1)
+            if len(data) > max_bytes:
+                raise CanvasError("Canvas response exceeded the byte limit")
+            return data
+
         request = urllib.request.Request(url, headers=dict(headers), method="GET")
         try:
             with opener.open(request, timeout=timeout) as raw:
                 return Response(
-                    raw.status, {k.lower(): v for k, v in raw.headers.items()}, raw.read()
+                    raw.status, {k.lower(): v for k, v in raw.headers.items()}, read(raw)
                 )
         except urllib.error.HTTPError as err:
             return Response(
-                err.code, {k.lower(): v for k, v in err.headers.items()}, err.read()
+                err.code, {k.lower(): v for k, v in err.headers.items()}, read(err)
             )
         except urllib.error.URLError as err:
-            raise CanvasError(f"network error contacting Canvas: {err.reason}") from None
+            raise CanvasError("network error contacting Canvas") from None
 
     return send
 
@@ -97,6 +103,7 @@ class CanvasClient:
     ) -> None:
         self._origin = origin
         self._token = token
+        self._download_transport = transport
         self._transport = transport or urllib_transport(origin)
         self._timeout = timeout
         self._max_attempts = max_attempts
@@ -112,16 +119,24 @@ class CanvasClient:
         query = f"?{urlencode(params)}" if params else ""
         return f"{self._origin}{path}{query}"
 
-    def _send(self, url: str) -> Response:
+    def download(self, url: str, max_bytes: int) -> bytes:
+        transport = self._download_transport or urllib_transport(self._origin, max_bytes=max_bytes)
+        response = self._send(url, transport=transport, accept="application/octet-stream")
+        if len(response.body) > max_bytes:
+            raise CanvasError("Canvas file exceeded the byte limit")
+        return response.body
+
+    def _send(self, url: str, *, transport: Transport | None = None,
+              accept: str = "application/json") -> Response:
         if not _same_origin(url, self._origin):
             raise CanvasError("refusing request outside the configured Canvas origin")
         path = urlsplit(url).path
         headers = {
             "Authorization": f"Bearer {self._token.reveal()}",
-            "Accept": "application/json",
+            "Accept": accept,
         }
         for attempt in range(1, self._max_attempts + 1):
-            response = self._transport(url, headers, self._timeout)
+            response = (transport or self._transport)(url, headers, self._timeout)
             status = response.status
             throttled = status == 403 and b"Rate Limit Exceeded" in response.body
             if (status in _RETRYABLE or throttled) and attempt < self._max_attempts:

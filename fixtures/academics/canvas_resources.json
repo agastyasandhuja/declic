@@ -1,0 +1,23 @@
+{
+  "/api/v1/courses": [{"id": 17, "name": "Synthetic Data Structures", "time_zone": "America/New_York"}],
+  "/api/v1/courses/17/modules": [{"id": 1, "name": "Linked lists"}],
+  "/api/v1/courses/17/modules/1/items": [
+    {"type": "Page", "title": "Pointer notes", "page_url": "pointers"},
+    {"type": "File", "title": "Lab notes", "content_id": 8},
+    {"type": "Page", "title": "Restricted", "page_url": "locked", "locked_for_user": true}
+  ],
+  "/api/v1/courses/17/pages": [{"page_id": 3, "url": "pointers"}],
+  "/api/v1/courses/17/pages/pointers": {
+    "page_id": 3, "title": "Pointer notes",
+    "body": "<script>hidden script</script><p>Save the next pointer before reversal.</p>"
+  },
+  "/api/v1/courses/17/files": [
+    {"id": 8, "display_name": "Lab notes.txt", "url": "https://canvas.example/files/8/download"},
+    {"id": 9, "display_name": "Unavailable slides.pdf", "url": "https://external.invalid/slides.pdf"}
+  ],
+  "/api/v1/courses/17/assignments": [{"id": 2, "name": "Final Exam", "due_at": null}],
+  "/api/v1/calendar_events": [
+    {"id": 5, "context_code": "course_17", "title": "Midterm 1", "all_day": true, "all_day_date": "2026-11-19"},
+    {"id": 6, "context_code": "user_55", "title": "Unrelated calendar event"}
+  ]
+}

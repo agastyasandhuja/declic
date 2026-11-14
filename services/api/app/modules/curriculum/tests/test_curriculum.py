@@ -166,13 +166,13 @@ class PipelineTests(unittest.TestCase):
         resolver = StaticResolver([_source("c1", SYLLABUS)])
 
         def responder(url, body, headers):
-            # echo a plausible extraction; source_ids left empty (safe)
+            # echo an extraction with a citation for the date
             return gemini_response({
                 "course_title": "Demo DSA", "term": "Fall 2026", "timezone": "America/New_York",
                 "units": [{"title": "Linked lists", "order": 2, "objectives": ["reverse a list"], "source_ids": []}],
                 "assessments": [{"title": "Midterm 1", "kind": "midterm", "date": "2026-10-14", "time": None,
                                  "date_evidence": "explicit", "scope_status": "explicit",
-                                 "covered_topics": ["linked lists"], "source_ids": []}],
+                                 "covered_topics": ["linked lists"], "source_ids": ["src_c1"]}],
                 "textbooks": [], "warnings": []})
 
         profile = build_profile("u1", resolver, self._client(responder), self.dir, persist=True)

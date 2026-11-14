@@ -76,7 +76,8 @@ def load_sources(user_id: str, storage_dir: Path) -> list[dict]:
     manifest = _user_dir(storage_dir, user_id) / "sources.json"
     if not manifest.exists():
         return []
-    return json.loads(manifest.read_text(encoding="utf-8"))
+    return [record for record in json.loads(manifest.read_text(encoding="utf-8"))
+            if record.get("user_id") == user_id]
 
 
 def read_text(record: dict, storage_dir: Path) -> str | None:
@@ -93,7 +94,7 @@ def read_text(record: dict, storage_dir: Path) -> str | None:
     user_folder, _, blob = rel.partition("/")
     path = (storage_dir / "uploads" / user_folder / blob).resolve()
     # Stay strictly inside the upload store (defence against a tampered ref).
-    if (storage_dir / "uploads").resolve() not in path.parents or not path.is_file():
+    if not record.get("user_id") or path.parent != _user_dir(storage_dir, record["user_id"]).resolve() or not path.is_file():
         return None
     if path.suffix.lower() not in (".txt", ".md"):
         return None

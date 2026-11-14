@@ -20,7 +20,9 @@ Gemini config is missing, the live call is reported as pending.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
+from collections import Counter
 from pathlib import Path
 
 from ..canvas.client.http import CanvasAuthError, CanvasClient, CanvasError
@@ -100,7 +102,7 @@ def _print_plans(plans: list[dict]) -> None:
         print(f"\n== Lesson plan {plan['plan_id']} for course {plan['course_id']} "
               f"({plan['status']}, {len(plan['requests'])} lessons)")
         for lr in plan["requests"]:
-            exam = {"explicit": "confirmed exam", "inferred": "maybe exam", "unknown": "not exam"}[lr["exam_scope_status"]]
+            exam = {"explicit": "confirmed exam", "inferred": "maybe exam", "user_confirmed": "confirmed by student", "unknown": "not exam"}[lr["exam_scope_status"]]
             tag = "suggested practice" if lr["evidence_status"] == "suggested_practice" else exam
             print(f"   [{lr['importance']}] {lr['title']} ({lr['target_duration_seconds']}s, {tag})")
             print(f"      goal: {lr['learning_goal']}")
@@ -112,15 +114,13 @@ def _print_plans(plans: list[dict]) -> None:
 
 
 def _canvas_resolver(user_id: str) -> CanvasSourceResolver:
-    import os
-
     env = {**read_env_file(CANVAS_ENV), **os.environ}
     settings = CanvasSettings.from_env(env)
     if not settings.dev_token:
         raise CanvasConfigError("no Canvas token configured; use --source upload instead")
-    client = CanvasClient(settings.institution_origin, settings.developer_token_for(settings.dev_token_app_user_id or ""))
+    client = CanvasClient(settings.institution_origin, settings.developer_token_for(user_id))
     print(f"[1/2] Pulling live Canvas courses from {settings.institution_origin} ...")
-    return CanvasSourceResolver(client)
+    return CanvasSourceResolver(client, owner_user_id=user_id)
 
 
 def _upload_resolver(user_id: str, args) -> SourceResolver:
@@ -139,10 +139,14 @@ def main(argv: list[str] | None = None) -> int:
                         help="canvas (default, auto-pull live courses) or upload (fallback)")
     parser.add_argument("--syllabus", type=Path, default=DEFAULT_SYLLABUS)
     parser.add_argument("--course", default="Introduction to Data Structures (DEMO 187)")
-    parser.add_argument("--user-id", default="demo-user-amogh")
+    parser.add_argument("--user-id", default=None)
     parser.add_argument("--storage-dir", type=Path, default=DEFAULT_STORAGE)
     parser.add_argument("--plan", action="store_true", help="also run M4 Gemini lesson planning")
     args = parser.parse_args(argv)
+
+    if args.user_id is None:
+        args.user_id = ({**read_env_file(CANVAS_ENV), **os.environ}.get("CANVAS_DEV_TOKEN_APP_USER_ID")
+                        if args.source == "canvas" else None) or "demo-user-amogh"
 
     # Step 1: get the student's sources (live Canvas by default).
     try:
@@ -150,7 +154,7 @@ def main(argv: list[str] | None = None) -> int:
             resolver = _canvas_resolver(args.user_id)
         else:
             resolver = _upload_resolver(args.user_id, args)
-    except (CanvasConfigError, CanvasAuthError, CanvasError) as err:
+    except (CanvasConfigError, CanvasAuthError, CanvasError, PermissionError) as err:
         print(f"Canvas source failed: {err}", file=sys.stderr)
         print("Tip: ensure services/api/.env.canvas.local has a valid token, "
               "or use --source upload.", file=sys.stderr)
@@ -173,11 +177,15 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as err:
         print(f"no sources to extract: {err}", file=sys.stderr)
         return 2
-    except GeminiError as err:
-        print(f"Gemini call failed: {err}", file=sys.stderr)
+    except (CanvasError, GeminiError) as err:
+        print(f"Provider call failed: {type(err).__name__}", file=sys.stderr)
         return 1
     if isinstance(resolver, CanvasSourceResolver):
         _attach_timing(profile, resolver)  # real-time urgency from live due dates
+        inventory = Counter((source.resource_type, source.has_text) for source in resolver.list_sources())
+        for category in sorted({kind for kind, _ in inventory}):
+            usable = inventory[category, True]
+            print(f"Inventory {category}: {usable} with text / {usable + inventory[category, False]} total")
     _print_profile(profile)
 
     if not any(c["import_status"] == "ready" for c in profile["courses"]):
@@ -190,7 +198,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     print("\n[3/3] Planning lessons with Gemini ...")
     try:
-        plans = build_lesson_plans(profile, GeminiClient(settings))
+        plans = build_lesson_plans(profile, GeminiClient(settings), resolver)
     except GeminiError as err:
         print(f"lesson planning failed: {err}", file=sys.stderr)
         return 1
@@ -208,7 +216,7 @@ def main(argv: list[str] | None = None) -> int:
               f"across {len([p for p in plans if p['requests']])} course(s).")
         return 0
     print("\nM4 LESSON PLANNING: no lessons proposed (courses may lack enough material).")
-    return 0
+    return 1
 
 
 if __name__ == "__main__":
