@@ -70,3 +70,19 @@ test('leaving the tab cancels a queued forced refresh instead of restarting hidd
   model.cancel(); resolve(profile); await Promise.all([initial, forced]);
   assert.equal(calls, 3); assert.equal(model.snapshot.profile, null); assert.equal(model.snapshot.loading, false);
 });
+
+
+test('a succeeded import job is not polled again between full refreshes', async () => {
+  const calls: string[] = [];
+  const api: ApiClient = { async request<T>(path: string) {
+    calls.push(path);
+    if (path === '/v1/canvas/connection') return { status: 'connected', job_id: 'done' } as T;
+    if (path === '/v1/academics/jobs/done') return { state: 'succeeded' } as T;
+    if (path === '/v1/academics/profile') return profile as T;
+    return preparation as T;
+  } };
+  const model = new CoursesData(api); await model.load(); calls.length = 0;
+  await model.load();
+  assert.deepEqual(calls, ['/v1/preparation']);
+  assert.equal(model.snapshot.job?.state, 'succeeded');
+});

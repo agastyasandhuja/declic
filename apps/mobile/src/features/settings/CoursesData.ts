@@ -59,7 +59,7 @@ export class CoursesData {
         if (connection.job_id !== this.snapshot.connection?.job_id) this.update({ job: null });
         this.update({ connection });
       }).then(() => job(this.snapshot.connection)));
-    } else if (!this.snapshot.job || !['completed', 'failed', 'cancelled', 'ready'].includes(this.snapshot.job.state)) tasks.push(job(this.snapshot.connection));
+    } else if (!this.snapshot.job || !['succeeded', 'completed', 'failed', 'cancelled', 'ready'].includes(this.snapshot.job.state)) tasks.push(job(this.snapshot.connection));
     const flight = Promise.all(tasks).then(() => undefined).finally(() => {
       if (current()) { this.flight = null; this.update({ loading: false }); }
     });

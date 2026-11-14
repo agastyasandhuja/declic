@@ -1403,7 +1403,7 @@ paths; backend inventory/signing/transaction work is coordinated separately.
   buffer, keyed first-frame recovery, bounded seek recovery and stall watchdog.
 
 Validation: Node24 `npm run typecheck --workspace @hackumass/mobile`;
-`npm test --workspace @hackumass/mobile` (66 tests passed).
+`npm test --workspace @hackumass/mobile` (67 tests passed).
 New synthetic tests cover incremental publication with stalled preparation/job,
 cache owner isolation, partial failure, cancellation/forced refresh, slow stale
 preload bypass with audio exclusivity, and continuously arriving event progress.
