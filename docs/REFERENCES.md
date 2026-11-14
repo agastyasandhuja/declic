@@ -63,6 +63,32 @@ external course tools depend on institution and student permissions.
 Model IDs, voice IDs, generated-code isolation implementation, performance and
 costs have not been validated by this planning scaffold.
 
+## Adaptive recommendations and learning
+
+Reviewed November 14, 2026. These primary papers motivate the planned extension
+in [PROJECT.md](PROJECT.md#planned-extension-research-backed-personalization).
+They do not establish that our combined entertainment/study feed improves learning.
+
+- Li, Chu, Langford and Schapire (WWW 2010),
+  [A Contextual-Bandit Approach to Personalized News Article Recommendation](https://arxiv.org/abs/1003.0146):
+  LinUCB balances contextual reward estimates with exploration. Evidence concerns
+  news clicks; using it for instructional formats and delayed learning is a
+  proposed adaptation, not a demonstrated educational result.
+- Greenewald, Tewari, Klasnja and Murphy (NIPS 2017),
+  [Action Centered Contextual Bandits](https://arxiv.org/abs/1711.03596):
+  separates baseline reward from intervention effect in a mobile-health setting.
+  Motivates a bounded study-now versus entertainment decision; educational timing
+  and longer-term effects require their own experiment.
+- Settles and Meeder (ACL 2016),
+  [A Trainable Spaced Repetition Model for Language Learning](https://aclanthology.org/P16-1174/):
+  half-life regression estimates recall over time from learning history. Transfer
+  from vocabulary practice to course concepts requires calibration and evaluation.
+- Roediger and Karpicke (Psychological Science 2006),
+  [Test-Enhanced Learning: Taking Memory Tests Improves Long-Term Retention](https://doi.org/10.1111/j.1467-9280.2006.01693.x):
+  retrieval practice improved delayed retention for studied prose passages despite
+  an immediate advantage for restudy. Supports delayed assessment and retrieval;
+  it does not validate compulsory feed quizzes or mixing entertainment with study.
+
 ## Nearby products
 
 - [LearnScroll](https://learnscroll.app/): advertises course-material study videos.
