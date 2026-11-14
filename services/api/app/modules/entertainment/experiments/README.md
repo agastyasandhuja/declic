@@ -28,7 +28,13 @@ By default it requests one page of `clips/discover/` and keeps up to five Reels.
 The library's public `explore_reels()` helper targets this same route, but swallows
 some exceptions; this experiment calls the route directly to distinguish failure
 from an empty feed. `--surface connected` chooses `clips/connected/` instead;
-`--count` accepts 1–5. Run another surface only after reviewing the first result.
+`--count` accepts 1–5. An explicit `--pages 2` (maximum 3) tests additional
+pages in the same fresh login, keeping up to `count` clips per page. Default is
+still one page. It deduplicates provider IDs and stops on missing/repeated
+cursors. The report records counts/end reason without the raw cursor. This
+paging code is tested with synthetic responses; real second-page retrieval has
+not been run. It does not create an automatic five-watched → five-more service.
+Run another surface only after reviewing the first result.
 Requests use normal certificate verification, limited retries and per-request
 timeouts; macOS/Linux also have a 180-second network-operation deadline.
 
@@ -53,14 +59,15 @@ To view a successfully retrieved batch in the iOS Simulator, stop the normal
 Metro server and run `npm run ios:instagram` from the repository root. See the
 [mobile preview guide](../../../../../../apps/mobile/README.md#saved-instagram-preview-in-the-ios-simulator).
 The mobile integration normalizes metadata and uses the existing player in a
-localhost-only development preview. No Atlas persistence or FastAPI route is added.
+localhost-only development preview. This simulator command does not start an API or Atlas connection;
+separate owned domain adapters now exist for core integration.
 Before serving a private feed to the app, finish A1's protected API authentication
 and bind each app user to their own provider connection on the server.
 
 Checks, from the repository root:
 
 ```sh
-.local/instagram-probe/venv/bin/python -m unittest discover -s services/api/app/modules/entertainment/experiments -p 'test_*.py' -v
+PYTHONPATH=services/api .local/instagram-probe/venv/bin/python -m unittest discover -s services/api/app/modules/entertainment/experiments -p 'test_*.py' -v
 .local/instagram-probe/venv/bin/python -m pip check
 ```
 

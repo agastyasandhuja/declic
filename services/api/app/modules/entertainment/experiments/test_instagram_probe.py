@@ -57,6 +57,36 @@ class ProbeTests(unittest.TestCase):
             self.assertFalse(json.loads(report)["authenticated"])
             self.assertFalse((Path(folder) / "catalog.json").exists())
 
+    def test_pagination_uses_provider_cursor_deduplicates_and_stops_at_end(self):
+        def media(identifier):
+            return SimpleNamespace(pk=identifier, media_type=2, product_type='clips', video_url='https://example.test/clip.mp4', code='synthetic', user=SimpleNamespace(username='synthetic'), caption_text='', video_duration=10)
+        calls = []
+        pages = [{'items': [{'media': media(1)}], 'paging_info': {'max_id': 'page-two'}},
+                 {'items': [{'media': media(1)}, {'media': media(2)}], 'paging_info': {}}]
+        def request(endpoint, **kwargs):
+            calls.append((endpoint, kwargs['params']['max_id'])); return pages.pop(0)
+        client = SimpleNamespace(private_request=request)
+        items, summary = probe.retrieve_pages(client, 'discover', 5, 3, lambda value: value)
+        self.assertEqual(calls, [('clips/discover/', ''), ('clips/discover/', 'page-two')])
+        self.assertEqual([item['provider_video_id'] for item in items], ['1', '2'])
+        self.assertEqual(summary['stop_reason'], 'end')
+        self.assertEqual(summary['pages_retrieved'], 2)
+        self.assertNotIn('page-two', json.dumps(summary))
+
+    def test_repeated_cursors_are_bounded_and_provider_failure_is_not_empty_success(self):
+        calls = []
+        def repeated(endpoint, **kwargs):
+            calls.append(endpoint); return {'items': [], 'paging_info': {'max_id': 'repeat'}}
+        _, summary = probe.retrieve_pages(SimpleNamespace(private_request=repeated), 'connected', 5, 3, lambda value: value)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(summary['stop_reason'], 'repeated_cursor')
+        def fail(*args, **kwargs):
+            raise RuntimeError('SYNTHETIC_PROVIDER_FAILURE')
+        with self.assertRaises(RuntimeError):
+            probe.retrieve_pages(SimpleNamespace(private_request=fail), 'discover', 5, 2, lambda value: value)
+        with self.assertRaises(ValueError):
+            probe.retrieve_pages(SimpleNamespace(private_request=fail), 'discover', 5, 99, lambda value: value)
+
 
 if __name__ == "__main__":
     unittest.main()

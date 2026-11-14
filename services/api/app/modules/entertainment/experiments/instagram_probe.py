@@ -73,10 +73,38 @@ def summarize_media(items: list) -> list[dict]:
     return result
 
 
+def retrieve_pages(client, surface, count, pages, extract_media):
+    """Explicitly bounded experiment, not an automatic mobile/background fetcher."""
+    if surface not in ('discover', 'connected') or not 1 <= count <= 5 or not 1 <= pages <= 3:
+        raise ValueError('Invalid bounded probe request')
+    cursor, cursors, seen, catalog = '', {''}, set(), []
+    summary = {'pages_requested': pages, 'pages_retrieved': 0, 'has_more': False, 'stop_reason': 'page_limit'}
+    for _ in range(pages):
+        response = client.private_request(f'clips/{surface}/', data=' ', params={'max_id': cursor})
+        summary['pages_retrieved'] += 1
+        raw = response.get('items') or response.get('items_with_ads') or []
+        media = [extract_media(item['media']) for item in raw if item.get('media')]
+        for item in summarize_media(media)[:count]:
+            if item['provider_video_id'] not in seen:
+                seen.add(item['provider_video_id']); catalog.append(item)
+        next_cursor = response.get('paging_info', {}).get('max_id') or ''
+        if not isinstance(next_cursor, str) or len(next_cursor) > 4096:
+            raise ValueError('Invalid provider cursor')
+        summary['has_more'] = bool(next_cursor)
+        if not next_cursor:
+            summary['stop_reason'] = 'end'; break
+        if next_cursor in cursors:
+            summary['stop_reason'] = 'repeated_cursor'; break
+        cursors.add(next_cursor); cursor = next_cursor
+    return catalog, summary
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--surface", choices=("discover", "connected"), default="discover")
     parser.add_argument("--count", type=int, choices=range(1, 6), default=5)
+    parser.add_argument("--pages", type=int, choices=range(1, 4), default=1,
+                        help="Explicitly request up to three pages in the same login; default remains one.")
     args = parser.parse_args()
     if not sys.stdin.isatty():
         parser.error("Run in your own terminal; credentials must use hidden prompts.")
@@ -109,7 +137,7 @@ def main() -> int:
     def deadline(_signum, _frame):
         raise TimeoutError("Probe deadline")
     try:
-        print("Making one SDK login call, then one small Reels request…", flush=True)
+        print(f"Making one SDK login call, then up to {args.pages} small Reels request(s)…", flush=True)
         report["stage"] = "login"
         write_private(OUTPUT / "report.json", report)
         if hasattr(signal, "SIGALRM"):
@@ -133,17 +161,14 @@ def main() -> int:
             write_private(OUTPUT / "report.json", report)
             # The high-level helper can swallow endpoint errors. Propagate them
             # instead so a provider failure cannot be reported as an empty feed.
-            endpoint = "clips/discover/" if args.surface == "discover" else "clips/connected/"
-            response = client.private_request(endpoint, data=" ", params={"max_id": ""})
             from instagrapi.extractors import extract_media_v1
-            raw_items = response.get("items") or response.get("items_with_ads") or []
-            media = [extract_media_v1(item["media"]) for item in raw_items if item.get("media")]
-            catalog = summarize_media(media)[:args.count]
+            catalog, pagination = retrieve_pages(client, args.surface, args.count, args.pages, extract_media_v1)
+            report['pagination'] = pagination
         report["retrieved"] = len(catalog)
         report["https_candidates"] = sum(bool(item["candidate_playback_url"]) for item in catalog)
         report["stage"] = "retrieved" if catalog else "empty"
         # This private local catalog is not a fixture and must never be committed.
-        write_private(OUTPUT / "catalog.json", {"acquired_at": datetime.now(timezone.utc).isoformat(), "surface": args.surface, "items": catalog})
+        write_private(OUTPUT / "catalog.json", {"acquired_at": datetime.now(timezone.utc).isoformat(), "surface": args.surface, "pagination": pagination, "items": catalog})
         print(f"Authenticated; retrieved {len(catalog)} Reels with {report['https_candidates']} HTTPS video candidates.")
         print("Inspect .local/instagram-probe/catalog.json locally to compare with your Instagram recommendations.")
         print("Matching your native feed and playing in Expo are still separate, unverified checks.")
