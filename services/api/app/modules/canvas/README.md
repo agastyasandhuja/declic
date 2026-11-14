@@ -12,9 +12,11 @@ real account and that result is recorded in [docs/status/AMOGH.md](../../../../.
 
 | Mode | When | State |
 |---|---|---|
-| `oauth` | School issues a Canvas developer key | Config slots only; flow not built |
+| `oauth` | School issues a Canvas developer key | Helpers built; untested on real Canvas (no key yet) |
 | `developer_token` | Developer's own token, bound to one test app user | Client + check script built |
 | `upload` | No Canvas access | Local private store built |
+
+First supported school: UMass Amherst, `https://umamherst.instructure.com`.
 
 ## Configure (own-account token)
 
@@ -30,7 +32,7 @@ only releases it for the one bound app user.
 ## Commands (run from `services/api`)
 
 ```sh
-python3 -m unittest app.modules.canvas.tests.test_m1      # synthetic tests, no network
+python3 -m unittest app.modules.canvas.tests.test_m1 app.modules.canvas.tests.test_oauth   # synthetic, no network
 python3 -m app.modules.canvas.validate_access             # live: who am I + active courses
 python3 -m app.modules.canvas.validate_access --redact    # counts only, safe to paste
 python3 -m app.modules.canvas.upload_local --user-id <app user> --course "<label>" file.pdf
@@ -45,4 +47,7 @@ Uploads accept .pdf, .pptx, .docx, .txt, .md up to 25 MB and are copied to
 - `client.http.CanvasClient(origin, token)` — `get`, `paginate`; GET only,
   pinned to the institution origin, bounded retries and pages.
   Raises `CanvasAuthError` (401), `CanvasUnavailable` (403/404), `CanvasError`.
+- `oauth.build_authorization_url`, `oauth.StateStore`, `oauth.exchange_code`,
+  `oauth.refresh_access_token` — school sign-in; the student's password is
+  only ever typed into the school's own login page.
 - `ingestion.uploads.store_upload(...)` — returns `(SourceDocument, created)`.
