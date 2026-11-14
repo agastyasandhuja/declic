@@ -8,13 +8,16 @@ IDs, never storage paths, tokens or the raw file bytes.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from ..canvas.assignments import Assignment, fetch_assignments
 from ..canvas.client.http import CanvasClient
 from ..canvas.courses import fetch_course_syllabi
 from ..canvas.ingestion.uploads import load_sources, read_text
+from .timing import schedule_text
 
 # Keep each excerpt bounded so one large file cannot dominate a prompt.
 MAX_EXCERPT_CHARS = 12000
@@ -50,28 +53,53 @@ class CanvasSourceResolver:
     Courses without a syllabus yield a source with text=None (recorded as
     needing more material; M2 adds modules/pages/files/assignments)."""
 
-    def __init__(self, client: CanvasClient) -> None:
+    # Learning Resource Center tutoring sections duplicate a real enrolled course
+    # and carry no graded work; skip them so one class is not counted twice.
+    _SKIP = re.compile(r"\bLRC\b", re.I)
+
+    def __init__(
+        self, client: CanvasClient, *, with_assignments: bool = True, skip_tutoring: bool = True
+    ) -> None:
         self._client = client
+        self._with_assignments = with_assignments
+        self._skip_tutoring = skip_tutoring
         self._cache: list[ResolvedSource] | None = None
+        self._assignments: dict[str, list[Assignment]] = {}
 
     def _load(self) -> list[ResolvedSource]:
         if self._cache is None:
             sources: list[ResolvedSource] = []
-            for course_id, name, text in fetch_course_syllabi(self._client):
+            for course_id, name, syllabus in fetch_course_syllabi(self._client):
+                if self._skip_tutoring and self._SKIP.search(name):
+                    continue
+                parts: list[str] = []
+                if syllabus:
+                    parts.append(f"SYLLABUS:\n{syllabus}")
+                # Real dated graded work: gives topics + timing even with no syllabus.
+                if self._with_assignments:
+                    assignments = fetch_assignments(self._client, course_id)
+                    self._assignments[course_id] = assignments
+                    if assignments:
+                        parts.append(schedule_text(assignments))
+                text = "\n\n".join(parts) or None
                 if text and len(text) > MAX_EXCERPT_CHARS:
                     text = text[:MAX_EXCERPT_CHARS]
                 sources.append(
                     ResolvedSource(
-                        source_id=f"src_canvas_{course_id}_syllabus",
+                        source_id=f"src_canvas_{course_id}_overview",
                         course_id=course_id,
-                        title=f"{name} — syllabus",
-                        resource_type="canvas_syllabus",
+                        title=f"{name} — syllabus & schedule",
+                        resource_type="canvas_course",
                         provenance_mode="canvas",
                         text=text,
                     )
                 )
             self._cache = sources
         return self._cache
+
+    def assignments_for_course(self, course_id: str) -> list[Assignment]:
+        self._load()
+        return self._assignments.get(course_id, [])
 
     def list_sources(self) -> list[ResolvedSource]:
         return self._load()

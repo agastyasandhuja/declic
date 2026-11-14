@@ -48,9 +48,18 @@ def build_plan_prompt(course: dict, units: list[dict], assessments: list[dict], 
             for a in assessments
         ],
     }
+    focus = ""
+    timing = course.get("timing")
+    if timing and timing.get("upcoming"):
+        soon = "; ".join(f"{i['due_date']} ({i['days_until']}d): {i['name']}" for i in timing["upcoming"][:5])
+        focus = (
+            "\n\nREAL-TIME PRIORITY — this student's nearest upcoming graded work "
+            f"(as of today): {soon}.\nPrioritize objectives that help with this "
+            "upcoming work. Do not invent exam dates.\n"
+        )
     return (
         f"Allowed suggested_formats: {', '.join(formats)}\n\n"
-        f"Validated course profile:\n{json.dumps(compact, indent=2)}\n\n"
+        f"Validated course profile:\n{json.dumps(compact, indent=2)}{focus}\n\n"
         "Propose the lesson objectives as instructed. Keep suggested practice "
         "separate from confirmed exam coverage."
     )

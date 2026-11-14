@@ -242,10 +242,10 @@ class CanvasResolverTests(unittest.TestCase):
 
         canvas = CanvasClient("https://canvas.example.edu", CanvasSecret("t"),
                               transport=transport, sleep=lambda _: None)
-        resolver = CanvasSourceResolver(canvas)
+        resolver = CanvasSourceResolver(canvas, with_assignments=False)  # syllabus only here
         self.assertEqual(resolver.course_ids(), ["101", "102"])
         dsa = resolver.sources_for_course("101")[0]
-        self.assertEqual(dsa.source_id, "src_canvas_101_syllabus")
+        self.assertEqual(dsa.source_id, "src_canvas_101_overview")
         self.assertIn("linked lists", dsa.text)
         self.assertIsNone(resolver.sources_for_course("102")[0].text)
 

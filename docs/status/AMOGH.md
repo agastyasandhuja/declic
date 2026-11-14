@@ -24,6 +24,25 @@ Live access confirmed with Amogh's own access token in `developer_token` mode.
 - `--demo` mode and synthetic demo data so the output shape is viewable with
   no token (clearly labelled "not a live sync").
 
+## M2 slice + real-time prioritization (2026-11-14, live-verified)
+
+- `canvas/assignments.py`: read-only fetch of the student's assignments with
+  their own due dates. Used as M2 ingestion; no writes.
+- `curriculum/timing.py`: deterministic, real-time urgency from ACTUAL Canvas
+  due dates vs the real current time. Nearest upcoming item, upcoming count,
+  urgency score; undated exams reported, never date-guessed.
+- `CanvasSourceResolver` now also pulls each course's assignment schedule, so
+  courses with no syllabus (the real enrolled courses) become usable; Learning
+  Resource Center (LRC) tutoring duplicates are filtered out.
+- `run_demo` orders courses by real urgency and tells Gemini the student's
+  nearest upcoming work so lessons target it. Verified live: all 4 real courses
+  ready, ordered by true deadlines (e.g. Multivariate Calc next due in 2 days);
+  Gemini's lessons track upcoming topics (Data Structures -> heaps, matching the
+  upcoming "PA11 Heaps" assignment). 19 lessons across the real courses.
+- Curriculum owns importance/evidence/timing signals; Agastya owns the final
+  runtime feed ranking (consumes these).
+- Tests: `test_timing` (8) cover urgency, no-invented-dates, exam detection.
+
 ## M4 — Gemini lesson planning (2026-11-14, done + live-verified)
 
 - `planning/planner.py`: a second Gemini call per ready course proposes 2-3

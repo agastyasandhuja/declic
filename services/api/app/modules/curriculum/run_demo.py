@@ -39,12 +39,41 @@ DEFAULT_STORAGE = REPO_ROOT / ".local" / "academics"
 CANVAS_ENV = REPO_ROOT / "services" / "api" / ".env.canvas.local"
 
 
+def _attach_timing(profile: dict, resolver) -> None:
+    """Compute each course's real-time urgency from live Canvas due dates and
+    sort courses most-urgent first. Deterministic; no invented dates."""
+    from .timing import course_timing
+
+    for course in profile["courses"]:
+        assignments = resolver.assignments_for_course(course["course_id"])
+        t = course_timing(assignments)
+        course["timing"] = {
+            "next_due_name": t.next_due_name,
+            "next_due_date": t.next_due_date,
+            "days_until_next": t.days_until_next,
+            "upcoming_count": t.upcoming_count,
+            "urgency": t.urgency,
+            "has_undated_exam": t.has_undated_exam,
+            "upcoming": [{"name": i.name, "due_date": i.due_at.date().isoformat(),
+                          "days_until": i.days_until, "is_exam": i.is_exam} for i in t.upcoming],
+        }
+    profile["courses"].sort(key=lambda c: c.get("timing", {}).get("urgency", 0.0), reverse=True)
+
+
 def _print_profile(profile: dict) -> None:
     print(f"\nProfile {profile['profile_id']} revision {profile['revision']} "
           f"({profile['status']}), generated {profile['generated_at']}")
     print(f"Gemini token usage: {profile['usage']}")
+    print("(courses ordered by real-time urgency: soonest upcoming work first)")
     for course in profile["courses"]:
         print(f"\n== Course [{course['import_status']}] {course.get('title') or course['course_id']}")
+        t = course.get("timing") or {}
+        if t.get("days_until_next") is not None:
+            exam = " | exam listed (no Canvas date)" if t.get("has_undated_exam") else ""
+            print(f"   NEXT DUE in {t['days_until_next']}d: {t['next_due_name']} ({t['next_due_date']}) "
+                  f"| {t['upcoming_count']} upcoming | urgency {t['urgency']}{exam}")
+        elif t.get("has_undated_exam"):
+            print("   no upcoming dated work; an exam is listed without a Canvas date")
         if course.get("term") or course.get("timezone"):
             print(f"   term: {course.get('term')} | timezone: {course.get('timezone')}")
         for book in course.get("textbooks", []):
@@ -147,6 +176,8 @@ def main(argv: list[str] | None = None) -> int:
     except GeminiError as err:
         print(f"Gemini call failed: {err}", file=sys.stderr)
         return 1
+    if isinstance(resolver, CanvasSourceResolver):
+        _attach_timing(profile, resolver)  # real-time urgency from live due dates
     _print_profile(profile)
 
     if not any(c["import_status"] == "ready" for c in profile["courses"]):
