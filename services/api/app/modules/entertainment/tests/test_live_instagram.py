@@ -265,6 +265,10 @@ class ConnectionTests(unittest.TestCase):
             def login(self, *args, **kwargs):
                 print(marker)
                 return True
+            def _send_private_request(self, endpoint, **kwargs):
+                if endpoint != 'accounts/current_user/':
+                    raise AssertionError('Unexpected request')
+                return {'user': {'pk': 1}}
             def get_settings(self):
                 return {'uuids': {'phone_id': 'synthetic-device'}, 'cookies': {'sessionid': marker}, 'password': password}
         provider = Provider([ProviderPage([reel(1)], 'private-next'), ProviderPage([reel(2)], None)])
@@ -273,7 +277,7 @@ class ConnectionTests(unittest.TestCase):
             output = io.StringIO()
             with patch('sys.argv', ['connect', '--connection', str(path), '--owner-user-id', OWNER]), \
                  patch('sys.stdin.isatty', return_value=True), \
-                 patch('getpass.getpass', side_effect=['synthetic', password, '']), \
+                 patch('getpass.getpass', side_effect=['synthetic', password]), \
                  patch.object(instagram_connection, 'make_instagram_client', return_value=Client()), \
                  patch.object(instagram_connection, 'InstagramReelsProvider', return_value=provider), \
                  contextlib.redirect_stdout(output):
@@ -282,9 +286,50 @@ class ConnectionTests(unittest.TestCase):
             self.assertEqual(report['pages_retrieved'], 2)
             self.assertEqual(report['unique_reels'], 2)
             self.assertEqual(report['status'], 'completed')
+            self.assertTrue(report['session_verified'])
+            self.assertFalse(report['two_factor_requested'])
             self.assertNotIn(marker, output.getvalue() + json.dumps(report))
             self.assertNotIn(password, path.read_text() + output.getvalue() + json.dumps(report))
             self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            self.assertTrue(provider.closed)
+
+    def test_browser_session_cli_uses_hidden_cookie_without_password_login_or_private_output(self):
+        cookie = '123%3ASYNTHETIC_SESSION_COOKIE_NEVER_EXPORT'
+        class Client:
+            user_id = None
+            def login(self, *args, **kwargs):
+                raise AssertionError('No password login')
+            def login_by_sessionid(self, value):
+                if value != cookie:
+                    raise AssertionError('Unexpected session')
+                self.user_id = 123
+                print(cookie)
+                return True
+            def _send_private_request(self, endpoint, **kwargs):
+                return {'user': {'pk': 123, 'username': 'synthetic'}}
+            def get_settings(self):
+                return {'uuids': {'phone_id': 'synthetic-device'},
+                        'cookies': {'sessionid': cookie} if self.user_id else {}}
+        provider = Provider([ProviderPage([reel(1)], None)])
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'connection.json'
+            output = io.StringIO()
+            with patch('sys.argv', ['connect', '--connection', str(path), '--owner-user-id', OWNER, '--browser-session']), \
+                 patch('sys.stdin.isatty', return_value=True), \
+                 patch('getpass.getpass', side_effect=['synthetic', cookie]) as prompts, \
+                 patch.object(instagram_connection, 'make_instagram_client', return_value=Client()), \
+                 patch.object(instagram_connection, 'InstagramReelsProvider', return_value=provider), \
+                 contextlib.redirect_stdout(output):
+                self.assertEqual(instagram_connection.main(), 0)
+            report = json.loads((path.parent / 'report.json').read_text())
+            self.assertEqual(report['connection_method'], 'browser_session')
+            self.assertTrue(report['session_verified'])
+            self.assertFalse(report['two_factor_requested'])
+            self.assertEqual(prompts.call_count, 2)
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            self.assertNotIn(cookie, output.getvalue() + json.dumps(report))
+            pending = json.loads(next(path.parent.glob('device-*.json')).read_text())
+            self.assertNotIn(cookie, json.dumps(pending))
             self.assertTrue(provider.closed)
 
     def test_restored_sdk_session_forces_tls_timeouts_and_disables_checkpoint_handling(self):

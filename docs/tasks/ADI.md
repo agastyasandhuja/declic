@@ -109,12 +109,21 @@ Live-feed follow-up, November 14: implemented an owner-bound server session,
 on-demand provider paging, retry-stable app cursors, leftovers/deduplication,
 known-asset playback re-resolution, and bounded rolling mobile prefetch. The
 existing saved four-Reel adapter remains finite. See [live setup](../ADI_INSTAGRAM_LIVE.md).
-Thirty-one synthetic live/setup backend tests and thirteen existing entertainment
+Fifty-two synthetic live/setup backend tests and thirteen existing entertainment
 tests pass; mobile tests cover 250 clips without exceeding the 100-record window.
 The first connection attempt stopped in app sign-in; the operator-UUID option
 then reached Instagram login, which requested phone approval/verification.
 The helper now reports safe stage-specific errors and preserves device identity
-across manual attempts. Actual later-page retrieval/renewal and physical-phone
+across manual attempts, including its device-registration key. Local code input
+now waits for a supported 2FA challenge and SMS method selection; session
+publication requires a successful current-user read. Safe request-phase/status
+diagnostics distinguish remaining client rejections without raw provider data.
+A user-run attempt exposed a CAA/legacy password loop. The optional local
+--browser-session mode restores the owner's official-browser session and verifies
+its identity without an SDK password request. The user-run connection verified
+two live pages containing four unique Reels and a continuation cursor. Useful
+continued acquisition beyond four and physical-phone playback remain unverified.
+Actual later-page retrieval/renewal and physical-phone
 acceptance remain unverified. The user approved the authenticated Expo tunnel
 transfer for this phone test. Shared core assembly remains Agastya's work; no
 academic or shared database code was changed.
