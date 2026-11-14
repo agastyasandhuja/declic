@@ -29,7 +29,9 @@ from ..canvas.ingestion.uploads import UploadRejected, store_upload
 from .client.gemini import GeminiClient, GeminiError
 from .config import GeminiConfigError, load_settings
 from .extract import build_profile
+from .planning.planner import build_lesson_plans
 from .sources import CanvasSourceResolver, SourceResolver
+from .store import save_plans
 
 REPO_ROOT = Path(__file__).resolve().parents[5]
 DEFAULT_SYLLABUS = REPO_ROOT / "fixtures" / "academics" / "sample_syllabus_dsa.txt"
@@ -64,6 +66,22 @@ def _print_profile(profile: dict) -> None:
             print(f"   ! {warning}")
 
 
+def _print_plans(plans: list[dict]) -> None:
+    for plan in plans:
+        print(f"\n== Lesson plan {plan['plan_id']} for course {plan['course_id']} "
+              f"({plan['status']}, {len(plan['requests'])} lessons)")
+        for lr in plan["requests"]:
+            exam = {"explicit": "confirmed exam", "inferred": "maybe exam", "unknown": "not exam"}[lr["exam_scope_status"]]
+            tag = "suggested practice" if lr["evidence_status"] == "suggested_practice" else exam
+            print(f"   [{lr['importance']}] {lr['title']} ({lr['target_duration_seconds']}s, {tag})")
+            print(f"      goal: {lr['learning_goal']}")
+            print(f"      formats: {', '.join(lr['suggested_formats'])} | "
+                  f"approaches: {', '.join(lr['teaching_approaches']) or 'n/a'} | "
+                  f"sources: {', '.join(lr['source_refs']) or 'none'}")
+        for warning in plan.get("warnings", []):
+            print(f"   ! {warning}")
+
+
 def _canvas_resolver(user_id: str) -> CanvasSourceResolver:
     import os
 
@@ -94,6 +112,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--course", default="Introduction to Data Structures (DEMO 187)")
     parser.add_argument("--user-id", default="demo-user-amogh")
     parser.add_argument("--storage-dir", type=Path, default=DEFAULT_STORAGE)
+    parser.add_argument("--plan", action="store_true", help="also run M4 Gemini lesson planning")
     args = parser.parse_args(argv)
 
     # Step 1: get the student's sources (live Canvas by default).
@@ -130,12 +149,35 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     _print_profile(profile)
 
-    if any(c["import_status"] == "ready" for c in profile["courses"]):
-        print("\nLIVE GEMINI CALL: VERIFIED (a real API response was received and validated).")
+    if not any(c["import_status"] == "ready" for c in profile["courses"]):
+        print("\nLIVE GEMINI CALL: FAILED — no course was extracted. See the warnings above.")
+        return 1
+    print("\nM3 EXTRACTION: VERIFIED (real Gemini response received and validated).")
+
+    # Step 3 (M4): plan 30-60s lessons across courses with a second Gemini call.
+    if not args.plan:
         return 0
-    print("\nLIVE GEMINI CALL: FAILED — no course was extracted. See the warnings above.")
-    print("If it was a timeout, raise GEMINI_TIMEOUT or try a faster model such as gemini-2.5-flash.")
-    return 1
+    print("\n[3/3] Planning lessons with Gemini ...")
+    try:
+        plans = build_lesson_plans(profile, GeminiClient(settings))
+    except GeminiError as err:
+        print(f"lesson planning failed: {err}", file=sys.stderr)
+        return 1
+    save_plans(args.storage_dir, args.user_id, plans)
+    _print_plans(plans)
+    total = sum(len(p["requests"]) for p in plans)
+    if total:
+        from .handoff import build_profile_ready_event
+
+        event = build_profile_ready_event(profile, plans)
+        print(f"\nHandoff event for Agastya: {event['event']} "
+              f"(profile {event['profile_id']} rev {event['revision']}, "
+              f"{len(event['plan_ids'])} plan(s))")
+        print(f"\nM4 LESSON PLANNING: VERIFIED — Gemini proposed {total} lesson objectives "
+              f"across {len([p for p in plans if p['requests']])} course(s).")
+        return 0
+    print("\nM4 LESSON PLANNING: no lessons proposed (courses may lack enough material).")
+    return 0
 
 
 if __name__ == "__main__":

@@ -83,3 +83,46 @@ EXTRACTION_SCHEMA: dict = {
     },
     "required": ["course_title", "term", "timezone", "units", "assessments", "textbooks", "warnings"],
 }
+
+# Formats come from the learning contract (contracts/learning.md).
+LESSON_FORMATS = [
+    "dialogue_gameplay", "visual_explainer", "worked_example", "misconception", "analogy_story",
+]
+_IMPORTANCE = ["core", "supporting", "optional"]
+
+# M4: what we ask Gemini to propose for one course's lesson plan.
+PLAN_SCHEMA: dict = {
+    "type": "object",
+    "properties": {
+        "lessons": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "unit_title": {"type": "string"},
+                    "objective_title": {"type": "string", "description": "one narrow 30-60s goal"},
+                    "learning_goal": {"type": "string"},
+                    "importance": {"type": "string", "enum": _IMPORTANCE},
+                    "is_suggested_practice": {
+                        "type": "boolean",
+                        "description": "true if enrichment/practice NOT confirmed as exam coverage",
+                    },
+                    "exam_related": {"type": "boolean"},
+                    "prerequisite_titles": {"type": "array", "items": {"type": "string"}},
+                    "suggested_formats": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": LESSON_FORMATS},
+                    },
+                    "teaching_approaches": {"type": "array", "items": {"type": "string"}},
+                    "target_duration_seconds": {"type": "integer"},
+                },
+                "required": [
+                    "unit_title", "objective_title", "learning_goal", "importance",
+                    "is_suggested_practice", "exam_related", "prerequisite_titles",
+                    "suggested_formats", "teaching_approaches", "target_duration_seconds",
+                ],
+            },
+        }
+    },
+    "required": ["lessons"],
+}

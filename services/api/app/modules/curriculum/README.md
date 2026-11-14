@@ -32,7 +32,8 @@ model is recommended; model names change, so discover yours with `list_models`.
 
 ```sh
 python3 -m app.modules.curriculum.list_models   # Gemini models your key can use
-python3 -m app.modules.curriculum.run_demo       # live Canvas -> Gemini -> profile
+python3 -m app.modules.curriculum.run_demo         # live Canvas -> Gemini -> profile
+python3 -m app.modules.curriculum.run_demo --plan  # also M4 Gemini lesson planning
 python3 -m app.modules.curriculum.run_demo --source upload --syllabus f.txt --course "Name"
 python3 -m unittest app.modules.curriculum.tests.test_curriculum   # synthetic, no network
 ```
@@ -53,6 +54,11 @@ reports the live call as pending. `--source upload` is the fallback.
    warns on conflicting dates.
 5. `extract.build_profile` — assembles and versions the AcademicProfile; one
    failing course does not abort the others. `store.py` persists it.
+6. `planning/planner.build_lesson_plans` — M4: a second Gemini call per course
+   proposes 30-60s lesson objectives, assembled into contract LessonRequest
+   records (suggested practice kept separate from confirmed exam coverage).
+7. `handoff.build_profile_ready_event` — the academics.profile.ready payload
+   for Agastya. A synthetic handoff plan lives in fixtures/academics/.
 
 ## Safety
 

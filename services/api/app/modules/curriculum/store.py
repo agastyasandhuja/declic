@@ -39,3 +39,18 @@ def load_profile(storage_dir: Path, user_id: str) -> dict | None:
     if not path.exists():
         return None
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def save_plans(storage_dir: Path, user_id: str, plans: list[dict]) -> Path:
+    folder = _user_folder(storage_dir, user_id)
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / "plans.json"
+    path.write_text(json.dumps(plans, indent=2), encoding="utf-8")
+    return path
+
+
+def load_plans(storage_dir: Path, user_id: str) -> list[dict]:
+    path = _user_folder(storage_dir, user_id) / "plans.json"
+    if not path.exists():
+        return []
+    return json.loads(path.read_text(encoding="utf-8"))

@@ -24,6 +24,23 @@ Live access confirmed with Amogh's own access token in `developer_token` mode.
 - `--demo` mode and synthetic demo data so the output shape is viewable with
   no token (clearly labelled "not a live sync").
 
+## M4 — Gemini lesson planning (2026-11-14, done + live-verified)
+
+- `planning/planner.py`: a second Gemini call per ready course proposes 2-3
+  short (30-60s) lesson objectives; backend assembles contract LessonPlan +
+  LessonRequest records with IDs, source refs, evidence/scope status, formats,
+  teaching approaches, prerequisites, scope=private.
+- Suggested practice is kept separate from confirmed exam coverage; a practice
+  item can never carry exam scope. Durations clamped to 30-60; bad enums/formats
+  coerced; objectives deduped by meaning within a course.
+- Verified LIVE: `run_demo --plan` on real Canvas produced 12 lesson objectives
+  across 4 courses. On the synthetic sample syllabus, lessons are fully
+  source-grounded (reversal is a separate objective from the intro one).
+- Handoff: `handoff.build_profile_ready_event` builds the academics.profile.ready
+  payload (profile_id, revision, course_ids, plan_ids). Synthetic plan fixture:
+  fixtures/academics/lesson_plan_sample.json. No event bus yet (core pending).
+- `python3 -m unittest app.modules.curriculum.tests.test_planning` -> 6 pass.
+
 ## M3 — Gemini course profile extraction (2026-11-14, done + live-verified)
 
 - Real Google Gemini integration under `services/api/app/modules/curriculum/`,
