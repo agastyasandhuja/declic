@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fixture from '../../../fixtures/entertainment/feed.json';
-import { appendFeedWindow, shouldPrefetchPage } from '../src/features/feed/source';
+import { FeedHistory, appendFeedWindow, shouldPrefetchPage } from '../src/features/feed/source';
 import { parseFeedPage } from '../src/contracts/validate';
 
 const sample = parseFeedPage(fixture).items[0];
@@ -39,7 +39,24 @@ test('rolling pages deduplicate both identities and never evict current or unsee
 test('prefetch runs near the end only while visible, foregrounded, idle and healthy', () => {
   const state = { index: 2, count: 5, hasNext: true, focused: true, foreground: true, loading: false, hasError: false };
   assert.ok(shouldPrefetchPage(state));
-  for (const patch of [{ index: 0 }, { count: 0 }, { hasNext: false }, { focused: false }, { foreground: false }, { loading: true }, { hasError: true }]) {
+  for (const patch of [{ index: 0, count: 10 }, { count: 0 }, { hasNext: false }, { focused: false }, { foreground: false }, { loading: true }, { hasError: true }]) {
     assert.equal(shouldPrefetchPage({ ...state, ...patch }), false);
   }
+});
+
+
+test('session history excludes watched clips after a reload or rolling window eviction', () => {
+  const history = new FeedHistory();
+  history.remember(clip(1));
+  assert.deepEqual(history.unseen([clip(1), clip(2)]).map(v => v.video_id), ['synthetic_2']);
+  // Provider identities survive a new internal ID or renewed signed URL.
+  assert.equal(history.unseen([{ ...clip(1), video_id: 'another-id' }]).length, 0);
+  assert.equal(history.unseen([clip(2)]).length, 1); // Prefetch does not mark it watched.
+});
+
+test('history stays bounded and initial short batches prefetch before the first swipe', () => {
+  const history = new FeedHistory(2);
+  history.remember(clip(1)); history.remember(clip(2)); history.remember(clip(3));
+  assert.deepEqual(history.unseen([clip(1), clip(2), clip(3)]).map(v => v.video_id), ['synthetic_1']);
+  assert.equal(shouldPrefetchPage({ index: 0, count: 4, hasNext: true, focused: true, foreground: true, loading: false, hasError: false }), true);
 });

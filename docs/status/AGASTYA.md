@@ -484,3 +484,33 @@ Academics remains Amogh's local snapshot persistence; his Atlas schemas/reposito
 are still needed. Video Storage signing, academic router composition, generation
 handoff and quiz content provisioning remain separate integration work. This
 change does not invent academic database schemas or publish media.
+
+## déclic design and app-branch integration — November 14, 2026
+
+Implemented the newer v2 déclic branding from the user-supplied ZIP in isolated
+`integration/declic-app` (`.local/declic-app`). All current remote branch tips are
+ancestors after merge `bbb3481`; original uncommitted video/renderer work is intact.
+Added licensed bundled fonts, app icons, welcome/auth UI, purple/coral feed actions,
+Profile collections and playback settings, and authenticated academic profile UI.
+No existing v1 fields or application identity changed.
+
+Verification and exact distinctions: [DECLIC_VERIFICATION.md](../DECLIC_VERIFICATION.md).
+Typecheck, 36 mobile tests, contract check, iOS/web export, 86 shared API/curriculum
+checks and 22 Instagram checks passed;
+7 real-database tests skipped. Live provider check retrieved 6 unique Reels over
+2 pages. Browser UI playback and navigation were exercised with fixture media.
+Native automation is awaiting dismissal of a stuck Simulator menu; no physical
+phone or redesigned live native playback claim is made.
+
+[Proposed API/storage follow-up](../decisions/009-declic-ui-api-storage.md) records
+owner-scoped collections/preferences, connection health, truthful progress,
+mixed feed/quiz UI, private sharing, runtime assembly and optional provider deps.
+Session-only Clicked/Saved state is capped and cleared on sign-out. No migrations,
+production deployment, provider credential collection or private media commits.
+
+User-reported Reels issues addressed: POST-body provider cursor, continuation and
+leftovers retained on reload, bounded session deduplication, earlier page prefetch,
+two stable preloaded media surfaces, no loading flash for ready buffers, bounded
+transient API retries, and whole-frame Fit/Fill control. Browser checks confirmed
+failed-clip recovery and watched clips excluded after feed remount. The loopback
+API now runs this integration on port 8000; Expo preview runs on 8094.

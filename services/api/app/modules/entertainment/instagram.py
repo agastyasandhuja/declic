@@ -135,7 +135,9 @@ class InstagramReelsProvider:
         return normalized_items(result)
 
     def read_page(self, cursor=None):
-        response = self._request(f'clips/{self.surface}/', data=' ', params={'max_id': cursor or ''})
+        # Continuation belongs in this POST body. Query-only cursors can replay
+        # the first provider batch despite a different returned cursor.
+        response = self._request(f'clips/{self.surface}/', data={'max_id': cursor or ''})
         try:
             rows = response.get('items') or response.get('items_with_ads') or []
             paging = response.get('paging_info') or {}

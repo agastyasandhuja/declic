@@ -98,8 +98,12 @@ class LiveInstagramCatalog:
                 self._unavailable()
                 self.epoch, self.started, self.root_at = secrets.token_hex(16), now, now
                 self.page_size, self.next_page = limit, 0
-                self.provider_cursor, self.exhausted = None, False
-                self.pending.clear(); self.pages.clear(); self.provider_cursors.clear()
+                # A new client traversal continues the provider queue instead of
+                # returning to its first batch. Keep recent IDs across reloads.
+                if self.exhausted and not self.pending:
+                    self.provider_cursor, self.exhausted = None, False
+                    self.provider_cursors.clear()
+                self.pages.clear()
                 number = 0
             if number in self.pages:
                 return self._cached_page(number)

@@ -1,12 +1,15 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
+import { AccessibilityInfo, ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from './state/AuthProvider';
+import { useFonts } from 'expo-font';
+import { ProfileScreen, type PlaybackPreferences } from './features/settings/ProfileScreen';
+import type { EntertainmentVideo } from './contracts/generated';
 import { AuthScreen } from './features/auth/AuthScreen';
 import { FeedScreen, type LocalPlaybackEvent } from './features/feed/FeedScreen';
-import { createApiFeedSource, createFixtureSource, createSavedInstagramSource } from './features/feed/source';
+import { FeedHistory, createApiFeedSource, createFixtureSource, createSavedInstagramSource } from './features/feed/source';
 import savedInstagramCatalog from '@local/instagram-preview';
 import { parseFeedPage } from './contracts/validate';
 import { CoursesScreen } from './features/settings/CoursesScreen';
@@ -16,11 +19,18 @@ import { config } from './config';
 import { theme, sharedStyles as s } from './theme';
 import { Button } from './components/Button';
 
-type Route = 'feed' | 'courses' | 'lab';
+type Route = 'feed' | 'courses' | 'profile' | 'lab';
 const savedInstagramPage = parseFeedPage(savedInstagramCatalog);
 const savedInstagramSource = __DEV__ && Platform.OS === 'ios' && savedInstagramPage.items.length ? createSavedInstagramSource(savedInstagramPage) : null;
 function SignedInShell() {
   const { user, api, mode } = useAuth(); const insets = useSafeAreaInsets();
+  const history = useRef(new FeedHistory()).current;
+  const [clicked, setClicked] = useState<EntertainmentVideo[]>([]);
+  const [saved, setSaved] = useState<EntertainmentVideo[]>([]);
+  const [replay, setReplay] = useState<EntertainmentVideo | null>(null);
+  const [preferences, setPreferences] = useState<PlaybackPreferences>({ muted: Platform.OS === 'web', captions: true, reducedMotion: false });
+  useEffect(() => { void AccessibilityInfo.isReduceMotionEnabled().then(reducedMotion => setPreferences(p => ({ ...p, reducedMotion }))).catch(() => undefined); const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', reducedMotion => setPreferences(p => ({ ...p, reducedMotion }))); return () => subscription.remove(); }, []);
+  const toggle = (setter: React.Dispatch<React.SetStateAction<EntertainmentVideo[]>>, video: EntertainmentVideo) => setter(items => items.some(item => item.video_id === video.video_id) ? items.filter(item => item.video_id !== video.video_id) : [...items.slice(-99), video]);
   const [route, setRoute] = useState<Route>('feed'); const [feature, setFeature] = useState<'academics' | 'learning' | null>(null);
   const [brokenClip, setBrokenClip] = useState(false); const [live, setLive] = useState(mode === 'signed_in' && config.feedSource === 'api');
   const [savedInstagram, setSavedInstagram] = useState(Boolean(savedInstagramSource));
@@ -28,12 +38,13 @@ function SignedInShell() {
   const savedInstagramAvailable = Boolean(savedInstagramSource);
   const [events, setEvents] = useState<LocalPlaybackEvent[]>([]);
   const onEvent = useCallback((event: LocalPlaybackEvent) => setEvents(previous => [...previous.slice(-19), event]), []);
-  const source = useMemo(() => live ? createApiFeedSource(api) : savedInstagram && savedInstagramSource ? savedInstagramSource : createFixtureSource(), [live, api, savedInstagram]);
+  const baseSource = useMemo(() => live ? createApiFeedSource(api) : savedInstagram && savedInstagramSource ? savedInstagramSource : createFixtureSource(), [live, api, savedInstagram]);
+  const source = useMemo(() => replay ? { ...baseSource, getPage: async () => { const playback = replay.playback.expires_at && Date.parse(replay.playback.expires_at) <= Date.now() ? await baseSource.resolvePlayback(replay.video_id) : replay.playback; return { schema_version: '1' as const, items: [{ ...replay, playback }], next_cursor: null }; } } : baseSource, [baseSource, replay]);
   const Feature = feature ? featureRegistry[feature] : null;
   return <View style={s.screen}>
-    <View style={[styles.screen, route !== 'feed' || feature ? styles.hidden : undefined]}><FeedScreen key={`${source.mode}:${brokenClip}:${feedRevision}`} source={source} focused={route === 'feed' && !feature} brokenClip={brokenClip && source.mode === 'fixture'} onEvent={onEvent} onReload={() => setFeedRevision(value => value + 1)} /></View>
-    {feature && user ? <View style={styles.screen}>{Feature ? <Feature user={user} api={api} theme={theme} isPreview={mode === 'preview'} onBack={() => setFeature(null)} onOpenFeed={() => { setFeature(null); setRoute('feed'); }} /> : <View style={[styles.placeholder, { paddingTop: insets.top + 30 }]}><Ionicons name={feature === 'academics' ? 'school-outline' : 'sparkles-outline'} size={48} color={theme.colors.accent} /><Text style={s.eyebrow}>INTEGRATION WORKSPACE</Text><Text style={s.title}>{feature === 'academics' ? 'Course connection,\ncoming together.' : 'A new way to\nunderstand.'}</Text><Text style={s.subtitle}>This slot is ready for {feature === 'academics' ? 'Amogh’s academic' : 'Agastya’s learning'} components. Shared identity, API client, and theme are available through explicit props.</Text><Button title="Back to the lab" secondary onPress={() => setFeature(null)} /></View>}</View> : route === 'courses' ? <View style={styles.screen}><CoursesScreen /></View> : route === 'lab' ? <View style={styles.screen}><LabScreen brokenClip={brokenClip} setBrokenClip={setBrokenClip} savedInstagram={savedInstagram} savedInstagramAvailable={savedInstagramAvailable} setSavedInstagram={value => { setSavedInstagram(value); if (value) setLive(false); }} live={live} setLive={value => { setLive(value); if (value) setSavedInstagram(false); }} events={events} openFeature={setFeature} /></View> : null}
-    <View style={[styles.tabs, { paddingBottom: Math.max(insets.bottom, 12) }]}>{([{ key: 'feed', label: 'Your feed', icon: 'play-outline' }, { key: 'courses', label: 'Courses', icon: 'albums-outline' }, { key: 'lab', label: 'The lab', icon: 'options-outline' }] as const).map(tab => <Pressable key={tab.key} accessibilityRole="tab" accessibilityLabel={tab.label} accessibilityState={{ selected: route === tab.key && !feature }} testID={`tab-${tab.key}`} onPress={() => { setFeature(null); setRoute(tab.key); }} style={styles.tab}><View style={[styles.tabIcon, route === tab.key && !feature && styles.activeIcon]}><Ionicons name={tab.icon} size={21} color={route === tab.key && !feature ? theme.colors.accent : '#809079'} /></View><Text style={[styles.tabLabel, route === tab.key && !feature && { color: theme.colors.accent }]}>{tab.label}</Text></Pressable>)}</View>
+    <View style={[styles.screen, route !== 'feed' || feature ? styles.hidden : undefined]}><FeedScreen key={`${source.mode}:${replay?.video_id ?? ''}:${brokenClip}:${feedRevision}`} source={source} history={history} allowReplay={Boolean(replay)} focused={route === 'feed' && !feature} brokenClip={brokenClip && source.mode === 'fixture'} onEvent={onEvent} onReload={() => { setReplay(null); setFeedRevision(value => value + 1); }} preferences={preferences} setPreferences={setPreferences} clickedIds={clicked.map(v => v.video_id)} savedIds={saved.map(v => v.video_id)} onClickVideo={video => toggle(setClicked, video)} onSaveVideo={video => toggle(setSaved, video)} /></View>
+    {feature && user ? <View style={styles.screen}>{Feature ? <Feature user={user} api={api} theme={theme} isPreview={mode === 'preview'} onBack={() => setFeature(null)} onOpenFeed={() => { setFeature(null); setRoute('feed'); }} /> : <View style={[styles.placeholder, { paddingTop: insets.top + 30 }]}><Ionicons name={feature === 'academics' ? 'school-outline' : 'sparkles-outline'} size={48} color={theme.colors.accent} /><Text style={s.eyebrow}>INTEGRATION WORKSPACE</Text><Text style={s.title}>{feature === 'academics' ? 'Course connection,\ncoming together.' : 'A new way to\nunderstand.'}</Text><Text style={s.subtitle}>This slot is ready for {feature === 'academics' ? 'Amogh’s academic' : 'Agastya’s learning'} components. Shared identity, API client, and theme are available through explicit props.</Text><Button title="Back to the lab" secondary onPress={() => setFeature(null)} /></View>}</View> : route === 'courses' ? <View style={styles.screen}><CoursesScreen /></View> : route === 'profile' ? <View style={styles.screen}><ProfileScreen clicked={clicked} saved={saved} onOpen={video => { setReplay(video); setRoute('feed'); }} preferences={preferences} setPreferences={setPreferences} openCourses={() => setRoute('courses')} openLab={() => setRoute('lab')} sourceLabel={source.mode === 'api' ? 'Connected feed selected' : source.mode === 'saved_instagram' ? 'Saved Reels preview' : 'Not connected · sample clips'} /></View> : route === 'lab' && __DEV__ ? <View style={styles.screen}><LabScreen brokenClip={brokenClip} setBrokenClip={setBrokenClip} savedInstagram={savedInstagram} savedInstagramAvailable={savedInstagramAvailable} setSavedInstagram={value => { setSavedInstagram(value); if (value) setLive(false); }} live={live} setLive={value => { setLive(value); if (value) setSavedInstagram(false); }} events={events} openFeature={setFeature} /></View> : null}
+    <View style={[styles.tabs, { paddingBottom: Math.max(insets.bottom, 12) }]}><View style={styles.tabTrack}>{([{ key: 'feed', label: 'Feed', icon: 'play' }, { key: 'courses', label: 'Courses', icon: 'school-outline' }, { key: 'profile', label: 'Profile', icon: 'person-outline' }] as const).map(tab => <Pressable key={tab.key} accessibilityRole="tab" accessibilityLabel={tab.label} accessibilityState={{ selected: route === tab.key && !feature }} testID={`tab-${tab.key}`} onPress={() => { setFeature(null); setRoute(tab.key); if (tab.key === 'feed') setReplay(null); }} style={[styles.tab, route === tab.key && !feature && styles.activeIcon]}><Ionicons name={tab.icon} size={20} color={route === tab.key && !feature ? theme.colors.ink : theme.colors.muted} /><Text style={[styles.tabLabel, route === tab.key && !feature && { color: theme.colors.ink }]}>{tab.label}</Text></Pressable>)}</View></View>
   </View>;
 }
 function SessionGate() {
@@ -41,7 +52,7 @@ function SessionGate() {
   if (mode === 'loading') return <View style={[s.screen, { alignItems: 'center', justifyContent: 'center', gap: 20 }]}><ActivityIndicator color={theme.colors.accent} /><Text style={s.subtitle}>Picking up where you left off…</Text></View>;
   return mode === 'signed_out' ? <AuthScreen /> : <SignedInShell key={`${mode}:${user?.user_id}`} />;
 }
-export default function AppShell() { return <SafeAreaProvider><AuthProvider><StatusBar style="light" /><SessionGate /></AuthProvider></SafeAreaProvider>; }
+export default function AppShell() { const [loaded, error] = useFonts({ Syne: require('../assets/fonts/Syne.ttf'), Jakarta: require('../assets/fonts/PlusJakartaSans.ttf') }); if (!loaded && !error) return <View style={s.screen}><ActivityIndicator color={theme.colors.accent} /></View>; return <SafeAreaProvider><AuthProvider><StatusBar style="light" /><SessionGate /></AuthProvider></SafeAreaProvider>; }
 const styles = StyleSheet.create({
-  screen: { flex: 1 }, hidden: { display: 'none' }, tabs: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#2A3327', backgroundColor: '#111710', paddingTop: 10 }, tab: { flex: 1, alignItems: 'center', gap: 4 }, tabIcon: { paddingVertical: 5, paddingHorizontal: 23, borderRadius: 17 }, activeIcon: { backgroundColor: '#D5F98512' }, tabLabel: { color: '#809079', fontSize: 10, fontWeight: '600' }, placeholder: { padding: 26, gap: 22, flex: 1 },
+  screen: { flex: 1 }, hidden: { display: 'none' }, tabs: { backgroundColor: theme.colors.background, paddingTop: 6, paddingHorizontal: 16 }, tabTrack: { flexDirection: 'row', backgroundColor: theme.colors.surface, padding: 4, borderRadius: 999, borderWidth: 1, borderColor: theme.colors.elevated }, tab: { flex: 1, minHeight: 44, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, borderRadius: 999 }, activeIcon: { backgroundColor: theme.colors.accent }, tabLabel: { color: theme.colors.muted, fontSize: 13, fontWeight: '700' }, placeholder: { padding: 26, gap: 22, flex: 1 },
 });

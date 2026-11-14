@@ -99,6 +99,26 @@ class LiveTests(unittest.TestCase):
             with self.assertRaises(CatalogFailure):
                 catalog.list_candidates({'user_id': OWNER}, limit=limit)
 
+    def test_reload_continues_upstream_and_keeps_recent_deduplication(self):
+        provider = Provider([ProviderPage([reel(1)], 'next-page'),
+                             ProviderPage([reel(1), reel(2)], None)])
+        catalog = self.catalog(provider)
+        first = catalog.list_candidates({'user_id': OWNER})
+        self.assertEqual(catalog.list_candidates({'user_id': OWNER}), first)
+        self.time = 31
+        second = catalog.list_candidates({'user_id': OWNER})
+        self.assertEqual(provider.calls, [None, 'next-page'])
+        self.assertEqual([item['provider_video_id'] for item in second['items']], ['2'])
+
+    def test_reload_preserves_unissued_provider_leftovers(self):
+        provider = Provider([ProviderPage([reel(i) for i in range(1, 9)], None)])
+        catalog = self.catalog(provider)
+        first = catalog.list_candidates({'user_id': OWNER}, limit=5)
+        self.time = 31
+        second = catalog.list_candidates({'user_id': OWNER}, limit=5)
+        self.assertEqual([item['provider_video_id'] for item in second['items']], ['6', '7', '8'])
+        self.assertEqual(provider.calls, [None])
+
     def test_repeated_provider_cursor_and_duplicates_have_a_finite_end(self):
         provider = Provider([ProviderPage([reel(1)], 'repeat'), ProviderPage([reel(1), reel(2)], 'repeat')])
         catalog = self.catalog(provider)
@@ -204,6 +224,25 @@ class LiveTests(unittest.TestCase):
 
 
 class ProviderTests(unittest.TestCase):
+    def test_post_body_cursor_advances_past_the_initial_reels(self):
+        def request(endpoint, **kwargs):
+            # Model the live endpoint: query cursors are ignored, body cursors
+            # select the next page. This catches apparently valid repeated pages.
+            continued = kwargs.get('data', {}).get('max_id') == 'page-two'
+            return {'items': [{'media': {'pk': 2 if continued else 1}}],
+                    'paging_info': {'more_available': not continued, 'max_id': 'page-two'}}
+        provider = InstagramReelsProvider(SimpleNamespace(authorization='synthetic', _send_private_request=request), clock=lambda: NOW)
+        def extract(row):
+            return SimpleNamespace(media_type=2, product_type='clips', pk=row['pk'], code='synthetic',
+                user=SimpleNamespace(username='synthetic'), video_url='https://video.example.cdninstagram.com/test.mp4',
+                caption_text='', video_duration=10)
+        with patch('instagrapi.extractors.extract_media_v1', side_effect=extract):
+            first = provider.read_page()
+            second = provider.read_page(first.next_cursor)
+        self.assertEqual(first.items[0]['provider_video_id'], '1')
+        self.assertEqual(second.items[0]['provider_video_id'], '2')
+        self.assertIsNone(second.next_cursor)
+
     def test_single_attempt_does_not_use_retrying_high_level_helper_or_resolve_challenges(self):
         marker = 'SYNTHETIC_SECRET_MUST_NOT_ESCAPE'
         class LoginRequired(Exception):
