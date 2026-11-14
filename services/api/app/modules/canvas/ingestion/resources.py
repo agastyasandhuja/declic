@@ -17,7 +17,13 @@ from ..client.http import CanvasAuthError, CanvasClient, CanvasError
 
 MAX_FILE_BYTES = 8 * 1024 * 1024
 MAX_RESOURCE_ITEMS = 100
-MAX_DOWNLOADS = 12
+FILE_MEDIA = {
+    ".pdf": ("application/pdf", b"%PDF-"),
+    ".png": ("image/png", b"\x89PNG\r\n\x1a\n"),
+    ".jpg": ("image/jpeg", b"\xff\xd8\xff"),
+    ".jpeg": ("image/jpeg", b"\xff\xd8\xff"),
+}
+READABLE_FILES = {".txt", ".md", ".csv", ".pptx", *FILE_MEDIA}
 
 
 class _Text(HTMLParser):
@@ -33,7 +39,7 @@ class _Text(HTMLParser):
         if not self.hidden:
             self.parts.append("\n" if tag in {"br", "p", "li", "tr", "div"} else " ")
             for name, value in attrs:
-                if name in {"href", "data-api-endpoint"} and value:
+                if name in {"href", "src", "data-api-endpoint"} and value:
                     match = re.search(r"/files/(\d+)(?:[/?#]|$)", value)
                     if match:
                         self.file_ids.add(match[1])
@@ -66,6 +72,7 @@ class Resource:
     updated_at: str | None = None
     locator: str = "whole source"
     content_hash: str | None = None
+    download_url: str | None = None
 
 
 def _file_text(suffix, data):
@@ -119,20 +126,25 @@ def fetch_resources(client: CanvasClient, course_id: str, syllabus_files=(), *, 
     base = f"/api/v1/courses/{quote(course_id, safe='')}"
     sources, missing = [], set()
     page_slugs, file_ids = {}, dict.fromkeys(sorted(syllabus_files))
+    page_modules, file_modules = {}, {}
     for module in _items(client, f"{base}/modules", missing, "modules", limit=40):
         module_id = module.get("id")
         if module_id is None or module.get("locked_for_user"):
             continue
+        name = str(module.get("name") or "")
         titles = []
         for item in _items(client, f"{base}/modules/{quote(str(module_id), safe='')}/items", missing, "module items"):
             if item.get("locked_for_user"):
                 continue
             titles.append(str(item.get("title") or ""))
             if item.get("type") == "Page" and item.get("page_url"):
-                page_slugs.setdefault(str(item["page_url"]), None)
+                slug = str(item["page_url"])
+                page_slugs.setdefault(slug, None)
+                page_modules.setdefault(slug, []).append(name)
             if item.get("type") == "File" and item.get("content_id") is not None:
-                file_ids.setdefault(str(item["content_id"]), None)
-        name = str(module.get("name") or "")
+                file_id = str(item["content_id"])
+                file_ids.setdefault(file_id, None)
+                file_modules.setdefault(file_id, []).append(name)
         sources.append(Resource(str(module_id), "module", name, "\n".join([name, *titles]),
                                 module.get("updated_at"), "ordered module outline"))
     for page in _items(client, f"{base}/pages", missing, "pages"):
@@ -154,12 +166,13 @@ def fetch_resources(client: CanvasClient, course_id: str, syllabus_files=(), *, 
         excerpt, links = parse_html(page.get("body"))
         file_ids.update(dict.fromkeys(sorted(links)))
         sources.append(Resource(str(page.get("page_id") or slug), "page", str(page.get("title") or ""),
-                                excerpt, page.get("updated_at"), "page body"))
+                                excerpt, page.get("updated_at"), ", ".join(page_modules.get(slug, [])) or "page body"))
 
     files = {str(row["id"]): row for row in _items(client, f"{base}/files", missing, "files")
              if row.get("id") is not None}
     file_ids.update(dict.fromkeys(files))
-    downloads = 0
+    if len(file_ids) > MAX_RESOURCE_ITEMS:
+        missing.add("files: inventory limited")
     for file_id in islice(file_ids, MAX_RESOURCE_ITEMS):
         try:
             row = files.get(file_id)
@@ -171,22 +184,14 @@ def fetch_resources(client: CanvasClient, course_id: str, syllabus_files=(), *, 
                 continue
             title = str(row.get("display_name") or row.get("filename") or "")
             suffix = PurePosixPath(title).suffix.lower()
-            excerpt = digest = None
-            if (suffix in {".txt", ".md", ".csv", ".pdf", ".pptx"} and downloads < MAX_DOWNLOADS
-                    and (not isinstance(row.get("size"), int) or row["size"] <= MAX_FILE_BYTES)):
-                downloads += 1
-                try:
-                    data = client.download(str(row.get("url") or ""), MAX_FILE_BYTES)
-                    digest = hashlib.sha256(data).hexdigest()
-                    excerpt = _file_text(suffix, data)
-                except CanvasAuthError:
-                    raise
-                except (CanvasError, UnicodeError, zipfile.BadZipFile, ElementTree.ParseError, RuntimeError):
-                    pass
-            if not excerpt:
-                missing.add("file: some excerpts unavailable")
-            sources.append(Resource(file_id, "file", title, excerpt, row.get("updated_at"),
-                                    "document excerpt", digest))
+            url = row.get("url")
+            readable = (suffix in READABLE_FILES and isinstance(url, str) and bool(url)
+                        and (not isinstance(row.get("size"), int) or row["size"] <= MAX_FILE_BYTES))
+            if not readable:
+                missing.add("file: some formats or sizes unsupported")
+            sources.append(Resource(file_id, "file", title, None, row.get("updated_at"),
+                                    ", ".join(file_modules.get(file_id, [])) or "document",
+                                    download_url=url if readable else None))
         except CanvasAuthError:
             raise
         except CanvasError:

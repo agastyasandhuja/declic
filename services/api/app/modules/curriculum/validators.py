@@ -106,6 +106,8 @@ def _ground_date(when, title, excerpts, timezone, warnings):
             # Stop before the next assessment or sentence whenever possible.
             for match in title_pattern.finditer(line):
                 tail = line[match.end():match.end() + 85]
+                if re.search(r"\b(?:cancelled|canceled|postponed|no longer|not on|previously|was)\b", tail, re.I):
+                    continue
                 tail = re.split(r"[;.!?]|\b(?:TBA|TBD|undated)\b", tail, maxsplit=1, flags=re.I)[0]
                 if date_pattern.search(tail):
                     evidence_lines.append(tail)
@@ -171,7 +173,7 @@ def validate_extraction(raw: dict, authorized_ids: set[str], *,
         when = _academic_date(assessment, timezone, warnings, f"assessment '{name}'")
         refs = _clean_ids(assessment.get("source_ids"), authorized_ids, warnings, f"assessment '{name}'")
         if evidence is not None:
-            when = _ground_date(when, name, [evidence[ref] for ref in refs], timezone, warnings)
+            when = _ground_date(when, name, [evidence[ref] for ref in refs if ref in evidence], timezone, warnings)
         when["source_refs"] = refs if when["date"] else []
         key = re.sub(r"\s+", " ", name).strip().lower()
         if key in seen_dates and seen_dates[key] != when["date"] and when["date"] and seen_dates[key]:
@@ -184,11 +186,21 @@ def validate_extraction(raw: dict, authorized_ids: set[str], *,
             # a cited source. Other course material cannot establish exam scope.
             chunks = []
             for ref in refs:
-                for line in evidence[ref].splitlines():
-                    for match in re.finditer(re.escape(name), line, re.I) if name else ():
+                for line in evidence.get(ref, "").splitlines():
+                    for match in re.finditer(r"(?<!\w)" + re.escape(name) + r"(?!\w)", line, re.I) if name else ():
                         tail = line[match.end():match.end() + 300]
-                        if re.search(r"\b(?:covers?|coverage|topics?|material|units?)\b", tail, re.I):
-                            chunks.append(tail.casefold())
+                        # Keep only a positive coverage clause. Stop before
+                        # contrast, exclusions, or a separate sentence.
+                        positive = re.match(
+                            r"\s*[:–—-]?\s*(?:covers?|coverage|topics(?: and instructions)?)"
+                            r"\s*[:–—-]?\s*(.+)", tail, re.I
+                        )
+                        if positive:
+                            clause = re.split(
+                                r"[.;!?]|\b(?:except|excluding|excludes?|but|not|uncovered)\b",
+                                positive[1], maxsplit=1, flags=re.I,
+                            )[0]
+                            chunks.append(clause.casefold())
             topics = [topic for topic in topics if any(
                 re.search(r"(?<!\w)" + re.escape(topic.casefold()) + r"(?!\w)", chunk)
                 for chunk in chunks

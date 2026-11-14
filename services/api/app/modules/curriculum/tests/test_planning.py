@@ -129,23 +129,13 @@ class TimelinePlanningTests(unittest.TestCase):
         unknown = assessment("undated", None, "vector fields", "unknown")
         tests = [old, current, unknown]
         now = datetime(2026, 11, 15, 2, tzinfo=timezone.utc)
-        proposals = [
-            {"objective_title": topic, "learning_goal": f"Practice {topic}",
-             "target_assessment_id": target, "target_topic": topic}
-            for target, topic in [
-                ("past", "earlier topic"),
-                ("current", "earlier topic"),
-                ("undated", "vector fields"),
-                ("current", "line integrals"),
-            ]
-        ]
-        requests = plan_course(course, UNITS, tests, client(proposals), now=now)["requests"]
+        requests = plan_course(course, UNITS, tests, None, now=now)["requests"]
         self.assertEqual([request["title"] for request in requests], ["line integrals"])
         self.assertEqual(requests[0]["assessment_ids"], ["current"])
         self.assertEqual(requests[0]["exam_scope_status"], "explicit")
         # An older topic becomes relevant again when the current exam lists it.
         current["covered_topics"].append("earlier topic")
-        requests = plan_course(course, UNITS, tests, client(proposals), now=now)["requests"]
+        requests = plan_course(course, UNITS, tests, None, now=now)["requests"]
         self.assertEqual({request["title"] for request in requests}, {"earlier topic", "line integrals"})
         self.assertEqual(priority_targets(tests, now.replace(hour=6)), [])
         self.assertEqual(plan_course(course, UNITS, tests, None,
@@ -159,3 +149,30 @@ class TimelinePlanningTests(unittest.TestCase):
         self.assertFalse(target_topic_is_supported("Lagrange multipliers", assignment))
         assignment["title"] = "HW 16.1: Lagrange multipliers"
         self.assertTrue(target_topic_is_supported("Lagrange multipliers", assignment))
+
+    def test_timeline_skips_administrative_targets_and_uses_named_coursework(self):
+        from datetime import datetime, timezone
+
+        course = {**COURSE, "external_course_id": "sample"}
+        now = datetime(2026, 11, 14, tzinfo=timezone.utc)
+        def target(title, day, **fields):
+            return {
+                "assessment_id": title, "title": title, "kind": "assignment",
+                "scheduled": {"date": day, "precision": "date", "evidence_status": "explicit",
+                              "timezone": "America/New_York"},
+                **fields,
+            }
+
+        targets = [
+            target("Quiz 8", "2026-11-15"),
+            target("Homework 5 Collaboration/LLM Acknowledgements", "2026-11-15"),
+            target("HW 16.1", "2026-11-15"),
+            target("PA11 Heaps and Treaps", "2026-11-20"),
+            target("Homework 5", "2026-11-19", scope_status="explicit",
+                   covered_topics=["Proof by induction"]),
+            target("Lab: Hash Tables", "2026-10-01"),
+            target("Quiz 10: String I/O", "2026-11-17"),
+        ]
+        requests = plan_course(course, UNITS, targets, None, now=now)["requests"]
+        self.assertEqual([request["title"] for request in requests],
+                         ["String I/O", "Proof by induction", "Heaps and Treaps"])

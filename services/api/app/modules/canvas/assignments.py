@@ -22,6 +22,8 @@ class Assignment:
     due_at: str | None      # ISO timestamp or None (undated)
     points_possible: float | None
 
+    description: str | None = None
+
     @property
     def looks_like_exam(self) -> bool:
         return bool(_EXAM.search(self.name))
@@ -40,6 +42,7 @@ def fetch_assignments(client: CanvasClient, external_course_id: str) -> list[Ass
                     external_id=str(raw["id"]),
                     name=str(raw.get("name") or ""),
                     due_at=raw.get("due_at") if isinstance(raw.get("due_at"), str) else None,
+                    description=raw.get("description"),
                     points_possible=(
                         float(raw["points_possible"])
                         if isinstance(raw.get("points_possible"), (int, float))

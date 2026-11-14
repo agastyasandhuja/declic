@@ -148,7 +148,33 @@ requires a current linked target and rechecks eligibility against the request-ti
 clock. An offset-bearing deadline expires at its actual instant. A date-only
 deadline stays eligible through the course-local day. Unknown and conflicting
 dates do not qualify as upcoming. The next dated exam takes priority when its
-covered topics are supported. Otherwise another dated assignment can supply a
+covered topics are supported. Earlier dated coursework remains eligible alongside that exam. Another dated assignment can supply a
 topic when its title or supported coverage names one. A generic assignment or exam
 title alone does not establish any topic. Legacy Canvas lesson requests without
 a timeline topic require reimport before feed use.
+
+## Model-directed course reading
+
+The backend supplies Gemini a per-course inventory of student-visible module
+outlines, Pages, files, assignment descriptions, calendar events and the syllabus
+overview. Inventory entries include source IDs and module labels where Canvas
+provides the association. Gemini can request IDs in one bounded selection round.
+The backend resolves only IDs belonging to the current course and user, then
+passes text and eligible PDF, PNG and JPEG attachments to extraction. PPTX is
+read as slide text. Direct Canvas deadlines and corroborated text evidence still
+govern lesson eligibility. Vision-only date or scope claims require separate
+verification before they can drive the feed.
+
+
+The Canvas planner prepares future topic bindings directly from named coursework
+and verified assessment coverage. The service exposes the nearest eligible exam
+plus up to four earlier coursework targets, or up to five coursework targets
+when no exam has known coverage. Date-only values require a known course timezone.
+A shared topic retains all supporting upcoming assessment IDs and expires after
+its final eligible target passes. Both service plan reads and feed candidate
+reads apply this policy. The upload fallback retains its existing planning behavior.
+
+Canvas requests are topic handoffs. Existing duration and suggested-format fields
+remain defaults for compatibility. The video owner determines the narrow teaching
+objective and generation brief. Fresh Canvas synchronization is required to detect
+instructor schedule changes or withdrawn material.

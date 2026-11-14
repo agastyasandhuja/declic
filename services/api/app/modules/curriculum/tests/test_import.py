@@ -42,24 +42,18 @@ class AcademicImportTests(unittest.TestCase):
         page, event = sources["page"], sources["calendar_event"]
         self.assertNotIn("hidden script", page.text)
         self.assertNotIn("Unrelated calendar event", event.text)
-        self.assertTrue(sources["file"].content_hash)
-        self.assertIn("file: some excerpts unavailable", resolver.course_info("17")["missing_sources"])
+        files = [s for s in resolver.list_sources() if s.resource_type == "file"]
+        self.assertEqual(len(files), 2)
+        self.assertTrue(all(not source.has_text for source in files))
 
 
         def gemini(url, body, headers):
             prompt = str(body)
+            if "inventory" in prompt and "Choose up to 12" in prompt:
+                self.assertNotIn("external.invalid", prompt)
+                return gemini_response({"source_ids": [s.source_id for s in files] + ["cross-course-id"]})
             self.assertIn("Save the next pointer", prompt)
             self.assertNotIn("fake-token", prompt)
-            if "Allowed suggested_formats" in prompt:
-                import re
-
-                content = json.loads(body)['contents'][0]['parts'][0]['text']
-                target = re.search(r'"id": "(asmt_[a-f0-9]+)"', content)[1]
-                return gemini_response({"lessons": [{
-                    "objective_title": "Reverse a list", "learning_goal": "Trace list reversal",
-                    "target_topic": "list reversal", "target_assessment_id": target,
-                    "unit_title": "Pointers", "target_duration_seconds": 45,
-                }]})
             return gemini_response({
                 "course_title": "Synthetic Data Structures",
                 "units": [{"title": "Pointers", "source_ids": [page.source_id]}],
@@ -75,12 +69,17 @@ class AcademicImportTests(unittest.TestCase):
             with self.assertRaises(PermissionError):
                 service.import_profile("other", resolver)
             profile = service.import_profile("owner", resolver)
+            self.assertIn("Iterative reversal", service.resolve_source_context("owner", [files[0].source_id])[0]["text"])
+            self.assertTrue(any("selected file could not be read" in warning for warning in profile["warnings"]))
             midterm, final, _ = profile["assessments"]
             self.assertEqual(midterm["scheduled"]["precision"], "date")
             self.assertIsNone(final["scheduled"]["date"])
             self.assertEqual(len(service.get_validated_plans("owner")), 1)
             self.assertEqual(service.get_validated_plans("other"), [])
-            self.assertEqual(service.get_course_bindings("owner")[0]["source_refs"], [sources["canvas_course"].source_id])
+            assignment_source = next(source for source in resolver.list_sources()
+                                     if source.title == "Lab: list reversal")
+            self.assertEqual(service.get_course_bindings("owner")[0]["source_refs"],
+                             [assignment_source.source_id])
             self.assertEqual(service.resolve_source_context("owner", [page.source_id])[0]["text"], page.text)
             with self.assertRaises(LookupError):
                 service.resolve_source_context("other", [page.source_id])
@@ -101,3 +100,43 @@ class AcademicImportTests(unittest.TestCase):
             archive.writestr("ppt/slides/slide2.xml",
                              '<a:t xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">Pointers</a:t>')
         self.assertEqual(_file_text(".pptx", output.getvalue()), "Slide 2: Pointers")
+
+    def test_selected_pdf_is_sent_inline_and_vision_dates_stay_unverified(self):
+        from base64 import b64decode
+
+        def canvas(url, headers, timeout):
+            path = urlsplit(url).path
+            payloads = {
+                "/api/v1/courses": [{"id": 10, "name": "Test course"}],
+                "/api/v1/courses/10/files": [
+                    {"id": 1, "display_name": "Slides.pdf", "url": "https://canvas.example/pdf"},
+                    {"id": 2, "display_name": "Unselected.pdf", "url": "https://canvas.example/unused"},
+                ],
+            }
+            if path == "/pdf":
+                return Response(200, {}, b"%PDF-1.4\nsynthetic slide")
+            self.assertNotEqual(path, "/unused")
+            return Response(200, {}, json.dumps(payloads.get(path, [])).encode())
+
+        def gemini(url, body, headers):
+            parts = json.loads(body)["contents"][0]["parts"]
+            if len(parts) == 1:
+                inventory = json.loads(parts[0]["text"])["inventory"]
+                selected = [row["id"] for row in inventory if row["title"] == "Slides.pdf"]
+                return gemini_response({"source_ids": ["foreign-source", *selected, *selected]})
+            self.assertEqual(len(parts), 3)
+            self.assertTrue(b64decode(parts[2]["inlineData"]["data"]).startswith(b"%PDF-"))
+            self.assertEqual(parts[2]["inlineData"]["mimeType"], "application/pdf")
+            source_id = parts[1]["text"].split()[-1]
+            return gemini_response({
+                "course_title": "Test course",
+                "units": [{"title": "Diagram", "source_ids": [source_id]}],
+                "assessments": [{"title": "Final", "date": "2026-11-19", "source_ids": [source_id]}],
+            })
+
+        from app.modules.curriculum.extract import extract_course
+
+        resolver = CanvasSourceResolver(CanvasClient("https://canvas.example", Secret("token"), transport=canvas))
+        result = extract_course("10", resolver, GeminiClient(settings(), transport=gemini))["extraction"]
+        self.assertEqual(len(result["units"][0]["source_refs"]), 1)
+        self.assertIsNone(result["assessments"][0]["scheduled"]["date"])

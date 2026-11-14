@@ -193,10 +193,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     print("\nM3 EXTRACTION: VERIFIED (real Gemini response received and validated).")
 
-    # Step 3 (M4): plan 30-60s lessons across courses with a second Gemini call.
+    # Step 3 (M4): hand off evidenced upcoming topics.
     if not args.plan:
         return 0
-    print("\n[3/3] Planning lessons with Gemini ...")
+    print("\n[3/3] Selecting upcoming topics ...")
     try:
         plans = build_lesson_plans(profile, GeminiClient(settings), resolver)
     except GeminiError as err:
@@ -212,7 +212,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\nHandoff event for Agastya: {event['event']} "
               f"(profile {event['profile_id']} rev {event['revision']}, "
               f"{len(event['plan_ids'])} plan(s))")
-        print(f"\nM4 LESSON PLANNING: VERIFIED — Gemini proposed {total} lesson objectives "
+        print(f"\nM4 LESSON PLANNING: VERIFIED — selected {total} lesson objectives "
               f"across {len([p for p in plans if p['requests']])} course(s).")
         return 0
     print("\nM4 LESSON PLANNING: no lessons proposed (courses may lack enough material).")

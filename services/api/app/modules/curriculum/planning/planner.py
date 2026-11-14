@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 
 from ..client.gemini import GeminiClient, parse_json_object
 from ..prompts.plan import SYSTEM_INSTRUCTION, build_plan_prompt
-from ..timing import priority_targets, target_topic_is_supported
+from ..timing import assessment_topics, target_topic_is_supported, upcoming_assessments
 from ..sources import select_excerpts
 from ..schemas import LESSON_FORMATS, PLAN_SCHEMA, SCHEMA_VERSION
 
@@ -60,13 +60,21 @@ def _assessment_ids(objective_title: str, assessments: list[dict]) -> list[str]:
 
 
 def plan_course(course: dict, units: list[dict], assessments: list[dict], client: GeminiClient, sources=(), *, now=None) -> dict:
-    """Run one Gemini planning call for a course and assemble a validated plan."""
+    """Assemble upcoming Canvas topics or run upload-fallback lesson planning."""
     timeline_required = bool(course.get("external_course_id"))
-    targets = priority_targets(assessments, now or datetime.now(timezone.utc), course.get("timezone")) if timeline_required else None
-    if timeline_required and not targets:
-        raw, usage = {}, {}
+    now = now or datetime.now(timezone.utc)
+    targets = upcoming_assessments(assessments, now, course.get("timezone")) if timeline_required else None
+    if timeline_required:
+        # Canvas has already supplied the deadline and the topic evidence. Carry
+        # those forward directly into the handoff without a generative veto.
+        raw = {"lessons": [
+            {"objective_title": topic, "learning_goal": f"Review {topic}.",
+             "target_assessment_id": target["assessment_id"], "target_topic": topic}
+            for target in targets for topic in assessment_topics(target)
+        ]}
+        usage = {}
     else:
-        prompt = build_plan_prompt(course, units, assessments, LESSON_FORMATS, sources, targets=targets)
+        prompt = build_plan_prompt(course, units, assessments, LESSON_FORMATS, sources)
         result = client.generate_json(
             system_instruction=SYSTEM_INSTRUCTION, user_content=prompt, response_schema=PLAN_SCHEMA
         )
@@ -83,18 +91,8 @@ def plan_course(course: dict, units: list[dict], assessments: list[dict], client
         oid = title_to_oid[title]
         target = None
         if timeline_required:
-            topic = proposal.get("target_topic")
-            target = next((item for item in targets
-                           if item["assessment_id"] == proposal.get("target_assessment_id")
-                           and isinstance(topic, str) and target_topic_is_supported(topic, item)), None)
-            if target is None or proposal.get("is_suggested_practice"):
-                continue
-            topic = topic.strip()
-            # Use the supported topic as the authoritative title. Keep the
-            # proposed goal only when it also names that topic.
-            goal = proposal.get("learning_goal")
-            if not isinstance(goal, str) or topic.casefold() not in goal.casefold():
-                continue
+            topic = proposal["target_topic"]
+            target = next(item for item in targets if item["assessment_id"] == proposal["target_assessment_id"])
 
         if oid in seen:  # dedupe by meaning/level within the course
             continue
@@ -119,9 +117,11 @@ def plan_course(course: dict, units: list[dict], assessments: list[dict], client
 
         linked_ids = _assessment_ids(title, assessments) if exam_related else []
         if target:
-            linked_ids = [target["assessment_id"]]
+            supporting = [item for item in targets if target_topic_is_supported(topic, item)]
+            linked_ids = [item["assessment_id"] for item in supporting]
             source_refs = list(dict.fromkeys(
-                target.get("source_refs", []) + target["scheduled"].get("source_refs", [])
+                ref for item in supporting
+                for ref in item.get("source_refs", []) + item["scheduled"].get("source_refs", [])
             ))
             evidence = "explicit"
         linked = [a for a in assessments if a["assessment_id"] in linked_ids]
@@ -153,7 +153,7 @@ def plan_course(course: dict, units: list[dict], assessments: list[dict], client
             }
         )
 
-        if len(requests) == 3:
+        if not timeline_required and len(requests) == 3:
             break
 
     requested_ids = {request["objective_id"] for request in requests}
@@ -182,13 +182,16 @@ def build_lesson_plans(profile: dict, client: GeminiClient, resolver=None) -> li
     plans = []
     now = datetime.now(timezone.utc)
     for course in profile["courses"]:
-        if course.get("import_status") != "ready":
+        if course.get("import_status") not in {"ready", "partial"}:
             continue
         course_id = course["course_id"]
         units = [u for u in profile["units"] if u["course_id"] == course_id]
         assessments = [a for a in profile["assessments"] if a["course_id"] == course_id]
         try:
-            sources = select_excerpts(resolver.sources_for_course(course_id), 16_000) if resolver else []
+            sources = []
+            if resolver and not course.get("external_course_id"):
+                read = getattr(resolver, "sources_for_planning", resolver.sources_for_course)
+                sources = select_excerpts(read(course_id), 16_000)
             plan = plan_course(course, units, assessments, client, sources, now=now)
         except Exception as err:  # noqa: BLE001 — isolate one course
             plan = {

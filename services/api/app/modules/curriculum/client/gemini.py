@@ -1,14 +1,14 @@
 """Minimal Gemini REST client (owner: Amogh), standard library only.
 
-Uses the stable generateContent endpoint with JSON structured output. The model
-only ever receives the text we send it; it has no tokens, no tools, no URL
-access and no database. Its output is untrusted until the backend validates it.
+Uses the stable generateContent endpoint with JSON structured output. The model receives supplied excerpts and optional inline media. It has no
+Canvas credentials, tools, arbitrary URL access, or database connection. Its output is untrusted until the backend validates it.
 
 Docs: https://ai.google.dev/gemini-api/docs (generateContent + structured output).
 """
 
 from __future__ import annotations
 
+import base64
 import json
 import socket
 import time
@@ -101,6 +101,7 @@ class GeminiClient:
         user_content: str,
         response_schema: dict[str, Any],
         temperature: float = 0.2,
+        media: tuple[tuple[str, str, bytes], ...] = (),
     ) -> GeminiResult:
         """Ask the model for a single JSON object matching response_schema."""
         generation_config: dict[str, Any] = {
@@ -113,10 +114,16 @@ class GeminiClient:
         if self._settings.thinking_level:
             generation_config["thinkingConfig"] = {"thinkingLevel": self._settings.thinking_level}
 
+        parts = [{"text": user_content}]
+        for source_id, mime_type, data in media:
+            parts.extend([
+                {"text": f"Untrusted attachment for source_id {source_id}"},
+                {"inlineData": {"mimeType": mime_type, "data": base64.b64encode(data).decode("ascii")}},
+            ])
         body = json.dumps(
             {
                 "systemInstruction": {"parts": [{"text": system_instruction}]},
-                "contents": [{"role": "user", "parts": [{"text": user_content}]}],
+                "contents": [{"role": "user", "parts": parts}],
                 "generationConfig": generation_config,
             }
         ).encode("utf-8")

@@ -52,22 +52,30 @@ reports the live call as pending. `--source upload` is the fallback.
    warns on conflicting dates.
 5. `extract.build_profile` — assembles and versions the AcademicProfile; one
    failing course does not abort the others. `store.py` persists it.
-6. `planning/planner.build_lesson_plans` — M4: a second Gemini call per course
-   proposes 30-60s lesson objectives, assembled into contract LessonRequest
-   records (suggested practice kept separate from confirmed exam coverage).
+6. `planning/planner.build_lesson_plans` — builds the Canvas handoff from named
+   upcoming work and verified assessment coverage. The upload fallback uses
+   Gemini lesson planning. The video owner refines Canvas topics into narrow
+   video briefs. Fields such as duration and format retain contract defaults.
+   Service reads and feed reads recheck deadlines before exposing Canvas topics.
 7. `handoff.build_profile_ready_event` — the academics.profile.ready payload
    for Agastya. A synthetic handoff plan lives in fixtures/academics/.
 
 ## Safety
 
-Gemini receives only text excerpts and authorized source ids — no tokens, no
-tools, no URLs, no database. Its output is validated before it is persisted or
-handed on. Source resolution is user-scoped. Calendar windows span 180 days on either
-side of import. Course file downloads stay on the configured Canvas origin,
-are capped at 8 MiB and 12 supported downloads per course, and never follow
-cross-origin redirects. UTF-8 text and PPTX slide text are supported. PDF text
-extraction uses optional `pypdf` when installed. Unsupported, locked, or
-unavailable content is surfaced in `missing_sources`. Scanned PDFs need OCR.
+Gemini first sees a private inventory of the syllabus, ordered modules, Pages,
+course files, assignment descriptions and calendar events. File and Page entries
+include their associated module names when known. A single selection round can
+request up to 12 sources and trigger up to five file downloads. Calendar windows
+span 180 days on either side of import. Inventory has per-resource limits and
+reports truncation.
+
+The backend resolves source IDs within the authorized course and keeps download
+URLs and credentials local. Downloads are pinned to the Canvas origin and capped
+at 8 MiB each. Supported PDFs and PNG/JPEG images can be sent inline, with a
+10 MiB aggregate media budget. UTF-8 text and PPTX slide text are supported.
+Optional `pypdf` adds PDF text extraction for independent date and scope checks.
+Vision-only readings can inform the course map. Dates and scope still need
+corroborating evidence for feed eligibility.
 
 For API composition, construct `AcademicService(storage_dir, gemini_client)` and
 one `LocalAcademicJobs()`. Pass both router factories to

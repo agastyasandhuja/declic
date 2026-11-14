@@ -13,10 +13,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from .client.gemini import GeminiClient, parse_json_object
+from ..canvas.client.http import CanvasAuthError
+from .client.gemini import GeminiClient, GeminiError, parse_json_object
 from .prompts.extract import SYSTEM_INSTRUCTION, build_extraction_prompt
 from .schemas import EXTRACTION_SCHEMA, SCHEMA_VERSION
-from .sources import Resolver, select_excerpts
+from .sources import Resolver
+from .retrieval import gather_evidence
 from .store import latest_revision, save_profile
 from .validators import validate_extraction
 from .timing import _parse
@@ -35,10 +37,10 @@ def extract_course(
 ) -> dict:
     """Run one real Gemini extraction for a single course and validate it."""
     sources = resolver.sources_for_course(course_id)
-    usable = select_excerpts(sources, 36_000)
+    usable, media, retrieval_warnings = gather_evidence(course_id, resolver, sources, client)
     evidence = {s.source_id: s.text for s in usable}
 
-    if not usable:
+    if not usable and not media:
         return {
             "course_id": course_id,
             "import_status": "needs_review",
@@ -49,19 +51,27 @@ def extract_course(
 
     label_hint = sources[0].title
     prompt = build_extraction_prompt(label_hint, usable)
-    result = client.generate_json(
-        system_instruction=SYSTEM_INSTRUCTION,
-        user_content=prompt,
-        response_schema=EXTRACTION_SCHEMA,
-    )
+    request = dict(system_instruction=SYSTEM_INSTRUCTION, user_content=prompt,
+                   response_schema=EXTRACTION_SCHEMA)
+    if media:
+        try:
+            result = client.generate_json(**request, media=media)
+        except GeminiError:
+            media = ()
+            if not usable:
+                raise
+            retrieval_warnings.append("Gemini could not read attachments; used text excerpts")
+            result = client.generate_json(**request)
+    else:
+        result = client.generate_json(**request)
     raw = parse_json_object(result.text)
-    clean = validate_extraction(raw, set(evidence), evidence=evidence,
+    clean = validate_extraction(raw, set(evidence) | {item[0] for item in media}, evidence=evidence,
                                 source_timezone=_course_info(resolver, course_id).get("timezone"))
     return {
         "course_id": course_id,
         "import_status": "ready",
         "extraction": clean,
-        "warnings": clean["warnings"],
+        "warnings": retrieval_warnings + clean["warnings"],
         "usage": result.usage,
     }
 
@@ -103,10 +113,19 @@ def build_profile(
         info = _course_info(resolver, course_id)
         try:
             outcome = extract_course(course_id, resolver, client)
+        except CanvasAuthError:
+            raise
         except Exception as err:  # noqa: BLE001 — isolate one course's failure
             warnings.append(f"course {course_id}: extraction failed ({type(err).__name__})")
-            courses.append({"course_id": course_id, "import_status": "error", "title": None, **info})
-            continue
+            if not info.get("external_course_id"):
+                courses.append({"course_id": course_id, "import_status": "error", "title": None, **info})
+                continue
+            outcome = {
+                "import_status": "partial", "warnings": [],
+                "extraction": {"course_title": info.get("title"), "term": info.get("term"),
+                               "timezone": info.get("timezone"), "textbooks": [],
+                               "units": [], "assessments": []},
+            }
 
         usage = outcome.get("usage") or {}
         total_usage["prompt_tokens"] += usage.get("promptTokenCount", 0)
@@ -126,6 +145,11 @@ def build_profile(
                 "term": extraction["term"],
                 "timezone": extraction["timezone"],
                 "textbooks": extraction["textbooks"],
+                "source_inventory": [
+                    {"source_id": source.source_id, "title": source.title,
+                     "resource_type": source.resource_type, "locator": source.locator}
+                    for source in resolver.sources_for_course(course_id)
+                ],
                 **{key: value for key, value in info.items() if value is not None},
             }
         )
@@ -133,7 +157,10 @@ def build_profile(
             units.append({"unit_id": f"unit_{_sid(course_id, unit['title'], str(unit['order']))}", "course_id": course_id, **unit})
         by_title = {_title_key(item["title"]): item for item in extraction["assessments"]}
         if hasattr(resolver, "assignments_for_course"):
-            overview_id = resolver.sources_for_course(course_id)[0].source_id
+            course_sources = resolver.sources_for_course(course_id)
+            overview_id = course_sources[0].source_id
+            assignment_sources = {source.external_id: source.source_id for source in course_sources
+                                  if source.resource_type == "assignment"}
             for assignment in resolver.assignments_for_course(course_id):
                 key = _title_key(assignment.name)
                 due = _parse(assignment.due_at)
@@ -141,10 +168,13 @@ def build_profile(
                     continue
                 kind = ("midterm" if "midterm" in key else "final" if "final" in key
                         else "other" if assignment.looks_like_exam else "assignment")
+                assignment_ref = assignment_sources.get(assignment.external_id, overview_id)
                 item = by_title.setdefault(key, {
                     "title": assignment.name, "scope_status": "unknown", "covered_topics": [],
-                    "source_refs": [overview_id], "scheduled": {},
+                    "source_refs": [assignment_ref], "scheduled": {},
                 })
+                if kind == "assignment" and re.match(r"^quiz\b", key):
+                    kind = "quiz"
                 item["kind"] = kind
                 if assignment.looks_like_exam:
                     item["is_exam"] = True
@@ -157,6 +187,7 @@ def build_profile(
                     except (ValueError, ZoneInfoNotFoundError):
                         zone = None
                     existing = item["scheduled"].get("date")
+                    # Compare the local date after normalizing source timestamps.
                     if assignment.looks_like_exam and existing and existing != due.date().isoformat():
                         item["date_conflict"] = True
                         warnings.append(f"{course_id}: conflicting assessment schedule")
@@ -165,7 +196,7 @@ def build_profile(
                         item["scheduled"] = {
                             "date": due.date().isoformat(), "timestamp": due.isoformat(),
                             "timezone": zone, "precision": "datetime", "evidence_status": "explicit",
-                            "source_refs": [overview_id],
+                            "source_refs": [assignment_ref],
                         }
                 if not item["scheduled"]:
                     item["scheduled"] = {

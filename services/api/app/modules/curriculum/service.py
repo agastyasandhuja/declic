@@ -1,18 +1,22 @@
 """Owner-scoped academic services backed by a private local snapshot."""
+from copy import deepcopy
 from dataclasses import asdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .corrections import RevisionConflict, correct_profile, restore_corrections
 from .extract import build_profile
 from .handoff import build_profile_ready_event
 from .planning.planner import build_lesson_plans
+from .timing import priority_targets, target_topic_is_supported
 from .store import LOCK, latest_revision, load_plans, load_profile, save_profile
 
 
 class AcademicService:
-    def __init__(self, storage_dir: Path, client):
+    def __init__(self, storage_dir: Path, client, *, clock=lambda: datetime.now(timezone.utc)):
         self.storage_dir = storage_dir
         self.client = client
+        self.clock = clock
 
     def get_profile(self, user_id):
         profile = load_profile(self.storage_dir, user_id)
@@ -27,10 +31,35 @@ class AcademicService:
         plans = profile.get("_plans")
         if plans is None:
             plans = load_plans(self.storage_dir, user_id)
-        return [plan for plan in plans if plan.get("user_id") == user_id
-                and plan.get("profile_id") == profile["profile_id"]
-                and plan.get("profile_revision") == profile["revision"]
-                and plan.get("status") == "validated" and plan.get("requests")]
+        courses = {course["course_id"]: course for course in profile["courses"]}
+        valid = []
+        for plan in plans:
+            if (plan.get("user_id") != user_id or plan.get("profile_id") != profile["profile_id"]
+                    or plan.get("profile_revision") != profile["revision"]
+                    or plan.get("status") != "validated" or plan.get("course_id") not in courses):
+                continue
+            plan = deepcopy(plan)
+            course = courses[plan["course_id"]]
+            if course.get("external_course_id"):
+                targets = priority_targets(
+                    [item for item in profile["assessments"] if item["course_id"] == course["course_id"]],
+                    self.clock(), course.get("timezone"),
+                )
+                retained = []
+                for request in plan["requests"]:
+                    topic = request.get("timeline_topic")
+                    matches = [item for item in targets if item["assessment_id"] in request["assessment_ids"]
+                               and isinstance(topic, str) and target_topic_is_supported(topic, item)]
+                    if matches:
+                        request["assessment_ids"] = [item["assessment_id"] for item in matches]
+                        exam = next((item for item in matches if item["kind"] in {"midterm", "final"}
+                                     or item.get("is_exam")), None)
+                        request["exam_scope_status"] = exam["scope_status"] if exam else "unknown"
+                        retained.append(request)
+                plan["requests"] = retained
+            if plan["requests"]:
+                valid.append(plan)
+        return valid
 
     def get_course_bindings(self, user_id):
         profile = self.get_profile(user_id)

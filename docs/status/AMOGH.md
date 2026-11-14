@@ -309,3 +309,79 @@ app = create_app(
   Replaying the saved live output through the tightened filter rejected all
   three numbered-homework candidates. No second live model run was performed
   after that filter change.
+
+## Course inventory and multimodal reading (2026-11-14)
+
+- Added a bounded Gemini source-selection round per Canvas course. It sees
+  syllabus, assignment descriptions, module outlines, Pages, file metadata
+  and calendar events with source IDs and known module associations. The
+  backend resolves a maximum of 12 selections, including five file downloads,
+  from the authenticated course inventory. Files are downloaded on demand.
+  Selected excerpts take priority in lesson planning. The course profile now
+  includes a source inventory alongside the extracted units and assessments.
+- PDF, PNG and JPEG can be sent inline after format and byte-budget checks.
+  PPTX extraction uses slide text. The feed continues to require independently
+  supported dates and topics. A model reading a diagram can inform course
+  objectives, while a vision-only assessment claim remains unverified.
+- Tests passed: 33 curriculum, 29 Canvas, and `git diff --check`. The new
+  synthetic PDF test covers same-course selection, invalid and duplicate IDs,
+  skipped unselected files, inline media serialization, and date validation.
+  A separate live Gemini smoke test read a synthetic one-page PDF.
+- Live Canvas/Gemini demo exited 0 with four courses successfully extracted,
+  117 assignment descriptions or deadline records, 21 module outlines,
+  46 Pages and 66 file records. No attachments reached Gemini in that run.
+  Selected files could not be read under the current same-origin download
+  policy. Two lessons passed planning validation in Intro to C. Intro to
+  Computation still yielded zero validated lessons from that run.
+- Follow-up for live Canvas files: verify the institution's attachment hosts
+  and configure a narrow HTTPS allowlist for signed downloads with Canvas
+  credentials stripped before crossing origins. Canvas OAuth approval and
+  app integration remain pending.
+
+## Upcoming-topic handoff
+
+Canvas topic selection now carries forward specific coursework titles and
+verified assessment coverage directly. Gemini still extracts evidence from
+Canvas materials. The coursework handoff applies the deadline and topic rules
+in code, so a model's phrasing or an empty proposal cannot discard an otherwise
+eligible topic. Leading Canvas labels and icons are removed, administrative or
+number-only titles are skipped, and explicit scope applies to the exact
+assessment. Direct Canvas deadlines and titles are usable if Gemini extraction
+fails. The video pipeline retains responsibility for turning topics into lessons.
+
+Validation used the saved live Canvas snapshot and the synthetic regression
+suite. The snapshot replay recovered named Data Structures coursework.
+Intro to Computation and Multivariate Calculus still had no sufficiently
+specific upcoming topics supported by the available evidence. The replay did
+not contact either live provider.
+
+## Final review and commit verification (2026-11-14)
+
+- Tightened the topic filter and reviewed its normal service/feed entry points.
+  Both generation-facing plan reads and feed candidate reads recheck deadlines.
+  Duplicate topics keep every supporting future assessment ID, so one expired
+  assignment cannot prematurely remove a topic still needed for another.
+  Upcoming plans are prepared ahead of time, while reads select the nearest
+  eligible exam and earlier coursework or the nearest five coursework targets.
+- Date-only eligibility now requires a known timezone. Conflicting dates,
+  inferred dates, timezone-free timestamps, generic numbered coursework, and
+  administrative titles are excluded. Coverage matching respects assessment
+  name boundaries and explicit exclusions. Canvas labels/icons are normalized.
+  Saved corrections survive model failure and subsequent imports.
+- Final checks: 44 curriculum unit tests and 29 Canvas unit tests passed.
+  Two synthetic API composition/expiry checks passed against Agastya's fetched
+  core using the SQLite fake, with one TestClient deprecation warning.
+  Seven mobile view-model tests passed. `git diff --check` passed.
+- Final live `run_demo --plan` exited 0. All four courses extracted successfully.
+  Eight topic handoffs across two courses passed both planning and subsequent
+  current-time service reads. Canvas local dates were preserved. No eligible
+  topics were fabricated for Intro to Computation or Calculus.
+- Limits remain explicit: 66 file records were inventoried, with zero extracted
+  file texts in the final live run. Signed attachment-host support remains
+  pending. Some valid coverage phrased outside the supported evidence patterns
+  may be withheld. Topic selection is supported by tests and the live scan,
+  without a measured universal accuracy guarantee.
+- Deployment integration still requires the owner's Canvas refresh trigger and
+  invalidation of already-prefetched feed items when deadlines or source access
+  change. The local service does not poll Canvas during feed reads. MongoDB and
+  hosted OAuth integration remain deferred as instructed.

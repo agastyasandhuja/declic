@@ -12,6 +12,7 @@ date) is reported as undated, never guessed.
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -20,7 +21,7 @@ from ..canvas.assignments import Assignment
 
 
 def _parse(ts: str | None) -> datetime | None:
-    if not ts:
+    if not isinstance(ts, str) or not ts:
         return None
     try:
         value = datetime.fromisoformat(ts.replace("Z", "+00:00"))
@@ -119,7 +120,7 @@ def upcoming_assessments(assessments, now, course_timezone=None):
                 continue
         elif scheduled.get("precision") == "date":
             try:
-                zone = ZoneInfo(scheduled.get("timezone") or course_timezone or "America/New_York")
+                zone = ZoneInfo(scheduled.get("timezone") or course_timezone or "")
                 day = date.fromisoformat(scheduled["date"])
                 if day < now.astimezone(zone).date():
                     continue
@@ -134,24 +135,63 @@ def upcoming_assessments(assessments, now, course_timezone=None):
     return [target[-1] for target in sorted(targets, key=lambda target: target[:3])]
 
 
+_WORK_PREFIX = re.compile(
+    r"^(?:(?:problem set|programming assignment|assignment|homework|challenge|discussion|"
+    r"exercise|project|quiz|lab|hw|pa|ps)(?=\W|\d|$)\s*(?:#?\s*\d+(?:[.\-]\d+)*)?\b[\s:–—.-]*)",
+    re.I,
+)
+_ADMINISTRATIVE = re.compile(
+    r"\b(?:acknowledg(?:e)?ments?|collaboration policy|course evaluations?|"
+    r"attendance|submission instructions|syllabus quiz|starter project)\b",
+    re.I,
+)
+_GENERIC = re.compile(
+    r"^(?:(?:core|key|foundational)\s+)?(?:concepts?|principles?|topics?|"
+    r"exercises?|practice|problems?|review|welcome|introduction|discussion|"
+    r"assignments?|homework|quiz|lab|project|exam|midterm|final|\d+)(?:\s+\d+)?$",
+    re.I,
+)
+
+
+def assessment_topics(target):
+    """Return only specific, directly supported topics for this exact assessment."""
+    title = target["title"].strip()
+    # Canvas titles sometimes start with an icon or variation selector.
+    title = title.lstrip("".join(char for char in title[:12]
+                                 if unicodedata.category(char) in {"So", "Mn", "Cf"} or char.isspace()))
+    if _ADMINISTRATIVE.search(title):
+        return []
+    topics = []
+    if target.get("scope_status") in {"explicit", "user_confirmed"}:
+        topics.extend(target.get("covered_topics", []))
+    is_exam = target["kind"] in {"midterm", "final"} or target.get("is_exam")
+    if not is_exam and target["kind"] in {"assignment", "quiz"}:
+        match = _WORK_PREFIX.match(title)
+        topic = title[match.end():] if match else title
+        if not re.match(r"^(?:chapter|section|unit|module|week)\s*#?\d", topic, re.I):
+            topics.append(topic)
+    unique = {}
+    for topic in topics:
+        value = topic.strip()
+        if any(char.isalpha() for char in value) and not _GENERIC.fullmatch(value):
+            unique.setdefault(" ".join(value.casefold().split()), value)
+    return list(unique.values())
+
+
 def priority_targets(assessments, now, course_timezone=None):
-    """Focus on the next dated exam when its scope is known, else upcoming graded work."""
+    """Prefer the next exam with verified scope, then the nearest topical coursework."""
     upcoming = upcoming_assessments(assessments, now, course_timezone)
     exams = [item for item in upcoming if item["kind"] in {"midterm", "final"} or item.get("is_exam")]
-    if exams and exams[0].get("covered_topics") and exams[0].get("scope_status") in {"explicit", "user_confirmed"}:
-        return exams[:1]
-    return [item for item in upcoming if item not in exams][:5]
+    coursework = [item for item in upcoming if item not in exams and assessment_topics(item)]
+    if exams and assessment_topics(exams[0]):
+        # Keep earlier coursework eligible while giving the next exam first priority.
+        exam_day = exams[0]["scheduled"]["date"]
+        earlier = [item for item in coursework if item["scheduled"]["date"] <= exam_day]
+        return [exams[0], *earlier[:4]]
+    return coursework[:5]
 
 
 def target_topic_is_supported(topic, target):
-    """Require a literal topic in the target title or its verified coverage."""
+    """Revalidate a saved topic against the current assessment evidence."""
     key = " ".join(topic.casefold().split())
-    generic = r"(?:assignment|homework|hw|quiz|exam|lab|project|problem set|midterm|final)(?:\s*#?\s*\d+(?:[.\-]\d+)*)?"
-    if not any(c.isalpha() for c in key) or re.fullmatch(generic, key):
-        return False
-    if target.get("scope_status") in {"explicit", "user_confirmed"}:
-        if key in {" ".join(value.casefold().split()) for value in target.get("covered_topics", [])}:
-            return True
-    return not (target["kind"] in {"midterm", "final"} or target.get("is_exam")) and bool(
-        re.search(r"(?<!\w)" + re.escape(key) + r"(?!\w)", " ".join(target["title"].casefold().split()))
-    )
+    return key in {" ".join(value.casefold().split()) for value in assessment_topics(target)}

@@ -252,3 +252,16 @@ class CanvasResolverTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AssessmentScopeTests(unittest.TestCase):
+    def test_only_positive_coverage_for_the_cited_exam_qualifies(self):
+        from app.modules.curriculum.validators import validate_extraction
+
+        raw = {"assessments": [{"title": "Midterm 2", "kind": "midterm",
+                                "source_ids": ["guide"], "scope_status": "explicit",
+                                "covered_topics": ["heaps", "linked lists", "hash tables"]}]}
+        evidence = {"guide": "Midterm 2 covers heaps but not linked lists.\n"
+                             "Midterm 3 covers hash tables."}
+        result = validate_extraction(raw, {"guide"}, evidence=evidence)
+        self.assertEqual(result["assessments"][0]["covered_topics"], ["heaps"])

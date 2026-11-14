@@ -4,7 +4,6 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.modules.recommendations.models import ObjectiveCandidate
 
-
 from .timing import priority_targets, target_topic_is_supported, upcoming_assessments
 
 
