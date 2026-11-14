@@ -58,3 +58,21 @@ not required for teammates to build against fixtures.
 
 See [probe instructions](experiments/README.md), [decision](../../../../../docs/decisions/002-proposed-adi-domain-bootstrap.md)
 and [Adi status](../../../../../docs/status/ADI.md) for measured live-vs-fake evidence.
+
+## Live Instagram demo
+
+The owner-bound live adapter is implemented in instagram.py, live.py and
+instagram_connection.py. See [exact setup and live acceptance](../../../../../docs/ADI_INSTAGRAM_LIVE.md).
+It implements the same domain feed/playback methods and requires the verified
+app user on every request. Fresh provider pages replace the finite saved-file
+source when the live factory is explicitly selected. Credentials stay in an
+ignored owner-only server session file; no password is saved. No automatic login
+or checkpoint handling occurs during feed requests.
+
+The existing Atlas snapshot repository and fixture/saved adapters retain their
+original behavior. This single-process live demo does not modify Atlas schemas,
+shared core/main.py or the shared Python manifest. Agastya registers the router,
+maps CatalogFailure, owns lifecycle/hosting and composes any unified-feed reader.
+The domain list_candidates(user, cursor, limit) signature differs from core's
+EntertainmentReader.list_candidates(user_id, limit); it must not be passed there
+without an explicit candidate-model adapter.

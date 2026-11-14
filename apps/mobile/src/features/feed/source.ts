@@ -18,11 +18,27 @@ export function eligibleVideos(videos: EntertainmentVideo[], now = Date.now()) {
   });
 }
 
-export function appendFeedPage(previous: EntertainmentVideo[], incoming: EntertainmentVideo[]) {
-  // Keep existing card indexes stable when an old signed URL expires during pagination.
+export function unseenVideos(previous: EntertainmentVideo[], incoming: EntertainmentVideo[]) {
   const keys = new Set(previous.map(video => `${video.provider}:${video.provider_video_id}`));
   const ids = new Set(previous.map(video => video.video_id));
-  return [...previous, ...eligibleVideos(incoming).filter(video => !keys.has(`${video.provider}:${video.provider_video_id}`) && !ids.has(video.video_id))].slice(0, 100);
+  return eligibleVideos(incoming.filter(video => !keys.has(`${video.provider}:${video.provider_video_id}`) && !ids.has(video.video_id)));
+}
+export function appendFeedPage(previous: EntertainmentVideo[], incoming: EntertainmentVideo[]) {
+  // Keep existing card indexes stable when an old signed URL expires during pagination.
+  return [...previous, ...unseenVideos(previous, incoming)].slice(0, 100);
+}
+export function appendFeedWindow(previous: EntertainmentVideo[], incoming: EntertainmentVideo[], activeIndex: number, capacity = 100) {
+  if (!Number.isInteger(capacity) || capacity < 5 || !Number.isInteger(activeIndex) || activeIndex < 0 || (previous.length && activeIndex >= previous.length)) throw new Error('Invalid feed window.');
+  const combined = [...previous, ...unseenVideos(previous, incoming)];
+  // Evict only already-passed cards, preserving the current clip and every unseen clip.
+  const removed = Math.min(Math.max(0, combined.length - capacity), activeIndex);
+  if (combined.length - removed > capacity) throw new Error('Watch a few more clips before loading another page.');
+  return { items: combined.slice(removed), index: activeIndex - removed, removed };
+}
+export function shouldPrefetchPage({ index, count, hasNext, focused, foreground, loading, hasError }: {
+  index: number; count: number; hasNext: boolean; focused: boolean; foreground: boolean; loading: boolean; hasError: boolean;
+}) {
+  return count > 0 && index >= count - 3 && hasNext && focused && foreground && !loading && !hasError;
 }
 export function createFixtureSource(): FeedSource {
   const items = eligibleVideos(parseFeedPage(catalog).items);

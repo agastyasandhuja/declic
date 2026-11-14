@@ -10,7 +10,7 @@ import type { PlayerDriver } from '../../lib/playback/SinglePlayerController';
 import { ApiError } from '../../lib/api/client';
 import { VisibleWatchTracker, PlaybackStallGuard } from '../../lib/playback/VisibleWatchTracker';
 import type { FeedSource } from './source';
-import { eligibleVideos, appendFeedPage } from './source';
+import { appendFeedWindow, shouldPrefetchPage, unseenVideos } from './source';
 import { Button } from '../../components/Button';
 import { theme } from '../../theme';
 
@@ -32,6 +32,8 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload }: {
   const appliedRetry = useRef(0);
   const [playback, setPlayback] = useState<BufferedPlaybackState>({ loading: true, ready: false, error: null, activeSlot: 0, timedOut: false });
   const [watchMs, setWatchMs] = useState(0); const list = useRef<FlatList<EntertainmentVideo>>(null);
+  const videosRef = useRef(videos); videosRef.current = videos;
+  const pendingScrollIndex = useRef<number | null>(null);
   const pending = useRef(false); const generation = useRef(0); const requestAbort = useRef<AbortController | null>(null);
   const onEventRef = useRef(onEvent); onEventRef.current = onEvent;
   const watch = useRef(new VisibleWatchTracker()); const selectedIndex = useRef(index); selectedIndex.current = index;
@@ -51,25 +53,43 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload }: {
   const fetchPage = useCallback(async (cursor: string | null = null, reset = false) => {
     if (pending.current && !reset) return;
     const request = reset ? ++generation.current : generation.current;
-    if (reset) { requestAbort.current?.abort(); setVideos([]); setIndex(0); }
+    if (reset) { requestAbort.current?.abort(); controllerRef.current.setGate({ focused: false }); videosRef.current = []; selectedIndex.current = 0; pendingScrollIndex.current = 0; setVideos([]); setIndex(0); }
     const abort = new AbortController(); requestAbort.current = abort;
     pending.current = true; setLoading(true); setPageError(null); setPageNeedsReset(false);
     try {
       let page = await source.getPage(cursor, abort.signal);
       // Bounded recovery through empty/expired windows, preserving opaque server cursors.
-      for (let skipped = 0; eligibleVideos(page.items).length === 0 && page.next_cursor && skipped < 3; skipped++) {
+      for (let skipped = 0; unseenVideos(reset ? [] : videosRef.current, page.items).length === 0 && page.next_cursor && skipped < 3; skipped++) {
+        if (request !== generation.current || abort.signal.aborted) return;
         if (page.next_cursor === cursor) throw new Error('The feed repeated a page. Reload to recover.');
         cursor = page.next_cursor; page = await source.getPage(cursor, abort.signal);
       }
       if (request !== generation.current || abort.signal.aborted) return;
       if (cursor && page.next_cursor === cursor) throw new Error('The feed repeated a page. Reload to recover.');
-      setVideos(previous => appendFeedPage(reset ? [] : previous, page.items));
+      if (!unseenVideos(reset ? [] : videosRef.current, page.items).length && page.next_cursor) {
+        setNextCursor(page.next_cursor);
+        throw new Error('No new clips were available in this window. Keep watching and retry shortly.');
+      }
+      const window = appendFeedWindow(reset ? [] : videosRef.current, page.items, reset ? 0 : selectedIndex.current);
+      if (window.removed) { controllerRef.current.setGate({ focused: false }); pendingScrollIndex.current = window.index; }
+      videosRef.current = window.items; selectedIndex.current = window.index;
+      setVideos(window.items); setIndex(window.index);
       setNextCursor(page.next_cursor);
-      if (reset) { setIndex(0); setViewable(true); list.current?.scrollToOffset({ offset: 0, animated: false }); }
+      if (reset) setViewable(true);
     } catch (error) { if (request === generation.current && !abort.signal.aborted) { setPageNeedsReset(error instanceof ApiError && error.code === 'STALE_CURSOR'); setPageError(error instanceof Error ? error.message : 'Unable to load the feed. Retry when connected.'); } }
     finally { if (request === generation.current) { pending.current = false; setLoading(false); } }
   }, [source]);
   useEffect(() => { void fetchPage(null, true); return () => { generation.current++; requestAbort.current?.abort(); }; }, [fetchPage]);
+  useLayoutEffect(() => {
+    if (pendingScrollIndex.current !== null && height > 0 && videos.length) {
+      list.current?.scrollToOffset({ offset: pendingScrollIndex.current * height, animated: false });
+      pendingScrollIndex.current = null;
+      controller.setGate({ focused: focused && foreground && viewable });
+    }
+  }, [videos, height, controller, focused, foreground, viewable]);
+  useEffect(() => {
+    if (shouldPrefetchPage({ index, count: videos.length, hasNext: !!nextCursor, focused, foreground, loading, hasError: !!pageError })) void fetchPage(nextCursor);
+  }, [index, videos.length, nextCursor, focused, foreground, loading, pageError, fetchPage]);
   useEffect(() => {
     const listener = AppState.addEventListener('change', state => {
       const active = state === 'active'; controller.setGate({ foreground: active }); setForeground(active);
@@ -133,9 +153,12 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload }: {
     const value = current.current;
     if (value.video) onEventRef.current({ video_id: value.video.video_id, event_type: 'video_skipped', position_ms: Math.round(value.player.currentTime * 1000), visible_watch_ms: Math.round(watch.current.totalMs) });
   };
-  const onViewable = useRef(({ viewableItems }: { viewableItems: { isViewable: boolean; index?: number | null }[] }) => {
+  const onViewable = useRef(({ viewableItems }: { viewableItems: { isViewable: boolean; index?: number | null; item: EntertainmentVideo }[] }) => {
     const visible = viewableItems.find(item => item.isViewable && item.index != null);
-    const next = visible?.index;
+    // Native callbacks can refer to the previous window while old cards are evicted.
+    const located = visible ? videosRef.current.findIndex(item => item.video_id === visible.item.video_id) : -1;
+    if (visible && located < 0) return; // Ignore a late callback for an evicted card.
+    const next = located < 0 ? undefined : located;
     // Gate audio synchronously while no card crosses the visibility threshold.
     controllerRef.current.setGate({ focused: next != null && focusGate.current });
     setViewable(next != null);
@@ -152,12 +175,13 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload }: {
   }
   function skip() {
     if (index < videos.length - 1) list.current?.scrollToIndex({ index: index + 1, animated: true });
+    else if (nextCursor) { if (!pageNeedsReset) void fetchPage(nextCursor); else onReload(); }
     else { recordSkip.current(); onReload(); }
   }
   return <View testID="feed-screen" style={styles.root} onLayout={event => { if (event.nativeEvent.layout.height > 0) setHeight(event.nativeEvent.layout.height); }}>
     {videos.length > 0 && height > 0 ? <FlatList ref={list} data={videos} keyExtractor={item => item.video_id} pagingEnabled snapToInterval={height} decelerationRate="fast" showsVerticalScrollIndicator={false}
       initialNumToRender={2} maxToRenderPerBatch={2} windowSize={3} getItemLayout={(_, position) => ({ length: height, offset: height * position, index: position })}
-      viewabilityConfig={{ itemVisiblePercentThreshold: 80 }} onViewableItemsChanged={onViewable} onEndReachedThreshold={0.7} onEndReached={() => { if (nextCursor && videos.length < 100) void fetchPage(nextCursor); }}
+      viewabilityConfig={{ itemVisiblePercentThreshold: 80 }} onViewableItemsChanged={onViewable}
       renderItem={({ item, index: cardIndex }) => <View style={{ height, backgroundColor: '#101A11' }}>
         {cardIndex === index && <VideoView testID="active-video" style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]} player={player} contentFit="cover" nativeControls={false} allowsPictureInPicture={false} />}
         <LinearGradient pointerEvents="none" colors={['#00000070', 'transparent', '#00000018', '#000000E8']} locations={[0, 0.35, 0.55, 1]} style={StyleSheet.absoluteFill} />
@@ -174,7 +198,7 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload }: {
       </View>} /> : <View style={styles.center}><View style={styles.empty}><Ionicons name="play-circle-outline" size={54} color={theme.colors.accent} /><Text style={styles.errorTitle}>{loading ? 'Your feed is warming up.' : 'A fresh start.'}</Text><Text style={styles.errorText}>{pageError ?? 'No clips are available yet. Reload to try again.'}</Text>{loading ? <ActivityIndicator color={theme.colors.accent} /> : <Button title={nextCursor ? 'Try next page' : 'Reload feed'} onPress={() => void fetchPage(nextCursor, !nextCursor)} />}</View></View>}
     <View pointerEvents="box-none" style={[styles.header, { top: insets.top + 12 }]}><Text style={styles.brand}>study / scroll</Text><View style={styles.feedLabel}><View style={styles.greenDot} /><Text style={styles.headerLabel}>{source.mode === 'fixture' ? 'DEMO FEED' : source.mode === 'saved_instagram' ? 'SAVED REELS' : 'FOR YOU'}</Text></View><Pressable accessibilityRole="button" accessibilityLabel={muted ? 'Unmute video' : 'Mute video'} onPress={() => setMuted(value => !value)} style={styles.roundButton}><Ionicons name={muted ? 'volume-mute-outline' : 'volume-high-outline'} size={20} color="white" /></Pressable></View>
     {videos.length > 0 && <View pointerEvents="none" style={styles.counter}><Text style={styles.counterText}>{index + 1} / {videos.length}{loading ? '  ·  loading' : ''}</Text><Text style={styles.counterText}>{Math.floor(watchMs / 1000)}s watched</Text></View>}
-    {videos.length > 0 && <Pressable accessibilityRole="button" accessibilityLabel={index < videos.length - 1 ? 'Next clip' : 'Reload feed'} testID="next-clip" onPress={skip} style={[styles.roundButton, { position: 'absolute', right: 20, bottom: 91 }]}><Ionicons name={index < videos.length - 1 ? 'chevron-up' : 'refresh'} size={20} color="white" /></Pressable>}
+    {videos.length > 0 && <Pressable accessibilityRole="button" accessibilityLabel={index < videos.length - 1 ? 'Next clip' : nextCursor ? 'Load more clips' : 'Reload feed'} testID="next-clip" onPress={skip} style={[styles.roundButton, { position: 'absolute', right: 20, bottom: 91 }]}><Ionicons name={index < videos.length - 1 || nextCursor ? 'chevron-up' : 'refresh'} size={20} color="white" /></Pressable>}
     {pageError && videos.length > 0 && <Pressable accessibilityRole="button" onPress={() => pageNeedsReset ? onReload() : void fetchPage(nextCursor)} style={styles.pageError}><Text style={styles.counterText}>{pageError} {pageNeedsReset ? 'Tap to reload.' : 'Tap to retry.'}</Text></Pressable>}
   </View>;
 }
