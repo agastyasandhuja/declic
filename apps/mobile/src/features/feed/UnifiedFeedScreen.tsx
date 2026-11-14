@@ -18,7 +18,8 @@ import { Brand } from '../../components/Brand';
 import { theme } from '../../theme';
 import type { PlaybackPreferences } from '../settings/ProfileScreen';
 import { FeedEventBuffer } from './FeedEventBuffer';
-import { abortableDelay } from './paging';
+import { createPageReader } from './paging';
+import { shouldPrefetchPage } from './source';
 import { appendUnified, parseUnifiedPage, type UnifiedItem } from './unified';
 
 export function UnifiedFeedScreen({ focused, preferences, setPreferences, clickedIds, savedIds, onClickVideo, onSaveVideo }: { focused: boolean; preferences: PlaybackPreferences; setPreferences(value: PlaybackPreferences): void; clickedIds: string[]; savedIds: string[]; onClickVideo(video: EntertainmentVideo): void; onSaveVideo(video: EntertainmentVideo): void }) {
@@ -76,21 +77,12 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
       }
       const query = new URLSearchParams({ session_id: id, limit: '5' });
       if (!reset && cursor.current) query.set('cursor', cursor.current);
-      let busyRetries = 0;
-      const read = async () => {
-        for (;;) {
-          if (abort.signal.aborted) throw new Error('Cancelled');
-          try { return parseUnifiedPage(await api.request(`/v1/feed?${query}`, { signal: abort.signal })); }
-          catch (problem) {
-            if (!(problem instanceof ApiError) || problem.code !== 'INSTAGRAM_BUSY' || !problem.retryable || problem.status !== 503 || busyRetries >= 2) throw problem;
-            busyRetries++;
-            await abortableDelay(Math.max(2000, Math.min(10000, problem.retryAfterMs ?? 2000)), abort.signal);
-          }
-        }
-      };
+      const pacedRead = createPageReader(abort.signal);
+      const read = () => pacedRead(async () => parseUnifiedPage(await api.request(`/v1/feed?${query}`, { signal: abort.signal })));
+      const available = (page: ReturnType<typeof parseUnifiedPage>) => page.items.some(item => reset || !values.current.some(previous => previous.item_id === item.item_id));
       let page = await read();
       const seen = new Set(query.has('cursor') ? [query.get('cursor')!] : []);
-      for (let skipped = 0; page.items.length === 0 && page.next_cursor && skipped < 3; skipped++) {
+      for (let skipped = 0; !available(page) && page.next_cursor && skipped < 3; skipped++) {
         if (seen.has(page.next_cursor)) throw new Error('The feed repeated a page. Please refresh.');
         seen.add(page.next_cursor);
         if (generation.current !== request || abort.signal.aborted) return;
@@ -107,6 +99,7 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
       }
       revision.current = page.recommendation_revision;
       cursor.current = page.next_cursor;
+      if (!available(page) && page.next_cursor) throw new Error('No new videos are ready in this window. Retry shortly.');
       const merged = reset ? page.items : appendUnified(values.current, page.items);
       const remove = reset ? 0 : Math.min(Math.max(0, merged.length - 80), Math.max(0, indexRef.current - 10));
       values.current = merged.slice(remove); setItems(values.current);
@@ -153,7 +146,7 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
     }, 500);
     return () => clearInterval(timer);
   }, [current?.item_id, player, focused, foreground, paused, sourceReady, playback.selection, frameRendered, emit, flush]);
-  useEffect(() => { if (focused && foreground && index >= items.length - 2 && cursor.current && items.at(-1)?.kind !== 'quiz' && !loading && !error) void load(); }, [index, items, focused, foreground, loading, error, load]);
+  useEffect(() => { if (shouldPrefetchPage({ index, count: items.length, hasNext: !!cursor.current, focused, foreground, loading, hasError: !!error }) && items.at(-1)?.kind !== 'quiz') void load(); }, [index, items, focused, foreground, loading, error, load]);
   useEffect(() => {
     if (!focused || !foreground || items.length) return;
     const timer = setInterval(() => { if (!pending.current) void load(); }, 10000);

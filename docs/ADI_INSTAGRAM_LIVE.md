@@ -7,8 +7,9 @@ likes/follows or explicit Instagram seen-state updates. No media bytes are store
 
 Implementation and synthetic checks are ready. A user-run browser-session
 connection verified the account and retrieved two live pages with four unique
-Reels and a continuation cursor. Useful later-page acquisition beyond four and
-physical-phone playback remain separate required checks, recorded in
+Reels and a continuation cursor. The phone subsequently played eight with good
+picture/audio and later loaded a ninth. Sustained continuation and lifecycle
+acceptance remain separate required checks, recorded in
 [Adi status](status/ADI.md). The previous four-Reel retrieval does not prove them.
 
 ## 1. Prepare the isolated environment
@@ -160,7 +161,7 @@ npm run instagram:mobile
 This clears Metro's saved preview mode and selects the authenticated API feed.
 Sign in with the same app account used in step 2; Explore the demo deliberately
 uses fixtures. Only five metadata records are requested at a time. The app
-prefetches with three or fewer clips remaining while foregrounded/focused,
+refills metadata toward eight upcoming clips while foregrounded/focused,
 preserves the current clip on page failure, and evicts already-passed cards as
 its 100-record window fills. Exactly one native player remains active, with one
 paused upcoming media buffer.
@@ -180,14 +181,23 @@ start a public tunnel automatically or embed the connection file/saved catalog.
   Test a background/resume, single audio source, and recoverable failed/expired clip.
 - Retry a page after a transient failure: it must not silently skip another page.
   Retry clip can request fresh provider metadata for an already-issued video ID.
-- Short INSTAGRAM_BUSY pacing waits are retried twice, respecting the bounded
-  Retry-After delay. Duplicate windows retain cursor progress; at most four are
-  traversed before an explicit retry is offered. Background/navigation cancels
-  waits. Provider rate limits are not polled automatically.
+- Short INSTAGRAM_BUSY pacing waits are retried twice per page, respecting the
+  bounded Retry-After delay. Duplicate windows retain cursor progress and are
+  spaced by two seconds. After four successful empty pages, the next window
+  continues automatically after a short pause, up to three windows / twelve
+  consecutive empty pages. Only then is explicit retry required if still empty.
+  Temporary network/proxy/provider outages have two additional retries per
+  four-page window, honoring cooldowns up to 30 seconds. Longer hints, provider
+  rate limits, auth/reconnect and stale/invalid cursors are not polled automatically.
+  Background/navigation cancels waits. Metadata refill starts early while the
+  existing clip plays; it does not add native players or predownload all videos.
 - The video surface stays in loading until its first rendered frame. Audio alone
   is insufficient. After 12 foreground seconds without a picture, retry/skip is
   available; a full app reload is required when testing a changed native-player
-  controller through Fast Refresh. This repair still needs physical-phone validation.
+  controller through Fast Refresh. The user has since reported picture/audio
+  working without black screens through 17 clips and one normal single-player
+  background/resume. Automatic no-tap continuation and unavailable/expiry recovery
+  remain acceptance checks.
 - If Instagram has no new clips in bounded empty/duplicate windows, automatic
   traversal stops and offers retry. There is no unbounded request loop.
 - Reconnect errors are 409, not Supabase 401: the app account stays signed in.

@@ -2,6 +2,20 @@
 
 Owner: Adi. Consumer: recommendations and mobile.
 
+## Demo browser-session connection
+
+`POST /v1/instagram/browser-session` requires app bearer authentication and accepts
+only `{username, session_id}`. Username is 1–30 characters from `[A-Za-z0-9_.]`;
+`session_id` is a secret cookie value of 31–16384 characters, starts with digits,
+and contains no whitespace. The server verifies the canonical Instagram username,
+encrypts reusable settings under the authenticated app user, and queues a refresh.
+The `202` response contains only `{schema_version: "1", status: "connected",
+last_sync_at: null}`. Attempts share the existing 30-second cooldown (`429
+LOGIN_COOLDOWN`); invalid/challenged sessions return sanitized `409` diagnostics.
+No caller-supplied user ID, arbitrary session object, or password is accepted.
+A rejected replacement cookie preserves an existing connected session. The client
+must not persist or log the cookie. Existing status/disconnect routes are unchanged.
+
 ## EntertainmentVideo
 
 Required fields:

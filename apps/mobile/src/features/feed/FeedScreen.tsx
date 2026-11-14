@@ -12,7 +12,7 @@ import { ApiError } from '../../lib/api/client';
 import { VisibleWatchTracker, PlaybackStallGuard, FirstFrameGuard } from '../../lib/playback/VisibleWatchTracker';
 import type { FeedSource, FeedHistory } from './source';
 import { appendFeedWindow, shouldPrefetchPage, unseenVideos } from './source';
-import { fetchAvailablePage } from './paging';
+import { fetchRefillPage } from './paging';
 import { Button } from '../../components/Button';
 import { Brand } from '../../components/Brand';
 import type { PlaybackPreferences } from '../settings/ProfileScreen';
@@ -34,8 +34,6 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
   const muted = preferences.muted; const setMuted = (value: boolean) => setPreferences({ ...preferences, muted: value }); const [foreground, setForeground] = useState(AppState.currentState === 'active');
   const [retry, setRetry] = useState(0);
   const [fillVideo, setFillVideo] = useState(false);
-  const retryPageCount = useRef(0);
-  const retryPageTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const appliedRetry = useRef(0);
   const [playback, setPlayback] = useState<BufferedPlaybackState>({ loading: true, ready: false, error: null, activeSlot: 0, timedOut: false, sourceUri: null, selection: 0 });
   const [renderedSelection, setRenderedSelection] = useState<number | null>(null);
@@ -66,31 +64,30 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
 
   const fetchPage = useCallback(async (cursor: string | null = null, reset = false) => {
     if (pending.current && !reset) return;
-    if (retryPageTimer.current) { clearTimeout(retryPageTimer.current); retryPageTimer.current = null; }
     const request = reset ? ++generation.current : generation.current;
     if (reset) { requestAbort.current?.abort(); controllerRef.current.setGate({ focused: false }); videosRef.current = []; selectedIndex.current = 0; pendingScrollIndex.current = 0; setVideos([]); setIndex(0); }
     const abort = new AbortController(); requestAbort.current = abort;
     pending.current = true; setLoading(true); setPageError(null); setPageNeedsReset(false);
     try {
       const read = async (cursor: string | null) => { const page = await source.getPage(cursor, abort.signal); return { ...page, items: allowReplay ? page.items : history.unseen(page.items) }; };
-      const page = await fetchAvailablePage({ ...source, getPage: read }, reset ? [] : videosRef.current, cursor, abort.signal, next => {
+      const page = await fetchRefillPage({ ...source, getPage: read }, reset ? [] : videosRef.current, cursor, abort.signal, next => {
         if (request === generation.current && !abort.signal.aborted) { cursor = next; setNextCursor(next); }
       });
       if (request !== generation.current || abort.signal.aborted) return;
       if (!unseenVideos(reset ? [] : videosRef.current, page.items).length && page.next_cursor) {
         setNextCursor(page.next_cursor);
-        throw new Error('No new clips were available in this window. Keep watching and retry shortly.');
+        throw new Error('Instagram is repeating clips. Tap to continue looking for new Reels.');
       }
       const window = appendFeedWindow(reset ? [] : videosRef.current, page.items, reset ? 0 : selectedIndex.current);
       if (window.removed) { controllerRef.current.setGate({ focused: false }); pendingScrollIndex.current = window.index; }
       videosRef.current = window.items; selectedIndex.current = window.index;
       setVideos(window.items); setIndex(window.index);
-      setNextCursor(page.next_cursor); retryPageCount.current = 0;
+      setNextCursor(page.next_cursor);
       if (reset) setViewable(true);
-    } catch (error) { if (request === generation.current && !abort.signal.aborted) { setPageNeedsReset(error instanceof ApiError && error.code === 'STALE_CURSOR'); if (error instanceof ApiError && error.retryable && error.code !== 'INSTAGRAM_BUSY' && retryPageCount.current < 2) { retryPageCount.current++; retryPageTimer.current = setTimeout(() => { if (request === generation.current && focusGate.current) void fetchPage(cursor, reset); }, 3000 * retryPageCount.current); } setPageError(error instanceof Error ? error.message : 'Unable to load the feed. Retry when connected.'); } }
+    } catch (error) { if (request === generation.current && !abort.signal.aborted) { setPageNeedsReset(error instanceof ApiError && error.code === 'STALE_CURSOR'); setPageError(error instanceof Error ? error.message : 'Unable to load the feed. Retry when connected.'); } }
     finally { if (request === generation.current) { pending.current = false; setLoading(false); } }
   }, [source, history, allowReplay]);
-  useEffect(() => { void fetchPage(null, true); return () => { generation.current++; requestAbort.current?.abort(); if (retryPageTimer.current) clearTimeout(retryPageTimer.current); }; }, [fetchPage]);
+  useEffect(() => { void fetchPage(null, true); return () => { generation.current++; requestAbort.current?.abort(); }; }, [fetchPage]);
   useEffect(() => {
     if (!focused || !foreground) {
       if (pending.current) { resumePageOnFocus.current = true; requestAbort.current?.abort(); }

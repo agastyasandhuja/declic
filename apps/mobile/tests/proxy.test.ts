@@ -24,7 +24,10 @@ test('preview transport forwards only app auth to loopback and rejects cookies, 
     assert.equal((await fetch(`${origin}/v1/admin`, { headers })).status, 404);
     assert.equal((await fetch(`${origin}/v1/feed/sessions`, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json', 'Idempotency-Key': 'session-test' }, body: '{}' })).status, 200);
     assert.equal((await fetch(`${origin}/v1/feed/sessions`, { method: 'POST', body: '{}' })).status, 401);
+    assert.equal((await fetch(`${origin}/v1/instagram/browser-session`, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: '{"username":"demo","session_id":"synthetic"}' })).status, 200);
+    assert.equal((await fetch(`${origin}/v1/instagram/browser-session`, { method: 'POST', body: '{}' })).status, 401);
+    assert.equal((await fetch(`${origin}/v1/instagram/browser-session`, { headers })).status, 405);
     assert.equal((await fetch(`${origin}/v1/canvas/token`, { method: 'POST', headers, body: 'x'.repeat(70000) })).status, 413);
-    assert.equal(calls, 3);
+    assert.equal(calls, 4);
   } finally { await Promise.all([new Promise<void>(resolve => proxy.close(() => resolve())), new Promise<void>(resolve => upstream.close(() => resolve()))]); }
 });
