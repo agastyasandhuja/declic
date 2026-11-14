@@ -1,5 +1,79 @@
 # Adi status
 
+## Instagram connection repair — November 14, 2026
+
+The user clarified that the SMS arrived only on an occasional attempt, so it
+cannot be assumed to be routine account 2FA. Fixed the local helper's premature
+code prompt and added a separate, explicitly selected browser-session path.
+
+### Changes and measured evidence
+
+- Password setup no longer asks for a code before the first SDK login. Only a
+  supported TwoFactorRequired context can continue through SMS/authenticator
+  method selection and one hidden code submission. SMS selection precedes the
+  prompt; an absent code cancels without a resend or new password login.
+  Unsupported contexts stop; official-account checkpoints remain user-controlled.
+- Private device profiles now retain the SDK's device-registration signing key
+  as well as UUIDs. Previously the key was discarded after a failed attempt.
+  It remains mode 0600 server-side credential material, stripped of account
+  authorization/cookies and excluded from Git, the report and mobile.
+- Added bounded fixed request-phase/count/HTTP diagnostics. The local wrapper
+  bypasses the SDK's timeout/incomplete-read retry loops, caps the sequence at
+  40 calls and refuses repeating a password endpoint. The original typed error
+  and status are preserved when a blocked loop would obscure them.
+- The user's first updated run at 2026-11-14T20:41:48.345064+00:00 stopped with
+  INSTAGRAM_LOGIN_REPEAT_BLOCKED. The report showed CAA password → launcher →
+  legacy password → CAA preparation, with the second CAA password blocked before
+  dispatch. two_factor_requested=false and no ready session/pages were saved.
+  The user reported receiving an SMS; that alone does not provide a supported
+  continuation context or establish successful verification.
+- Added --browser-session: hidden local input of the owner's own official Chrome
+  sessionid, restored via the SDK's documented login_by_sessionid. It refuses
+  password requests and verifies current user ID plus the locally entered
+  Instagram username before saving a ready connection. The cookie is never a
+  command argument, report field or mobile setting. The user confirmed they are
+  signed in on Chrome and then completed this local connection successfully.
+  At 2026-11-14T20:50:25.805992+00:00 the redacted report records completed,
+  authenticated=true, session_verified=true, connection_method=browser_session,
+  two pages, four unique Reels and has_more=true. Ready session mode is 0600.
+  Two page requests with only four unique clips do not yet establish useful
+  continued acquisition beyond the original batch.
+- Every new setup path requires a successful canonical current-user read before
+  publishing ready session credentials, then retains the bounded two-page probe.
+  Public feed/playback contracts and authenticated owner checks are unchanged.
+- `PYTHONPATH=services/api .local/instagram-probe/venv/bin/python -m unittest
+  discover -s services/api/app/modules/entertainment/tests -q`: **52 passed**.
+  Real installed SDK tests use mocked network responses to exercise SMS ordering,
+  authenticator continuation, cancellation, canonical identity checks, device-key
+  restoration and browser-session initialization. Other cases cover no prompts
+  without challenges, timeout/duplicate limits, checkpoint isolation, original
+  error preservation, private output and CLI cookie handling. This is offline
+  integration evidence, not a successful account login or Reels retrieval.
+- Existing entertainment experiment suite: **13 passed**. Isolated pip check
+  passed; no dependency version changed. Public 3.2.13 GraphQL diff affects the
+  older graphql/query header handling; the device-registration graphql_www path
+  and login/app profile code match 3.2.12. No package was installed.
+- Renewed the automatic local API startup wait for a successful report. An initial
+  sandbox socket probe incorrectly appeared closed; an authorized HTTP check
+  confirmed the existing Expo server is still healthy on 8081 (status/manifest
+  **200**). A duplicate start was cancelled at its alternate-port prompt; no
+  existing process was replaced. The API on 8000 was not reachable at that check.
+- After the successful connection, the watcher started the actual local Uvicorn
+  API on 8000. Rechecked the existing Expo manifest: **200**, private proxy enabled.
+  Both direct API and approved public Expo HTTPS proxy returned **401 AUTH_REQUIRED**
+  for no bearer and **401 AUTH_INVALID** for a synthetic invalid bearer. These
+  checks retrieved no private feed. The matching QR was inspected and supplied;
+  the physical-phone connected-feed check is now awaiting the user's result.
+- `git diff --check` passed. All 20 relative links in the four changed documents
+  resolved. A 220-file scan found no configured credentials, actual app identity,
+  private catalog values or current session cookie/key values in source; one
+  existing README title-word collision was reviewed as ordinary text.
+
+Remaining: actual later-page unique Reels beyond four, CDN playback/renewal,
+and the Expo physical-phone acceptance. No real
+provider credentials were entered or provider login initiated by the agent.
+No shared core, academic implementation, shared dependency or Atlas data changed.
+
 ## Merge handoff and Instagram client rejection — November 14, 2026
 
 Before diagnosis, the working tree was clean at 253892c on

@@ -36,10 +36,30 @@ explicit Instagram watch/seen-state writes are introduced.
 
 After an observed login-verification interruption, the local helper also saves a
 pending device profile before network login. The same owner/login hash restores
-the same device IDs for manual attempts. These private profiles retain only
-device/CSRF cookies; authentication cookies, authorization data and passwords are
+the same device IDs and SDK device-registration signing key for manual attempts.
+These private profiles retain device/CSRF cookies; authentication cookies, authorization data and passwords are
 excluded. They are not ready API connections. Official-app verification stays
 with the user; no automatic checkpoint resolution or login loop is introduced.
+
+The local login helper prompts only after a supported account-2FA challenge, selects
+the delivery method before requesting an SMS code, and submits at most one code
+against the existing server-issued context. Unsupported continuations stop. A
+bounded current-user read must verify the new identity before ready-session
+publication. Fixed request-phase labels/statuses provide redacted diagnostics;
+raw login payloads, contexts and codes are never logged or persisted. The wrapper
+bypasses the SDK's timeout retry loops and caps/rejects repeated password
+endpoint calls. These changes stay within local operator setup, not mobile auth
+or shared API core.
+
+The observed SDK CAA-to-legacy fallback tried to repeat the CAA password request
+while the owner reported receiving an SMS. No supported 2FA continuation reached
+the helper. Optional --browser-session instead restores a session explicitly
+copied by the owner from their own official browser login, using the documented
+SDK login_by_sessionid method. Input stays at a local hidden prompt; no cookie
+value is accepted as an argument or sent to mobile. Password requests are refused
+in this mode. A canonical current-user read must match the entered Instagram
+username before saving a ready session. Private API compatibility remains a live
+check, not an assumed property of a signed-in browser.
 
 ## Paging and recovery
 
