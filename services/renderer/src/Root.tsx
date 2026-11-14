@@ -1,10 +1,25 @@
+import {MathLesson} from './MathLesson';
 import React from 'react';
 import {AbsoluteFill, Audio, Composition, Img, OffthreadVideo, registerRoot, staticFile, useCurrentFrame, useVideoConfig, interpolate} from 'remotion';
 import CustomScene from './CustomScene';
+import {ReferenceLesson} from './ReferenceLesson';
 
 const C = {bg:'#101727', panel:'#1b2940', cyan:'#67e8f9', gold:'#fcd34d', violet:'#c4b5fd', ink:'#f8fafc'};
 const label = {fontSize:27,letterSpacing:3,fontWeight:700} as const;
 const RootOwnedTrace = () => null;
+
+const ThinkingCard=({beat,lesson}:{beat:any,lesson:any})=>{
+ const t=useCurrentFrame()/30;
+ const waiting=t>=beat.speech_end;
+ const progress=waiting?(t-beat.speech_end)/(beat.end-beat.speech_end):0;
+ return <div style={{position:'absolute',left:76,right:150,top:410}}>
+   <div style={{...label,color:C.cyan,marginBottom:28}}>{beat.kind==='hook'?'THE CHALLENGE':beat.kind==='prediction'?'MAKE A PREDICTION':'TRY IT FROM MEMORY'}</div>
+   <div style={{fontSize:68,lineHeight:1.15,fontWeight:850}}>{beat.text}</div>
+   {beat.kind==='hook'&&<div style={{marginTop:44,fontSize:53,color:C.gold,transform:`translateX(${6*Math.sin(t*3)}px)`}}>{lesson.values.join(' → ')} → null</div>}
+   {beat.kind!=='hook'&&<div style={{marginTop:36,fontSize:29,color:C.violet}}>Think it through. Say your answer.</div>}
+   {waiting&&<div style={{marginTop:24,height:7,background:C.panel}}><div style={{height:7,width:`${Math.min(100,progress*100)}%`,background:C.cyan}}/></div>}
+ </div>;
+};
 
 export const PointerTrace: React.FC<{lesson:any,compact?:boolean}> = ({lesson,compact=false}) => {
   const t = useCurrentFrame()/30;
@@ -55,7 +70,7 @@ const Character=({role,lesson,left}:{role:string,lesson:any,left:number})=>{
   const seg=lesson.segments.find((s:any)=>s.speaker===role&&s.start<=t&&t<s.end);
   const amp=seg?seg.envelope[Math.floor((t-seg.start)*30)]||0:0;
   const active=amp>.025;
-  return <div style={{position:'absolute',left,top:1190,width:360,height:460,transform:`translateY(${active?-Math.min(amp*18,8):0}px)`,filter:active?'drop-shadow(0 0 20px #67e8f9)':'none'}}>
+  return <div style={{position:'absolute',left,top:1160,width:360,height:460,transform:`translateY(${active?-Math.min(amp*18,8):0}px)`,filter:active?'drop-shadow(0 0 20px #67e8f9)':'none'}}>
     {lesson.characters?.[role]?<Img src={staticFile(lesson.characters[role])} style={{width:'100%',height:420,objectFit:'contain',opacity:seg?1:.83}}/>:
       <div style={{height:370,borderRadius:'45%',background:role==='peter'?'#f0c48b':'#f9e296',border:'8px solid #162033',textAlign:'center',paddingTop:110,fontSize:90}}>•  •<div style={{margin:'20px auto',width:70,height:active?30:7,background:'#402d2d',borderRadius:20}}/></div>}
     {lesson.characters?.[role]&&active&&<svg viewBox={role==='peter'?'0 0 247 359':'0 0 242 273'}
@@ -67,7 +82,6 @@ const Character=({role,lesson,left}:{role:string,lesson:any,left:number})=>{
         rx={role==='peter'?8:4} ry={2} fill="#e69095"/>}
     </svg>}
     <div style={{textAlign:'center',fontSize:30,fontWeight:800,color:role==='peter'?C.gold:C.cyan,textTransform:'uppercase'}}>{role}</div>
-    {active&&<div style={{textAlign:'center',fontSize:23,color:C.cyan}}>● speaking</div>}
   </div>;
 };
 
@@ -81,24 +95,29 @@ const SyntheticBackground=()=>{
 const Lesson=({lesson}:{lesson:any})=>{
  const frame=useCurrentFrame(); const {durationInFrames}=useVideoConfig();
  const dialogue=lesson.format_id==='dialogue_gameplay';
+ const beat=lesson.teaching_beats?.find((b:any)=>b.start<=frame/30&&frame/30<b.end);
+ const thinking=beat&&['hook','prediction','retrieval'].includes(beat.kind);
+ // Legacy packs keep their prior appearance. New packs explicitly choose the experiment.
+ const gameplay=dialogue&&lesson.background_mode!=='concept_only';
  return <AbsoluteFill style={{background:C.bg,color:C.ink,fontFamily:'DejaVu Sans, sans-serif'}}>
-   {dialogue && (lesson.background?<OffthreadVideo src={staticFile(lesson.background)} muted style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<SyntheticBackground/>)}
-   {dialogue&&<AbsoluteFill style={{background:'linear-gradient(#07101ad9,transparent 35%,#07101a66 60%,#07101acc)'}}/>}
+   {gameplay && (lesson.background?<OffthreadVideo src={staticFile(lesson.background)} muted style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<SyntheticBackground/>)}
+   {gameplay&&<AbsoluteFill style={{background:'linear-gradient(#07101ad9,transparent 35%,#07101a66 60%,#07101acc)'}}/>}
    <div style={{position:'absolute',left:76,top:128,right:150}}>
      <div style={{...label,color:C.cyan,marginBottom:25}}>POINTER LAB / {dialogue?'THE CONVERSATION':'THE VISUAL EXPLANATION'}</div>
-     <div style={{fontSize:70,lineHeight:1.08,fontWeight:850,letterSpacing:-2}}>{lesson.title}</div>
+     <div style={{fontSize:thinking?46:60,lineHeight:1.08,fontWeight:850,letterSpacing:-2}}>{lesson.title}</div>
    </div>
-   <PointerTrace lesson={lesson} compact={dialogue}/>
-   {lesson.custom_scene&&!dialogue&&<AbsoluteFill style={{clipPath:'inset(300px 150px 1530px 70px)',overflow:'hidden',contain:'paint'}}>
+   {thinking?<ThinkingCard beat={beat} lesson={lesson}/>:<PointerTrace lesson={lesson} compact={dialogue}/>}
+   {lesson.custom_scene&&!dialogue&&!thinking&&<AbsoluteFill style={{clipPath:'inset(300px 150px 1530px 70px)',overflow:'hidden',contain:'paint'}}>
      <CustomScene lesson={lesson} components={{PointerTrace:RootOwnedTrace}}/>
    </AbsoluteFill>}
    <Captions lesson={lesson}/>
    {dialogue&&<><Character role="peter" lesson={lesson} left={65}/><Character role="stewie" lesson={lesson} left={550}/></>}
-   {!dialogue&&<div style={{position:'absolute',left:76,top:1190,right:150,color:C.violet,fontSize:34}}>Save → reverse → advance.<br/>Never lose the unprocessed suffix.</div>}
+   {!dialogue&&!thinking&&<div style={{position:'absolute',left:76,top:1190,right:150,color:C.violet,fontSize:34}}>{beat?.text || (lesson.teaching_beats?.length?'Follow the highlighted pointer.':'Save → reverse → advance. Never lose the unprocessed suffix.')}</div>}
    <div style={{position:'absolute',left:76,bottom:250,color:'#c0cddd',fontSize:23}}>{lesson.disclosure}</div>
    <div style={{position:'absolute',left:76,bottom:214,width:850,height:6,background:'#334155'}}><div style={{width:`${100*frame/durationInFrames}%`,height:6,background:C.cyan}}/></div>
    <Audio src={staticFile('narration.wav')}/>
  </AbsoluteFill>
 };
-const Root=()=> <Composition id="Lesson" component={Lesson} width={1080} height={1920} fps={30} durationInFrames={1350} calculateMetadata={({props})=>({durationInFrames:props.lesson.frame_count})}/>;
+const Presentation=({lesson}:{lesson:any})=>lesson.format_id==='math_explainer'?<MathLesson lesson={lesson}/>:['reference_v2','reference_v3'].includes(lesson.presentation)?<ReferenceLesson lesson={lesson}/>:<Lesson lesson={lesson}/>;
+const Root=()=> <Composition id="Lesson" component={Presentation} width={1080} height={1920} fps={30} durationInFrames={1350} calculateMetadata={({props})=>({durationInFrames:props.lesson.frame_count})}/>;
 registerRoot(Root);

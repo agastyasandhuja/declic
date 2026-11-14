@@ -100,6 +100,8 @@ class VariantCandidate(ReadModel):
     format_id: Literal[
         "dialogue_gameplay",
         "visual_explainer",
+        "space_explainer",
+        "math_explainer",
         "worked_example",
         "misconception",
         "analogy_story",

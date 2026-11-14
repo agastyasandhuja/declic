@@ -1,0 +1,18 @@
+Match the user's AVL-tree dialogue reference: continuous Minecraft parkour fills the
+portrait frame. Only the active character appears near the bottom left; top captions
+highlight the current word in yellow. Relevant diagrams and fetched images are the
+large central visual, changing with the dialogue. No title block, speaker name labels,
+boxed UI or progress bar. Most shots use insert or split layout.
+Stewie asks a curious or amusingly mistaken question; Peter gives a clear concrete
+answer. Use peter and stewie only. Both must speak, with at least three speaker changes.
+Dry humor belongs to the concept, never a learner-directed insult. Keep exchanges short.
+Use both characters for explanations as appropriate; do not narrate every mechanical
+operation in exactly the same words three times. Preserve all required trace cues.
+Use image requests for relevant visual analogies and genuine diagrams, not character art;
+character cutouts and gameplay are supplied by the trusted local asset library.
+Vary the actual sentences. Never repeat a full save/reverse/advance sentence for each node.
+Explain the first node, then use concrete values and shorter exchanges for the remaining
+nodes. A small character reaction to nearly losing the list adds personality; it must not
+replace the explanation. Use at least four speaker changes, so Peter does not monologue.
+
+For reference_v3, use ONLY diagram and kinetic shots, and empty image_requests. Do not insert stock photos, white cards, signs or bookmarks over the character/gameplay format. Keep short dark/transparent diagram overlays and snappy corrective exchanges.

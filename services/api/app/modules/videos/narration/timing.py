@@ -51,6 +51,7 @@ def caption_groups(words):
             len(current) >= 5
             or sum(len(w["text"]) + 1 for w in current) + len(word["text"]) > 28
             or word["speaker"] != current[-1]["speaker"]
+            or word.get("segment_id") != current[-1].get("segment_id")
             or word["start"] - current[-1]["end"] > 0.35
         ):
             groups.append(current)

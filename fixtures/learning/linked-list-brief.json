@@ -49,5 +49,6 @@
   "target_duration_seconds": 45,
   "scope": "shared_generic_candidate",
   "owner_user_id": null,
-  "template_version": "1.0.0"
+  "template_version": "1.0.0",
+  "presentation": "guided_v1"
 }

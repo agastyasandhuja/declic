@@ -14,7 +14,9 @@ def synthesize(segment, brief, provider, voice_id, cache: Path, fixture=False):
         "model": getattr(provider, "model", "fixture-say"),
         "scope": brief.scope,
         "owner": brief.owner_user_id,
-        "settings": "v1",
+        "settings": "dialogue-1.08-v2"
+        if brief.presentation == "reference_v3" and brief.format_id == "dialogue_gameplay"
+        else "v1",
         "fixture": fixture,
     }
     key = digest(identity)
@@ -32,7 +34,24 @@ def synthesize(segment, brief, provider, voice_id, cache: Path, fixture=False):
     else:
         raw = folder / "provider.mp3"
         response = provider.synthesize(segment.spoken_text, voice_id, raw)
-    run(["ffmpeg", "-y", "-v", "error", "-i", raw, "-ac", "1", "-ar", "48000", audio])
+    speed = 1.08 if identity["settings"] == "dialogue-1.08-v2" else 1.0
+    run(
+        [
+            "ffmpeg",
+            "-y",
+            "-v",
+            "error",
+            "-i",
+            raw,
+            "-af",
+            f"atempo={speed}",
+            "-ac",
+            "1",
+            "-ar",
+            "48000",
+            audio,
+        ]
+    )
     duration = float(probe(audio)["format"]["duration"])
     if not 0.2 < duration < 40:
         raise ValueError("Invalid speech duration")
@@ -45,7 +64,11 @@ def synthesize(segment, brief, provider, voice_id, cache: Path, fixture=False):
         }
         response = {"alignment": alignment, "normalized_alignment": None}
     else:
-        alignment = response["alignment"]
+        # Preserve raw response and remap every timestamp to the actual tempo transform.
+        alignment = dict(response["alignment"] or {})
+        for field in ("character_start_times_seconds", "character_end_times_seconds"):
+            if field in alignment:
+                alignment[field] = [value / speed for value in alignment[field]]
         # Never zip normalized speech against original character positions.
         if not alignment or "".join(alignment.get("characters", [])) != segment.spoken_text:
             raise ValueError(

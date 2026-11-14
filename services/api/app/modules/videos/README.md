@@ -1,11 +1,48 @@
+# Local educational video generation
+
+Four formats are available: `dialogue_gameplay`, `visual_explainer`,
+`space_explainer`, and music-led `math_explainer`. New Brief objects default to
+`reference_v3` / `3.0.0`; historical v1/v2 packs remain readable. Remotion renders
+frames; the Python harness plans, retrieves assets, synthesizes audio and verifies.
+
+Video planning and review default to **Opus 5.5** (`VIDEO_CLAUDE_MODEL=claude-opus-5-5`).
+The generic `CLAUDE_MODEL` no longer controls video agents. Reference v3 adds image
+content deduplication, actual candidate-image selection, four distinct space scene
+types, dark dialogue diagrams, and a sampled-frame review before full rendering.
+A rejected review stops with a local report; it does not silently approve a draft.
+
+Math currently supports 2–3-dimensional matrix multiplication only. It computes
+exact arithmetic in Python and checks it again in the renderer. Source matrices
+remain stable while colored factors move into a dot product, then into a result
+cell. The agent chooses a hook, payoff and licensed instrumental track. It does not
+reuse the reference soundtracks. Music attribution is in CREDITS.txt and the manifest; include it when sharing.
+The minimal math canvas has one title, large matrices and moving numbers only.
+Its 2×2 example is 21 seconds; math allows 20–60 seconds, speech formats 30–60.
+
+```sh
+PYTHONPATH=services/api services/api/.venv/bin/python -m app.modules.videos.cli generate --brief fixtures/learning/revised-finance-brief.json --format visual_explainer --output .local/video-runs/revised
+PYTHONPATH=services/api services/api/.venv/bin/python -m app.modules.videos.cli generate --brief fixtures/learning/revised-linked-list-brief.json --format dialogue_gameplay --output .local/video-runs/revised
+PYTHONPATH=services/api services/api/.venv/bin/python -m app.modules.videos.cli generate --brief fixtures/learning/revised-cosmic-web-brief.json --format space_explainer --output .local/video-runs/revised
+PYTHONPATH=services/api services/api/.venv/bin/python -m app.modules.videos.cli generate --brief fixtures/learning/matrix-math-brief.json --format math_explainer --output .local/video-runs/revised
+```
+
+`--fixture --prepare-only` on the math example uses a deterministic direction and
+a synthetic tone, makes no model/music request, and is explicitly marked fixture.
+Review the actual videos as well: sampled frames do not verify motion or audio.
+No upload or iPhone integration is implied. See [decision 006](../../../../../docs/decisions/006-video-quality-and-math-template.md)
+and the dated status evidence.
+
+## Earlier implementation details
+
 # Video generation runtime
 
-The initial lesson implementation supports singly linked-list reversal and two
-formats: `visual_explainer` and `dialogue_gameplay`. The latter uses user-provided
-Minecraft footage and Peter/Stewie artwork. Character movement is currently an
-audio-amplitude mouth overlay and bounce/glow calibrated to the downloaded art,
-not phoneme-accurate lip sync. Other concepts and the
-three reserved formats need their own validated semantic traces/templates.
+Three local formats are implemented: `dialogue_gameplay`, `visual_explainer`, and
+`space_explainer`. New `reference_v2` briefs use continuous shot-driven narration:
+one active character over gameplay, image-led narration, or layered spatial animation.
+General approved-fact subjects use `trace_kind=none`; linked-list reversal retains
+its trusted semantic trace. Other algorithms still need appropriate validated diagrams.
+Character movement is a subtle audio-driven bounce and entrance, not phoneme lip sync.
+The earlier five-beat `guided_v1` presentation remains available.
 
 ## Setup and local runs
 
@@ -25,17 +62,19 @@ The local CLI loads root `.env` first and `services/api/.env` as a fallback;
 All `.env`, `.local`, and generated MP4/audio files are excluded from Git.
 
 Put `parkour.mp4`, `peter.png`, and `stewie.png` in `.local/video-assets` at repository
-root. Downloaded artwork provenance is in `docs/VIDEO_VERIFICATION.md`.
+root. An optional `stewie-standing-v2.png` supersedes the bike pose only in reference
+presentation; it is a generated local asset, not committed. Downloaded artwork provenance is in `docs/VIDEO_VERIFICATION.md`.
 
 Run these commands from `services/api`:
 
 ```sh
 .venv/bin/python -m app.modules.videos.cli preflight
 .venv/bin/python -m app.modules.videos.cli voices
-.venv/bin/python -m app.modules.videos.cli generate --custom-scene --output ../../.local/video-runs/linked-list-live
+.venv/bin/python -m app.modules.videos.cli generate --brief ../../fixtures/learning/linked-list-brief.json --custom-scene --output ../../.local/video-runs/linked-list-live
 ```
 
-`generate` defaults to both formats. `--custom-scene` asks Claude to write the
+`generate` defaults to both original formats using the reference linked-list brief.
+The command above explicitly chooses the earlier guided brief. `--custom-scene` asks Claude to write the
 visual-explainer JSX phase animation. The root owns the linked-list diagram and
 code, and clips generated visuals to the badge band so they cannot obscure
 teaching content, title, captions or narration. Code compiles only in the isolated
@@ -115,8 +154,10 @@ collection is not yet implemented. No hosted upload has been tested here.
 
 Three structured-output attempts per stage, 24 Claude turns, two measured-duration
 revisions, two scene repairs, and two worker attempts. The pipeline checks a
-20-minute deadline at stage/provider boundaries; an in-flight provider request can
-run to its own timeout. Rendering has an 1100-second cap and polls cancellation.
+20-minute deadline (30 minutes for space) at stage/provider boundaries; an in-flight provider request can
+run to its own timeout. Rendering has an 1100-second cap (1600 seconds for authored space) and polls
+cancellation. Space uses four capped CPU cores; other formats use two. Memory,
+process, filesystem and network restrictions are unchanged.
 Worker heartbeats fence stale/cancelled workers. Reusing a workspace preserves
 spent turn/repair budgets; start a new workspace deliberately for a fresh recipe.
 
@@ -127,3 +168,51 @@ VIDEO_TEST_MONGODB_URI='mongodb://localhost:27019/?directConnection=true&replica
 ```
 
 See `docs/VIDEO_VERIFICATION.md` for actual results and remaining live checks.
+
+## Teaching and reference styles
+
+`guided_v1` requires hook, prediction, reveal, retrieval and feedback beats, with
+measured two- and three-second thinking pauses. The supplied reference videos call
+for a different presentation: `reference_v2` uses six or more timed shots, continuous
+narration, shorter word captions and source-relevant imagery. Engagement and learning
+uplift remain unmeasured; these are versioned production heuristics.
+
+From the repository root:
+
+```sh
+PYTHONPATH=services/api services/api/.venv/bin/python -m app.modules.videos.cli generate --brief fixtures/learning/reference-linked-list-brief.json --format dialogue_gameplay --output .local/video-runs/reference-demo
+PYTHONPATH=services/api services/api/.venv/bin/python -m app.modules.videos.cli generate --brief fixtures/learning/reference-leatherback-brief.json --format visual_explainer --output .local/video-runs/reference-demo
+PYTHONPATH=services/api services/api/.venv/bin/python -m app.modules.videos.cli generate --brief fixtures/learning/reference-cosmic-web-brief.json --format space_explainer --output .local/video-runs/reference-demo
+```
+
+`--storyboard-feedback PATH` adds explicit editorial feedback to the generation
+identity. `--fixture --prepare-only` uses synthetic storyboards, macOS voices and
+clearly marked color-field image placeholders with zero image-provider requests.
+`--format both` still means the original two formats; space is selected explicitly.
+`--custom-scene` applies only to guided presentation. Reference scenes use the
+trusted renderer's shot API. Rebuild Docker after changing renderer source.
+
+`VIDEO_BACKGROUND_MODE=auto` selects gameplay for reference dialogue and concept-only
+for other presentations. Explicit `gameplay`/`concept_only` overrides remain supported.
+The character format no longer adds a persistent title, speaker tags or progress bar.
+
+Claude proposes public-topic image requests, selects returned candidate IDs, then
+inspects downloaded raster images and plans per-shot focal points, wide views and
+close-ups. Search uses NASA and Openverse. Downloads allow only HTTPS on
+`images-assets.nasa.gov`, `upload.wikimedia.org`, and `live.staticflickr.com`, with no
+redirects, bounded bytes/pixels, raster magic checks and JPEG normalization. The
+renderer sees only staged files and retains no network or app credentials. Search
+has bounded transient retries; failed downloads or visual checks can choose another
+candidate up to three times. Unresolved image failures block the generation job, not
+entertainment playback. Metadata and embedded image text remain untrusted.
+
+`image-candidates.json`, `image-review*.json` and `image-selection.json` retain source,
+license, creator, hashes and framing. Automated reviews remain fallible: inspect the
+rendered crop, source claims and licensing before publication. Content-review records
+are bound to the storyboard digest, so editing a cached script requires a new review.
+The supplied generic source examples use [NOAA leatherback facts](https://www.fisheries.noaa.gov/species/leatherback-turtle)
+and [NASA large-scale structures](https://science.nasa.gov/universe/galaxies/large-scale-structures/).
+
+See [decision 005](../../../../../docs/decisions/005-reference-driven-video-templates.md),
+[research and evaluation](../../../../../docs/VIDEO_ENGAGEMENT_RESEARCH.md), and the
+latest local evidence in [Agastya's status](../../../../../docs/status/AGASTYA.md).

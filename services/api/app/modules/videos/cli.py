@@ -31,10 +31,18 @@ def main():
     )
     parser.add_argument("--env-file", type=Path, default=ROOT / ".env")
     parser.add_argument(
-        "--brief", type=Path, default=ROOT / "fixtures/learning/linked-list-brief.json"
+        "--brief", type=Path, default=ROOT / "fixtures/learning/revised-linked-list-brief.json"
     )
     parser.add_argument(
-        "--format", choices=["both", "visual_explainer", "dialogue_gameplay"], default="both"
+        "--format",
+        choices=[
+            "both",
+            "visual_explainer",
+            "dialogue_gameplay",
+            "space_explainer",
+            "math_explainer",
+        ],
+        default="both",
     )
     parser.add_argument(
         "--fixture",
@@ -42,6 +50,7 @@ def main():
         help="Explicit local fake Claude/ElevenLabs; estimated captions",
     )
     parser.add_argument("--custom-scene", action="store_true")
+    parser.add_argument("--storyboard-feedback", type=Path)
     parser.add_argument(
         "--scene-feedback",
         type=Path,
@@ -166,7 +175,11 @@ def main():
             report = (
                 render(work / "pack", work / "output", args.preview)
                 if args.command == "render"
-                else validate_output(work / "output", args.preview)
+                else validate_output(
+                    work / "output",
+                    args.preview,
+                    minimum_duration=20 if fmt == "math_explainer" else 30,
+                )
             )
             manifest.update(quality=report, artifact_digests=artifact_digests(work))
             atomic_json(work / "generation-manifest.json", manifest)
@@ -180,6 +193,9 @@ def main():
             preview=args.preview,
             custom_scene=args.custom_scene and fmt == "visual_explainer",
             render_video=not args.prepare_only,
+            storyboard_feedback=args.storyboard_feedback.read_text()
+            if args.storyboard_feedback
+            else None,
             stage=lambda value: print(f"Stage: {value}", flush=True),
             scene_feedback=args.scene_feedback.read_text()
             if args.scene_feedback and fmt == "visual_explainer"

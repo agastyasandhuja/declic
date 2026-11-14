@@ -1,11 +1,29 @@
 {
   "format_id": "visual_explainer",
-  "template_version": "1.0.0",
+  "template_version": "3.0.0",
+  "presentation": "reference_v3",
   "input_schema": "../../../../contracts/schemas/learning/Storyboard.schema.json",
-  "output": {"width": 1080, "height": 1920, "fps": 30, "codec": "h264"},
-  "components": ["PointerTrace", "CustomScene", "Captions"],
-  "asset_roles": ["narration"],
-  "example": "../../../../fixtures/learning/visual_explainer.json",
-  "scene_api": "scene-api.txt",
-  "visual_checks": ["saved successor precedes reversal", "previous/current/next distinct", "correct final head", "captions below diagram", "code and labels readable"]
+  "output": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "codec": "h264"
+  },
+  "components": [
+    "ReferenceLesson",
+    "ImageShot",
+    "WordCaptions"
+  ],
+  "asset_roles": [
+    "narration",
+    "images"
+  ],
+  "example": "../../../../fixtures/learning/revised-visual_explainer.json",
+  "prompt": "reference-prompt.txt",
+  "visual_checks": [
+    "real source-matched imagery",
+    "full-frame subject remains identifiable",
+    "shot follows narration",
+    "no duplicate text panels"
+  ]
 }

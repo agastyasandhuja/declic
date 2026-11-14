@@ -4,9 +4,18 @@ import os
 import random
 import shutil
 import time
+import wave
 from pathlib import Path
 
-from .generation.providers import Claude, ElevenLabs, ProviderError
+from .engagement import POLICY_VERSION, pause_after, timed_teaching_beats, timing_issues
+from .generation.providers import (
+    REFERENCE_SYSTEM,
+    STORYBOARD_SYSTEM,
+    Claude,
+    ElevenLabs,
+    ProviderError,
+)
+from .images import stage_images
 from .media import atomic_json, probe, run, sha256
 from .models import Brief, Storyboard, digest
 from .narration.service import synthesize
@@ -19,9 +28,12 @@ TEMPLATES = ROOT / "services/renderer/templates"
 
 
 def generation_recipe(*, fixture=False, custom_scene=False):
+    background_mode = os.getenv("VIDEO_BACKGROUND_MODE", "auto")
+    if background_mode not in {"auto", "concept_only", "gameplay"}:
+        raise ValueError("VIDEO_BACKGROUND_MODE must be auto, concept_only or gameplay")
     return {
         "fixture": fixture,
-        "claude": "fixture" if fixture else os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5"),
+        "claude": "fixture" if fixture else os.getenv("VIDEO_CLAUDE_MODEL", "claude-opus-5-5"),
         "tts": "macos-say" if fixture else os.getenv("ELEVENLABS_MODEL", "eleven_multilingual_v2"),
         "voices": (
             {"peter": "Alex", "stewie": "Daniel", "narrator": "Samantha"}
@@ -32,13 +44,45 @@ def generation_recipe(*, fixture=False, custom_scene=False):
             }
         ),
         "custom_scene": custom_scene,
-        "template": "1.0.0",
+        "engagement_policy": POLICY_VERSION,
+        "timing_source": digest(
+            {
+                name: sha256(Path(__file__).parent / name)
+                for name in (
+                    "engagement.py",
+                    "narration/timing.py",
+                    "pipeline.py",
+                    "images.py",
+                    "music.py",
+                    "math_video.py",
+                    "models.py",
+                    "generation/providers.py",
+                )
+            }
+        ),
+        "background_mode": background_mode,
+        "system_prompt": digest([STORYBOARD_SYSTEM, REFERENCE_SYSTEM]),
+        "template": "3.0.0",
+        "source_assets": {
+            name: sha256(ROOT / ".local/video-assets" / name)
+            for name in ("parkour.mp4", "peter.png", "stewie.png", "stewie-standing-v2.png")
+            if (ROOT / ".local/video-assets" / name).is_file()
+        },
         "scene_api": "trusted-trace-2" if custom_scene else "authored-trace-1",
         "renderer_image": os.getenv("VIDEO_RENDER_IMAGE", "hackumass-renderer:0.1"),
         "renderer_source": digest(
             {
                 name: sha256(ROOT / "services/renderer" / name)
-                for name in ("src/Root.tsx", "render.mjs", "validate.mjs", "package-lock.json")
+                for name in (
+                    "src/Root.tsx",
+                    "src/ReferenceLesson.tsx",
+                    "src/SpaceScene.tsx",
+                    "src/SpaceScenesV3.tsx",
+                    "src/MathLesson.tsx",
+                    "render.mjs",
+                    "validate.mjs",
+                    "package-lock.json",
+                )
             }
         ),
         "prompts": {
@@ -47,6 +91,10 @@ def generation_recipe(*, fixture=False, custom_scene=False):
                 "dialogue_gameplay/prompt.txt",
                 "visual_explainer/prompt.txt",
                 "visual_explainer/scene-api.txt",
+                "dialogue_gameplay/reference-prompt.txt",
+                "visual_explainer/reference-prompt.txt",
+                "space_explainer/reference-prompt.txt",
+                "space_explainer/prompt.txt",
             )
         },
         "voice_disclosure": "Local fixture voices"
@@ -78,8 +126,23 @@ def generate(
     check_cancelled=lambda: None,
     deadline=None,
     scene_feedback=None,
+    storyboard_feedback=None,
 ):
-    deadline = deadline or time.monotonic() + 1200
+    if brief.format_id == "math_explainer":
+        from .math_video import generate_math
+
+        return generate_math(
+            brief,
+            work,
+            fixture=fixture,
+            preview=preview,
+            render_video=render_video,
+            stage=stage,
+            check_cancelled=check_cancelled,
+        )
+    deadline = deadline or time.monotonic() + (
+        1800 if brief.format_id == "space_explainer" else 1200
+    )
 
     def checkpoint():
         check_cancelled()
@@ -98,7 +161,7 @@ def generate(
 
     def charge():
         checkpoint()
-        if budget["turns"] >= 24:
+        if budget["turns"] >= 40:
             raise ProviderError("AGENT_BUDGET_EXHAUSTED")
         budget["turns"] += 1
         atomic_json(budget_path, budget)
@@ -120,10 +183,21 @@ def generate(
     }
     if fixture:
         voices = {"peter": "Alex", "stewie": "Daniel", "narrator": "Samantha"}
-    required_roles = ["narrator"] if brief.format_id == "visual_explainer" else ["peter", "stewie"]
+    required_roles = ["peter", "stewie"] if brief.format_id == "dialogue_gameplay" else ["narrator"]
     if any(not voices[role] for role in required_roles):
         raise ProviderError("MISSING_VOICE_CONFIGURATION")
     recipe = generation_recipe(fixture=fixture, custom_scene=custom_scene)
+    reference = brief.presentation in {"reference_v2", "reference_v3"}
+    if reference and custom_scene:
+        raise ValueError("Reference templates use authored scenes; custom_scene requires guided_v1")
+    background_mode = recipe["background_mode"]
+    if background_mode == "auto":
+        background_mode = (
+            "gameplay" if reference and brief.format_id == "dialogue_gameplay" else "concept_only"
+        )
+    prompt_name = "reference-prompt.txt" if reference else "prompt.txt"
+    if storyboard_feedback:
+        recipe["editorial_feedback"] = digest(storyboard_feedback)
     key = brief.generation_key(recipe)
     atomic_json(
         work / "request.json",
@@ -134,22 +208,67 @@ def generate(
         {
             "brief": brief.teaching_payload(),
             "model": recipe["claude"],
-            "prompt": recipe["prompts"][f"{brief.format_id}/prompt.txt"],
+            "prompt": recipe["prompts"][f"{brief.format_id}/{prompt_name}"],
+            "system_prompt": recipe["system_prompt"],
+            "engagement_policy": recipe["engagement_policy"],
+            "editorial_feedback": storyboard_feedback,
         }
     )
     if board_path.exists() and json.loads((work / "storyboard-key.json").read_text()) == board_key:
-        board = Storyboard.model_validate_json(board_path.read_text()).validate_for(brief)
+        board = Storyboard.model_validate_json(board_path.read_text()).validate_for(
+            brief, require_engagement=True
+        )
+        if not fixture:
+            review_path = work / "content-review.json"
+            cached_review = json.loads(review_path.read_text()) if review_path.exists() else {}
+            if (
+                cached_review.get("storyboard_digest") != digest(board.model_dump())
+                or not cached_review.get("passed")
+                or cached_review.get("issues")
+            ):
+                review = claude.review(brief, board)
+                atomic_json(
+                    review_path,
+                    {**review.model_dump(), "storyboard_digest": digest(board.model_dump())},
+                )
+                if not review.passed or review.issues:
+                    raise ProviderError("CONTENT_REVIEW_REQUIRED")
     else:
         if fixture:
+            fixture_name = f"{brief.format_id}.json"
+            if reference:
+                prefix = "revised" if brief.presentation == "reference_v3" else "reference"
+                fixture_name = f"{prefix}-{brief.format_id}.json"
+                if (
+                    brief.trace_kind == "linked_list_reverse"
+                    and brief.format_id == "visual_explainer"
+                ):
+                    fixture_name = "reference-linked-list-visual_explainer.json"
             board = Storyboard.model_validate_json(
-                (ROOT / f"fixtures/learning/{brief.format_id}.json").read_text()
-            ).validate_for(brief)
+                (ROOT / "fixtures/learning" / fixture_name).read_text()
+            ).validate_for(brief, require_engagement=True)
         else:
-            board = claude.storyboard(brief, TEMPLATES)
-            review = claude.review(brief, board)
-            atomic_json(work / "content-review.json", review.model_dump())
-            if not review.passed or review.issues:
-                raise ProviderError("CONTENT_REVIEW_REQUIRED")
+            board = claude.storyboard(brief, TEMPLATES, storyboard_feedback)
+            for content_attempt in range(3):
+                review = claude.review(brief, board)
+                atomic_json(
+                    work / "content-review.json",
+                    {**review.model_dump(), "storyboard_digest": digest(board.model_dump())},
+                )
+                if review.passed and not review.issues:
+                    break
+                atomic_json(work / f"content-repair-{content_attempt}.json", review.model_dump())
+                if content_attempt == 2:
+                    raise ProviderError("CONTENT_REVIEW_REQUIRED")
+                board = claude.storyboard(
+                    brief,
+                    TEMPLATES,
+                    {
+                        "previous": board.model_dump(),
+                        "issues": review.issues,
+                        "instruction": "Remove unsupported claims and repair every listed issue.",
+                    },
+                )
         atomic_json(board_path, board.model_dump())
         atomic_json(work / "storyboard-key.json", board_key)
     stage("voicing")
@@ -173,6 +292,8 @@ def generate(
         segment_words = alignment_words(
             meta["alignment"], meta["duration"], offset, segment.speaker_role
         )
+        for word in segment_words:
+            word["segment_id"] = segment.segment_id
         words.extend(segment_words)
         for event in board.events:
             if event.cue.segment_id == segment.segment_id:
@@ -193,6 +314,17 @@ def generate(
             }
         )
         offset += meta["duration"]
+        pause = pause_after(board, segment.segment_id)
+        if pause:
+            # Real silence, not just a visual hold: every subsequent cue shares this offset.
+            silence = assets / f"pause-{i}.wav"
+            with wave.open(str(silence), "wb") as audio:
+                audio.setnchannels(1)
+                audio.setsampwidth(2)
+                audio.setframerate(48000)
+                audio.writeframes(b"\x00\x00" * round(pause * 48000))
+            audio_paths.append(silence)
+            offset += pause
     # Reject cue reordering, including semantic events accidentally placed in earlier segments.
     expected = [(e.action, e.node) for e in board.events]
     events.sort(key=lambda e: e["time"])
@@ -201,7 +333,11 @@ def generate(
     if any(a["time"] >= b["time"] for a, b in zip(events, events[1:], strict=False)):
         raise ValueError("Trace actions require distinct increasing speech cues")
     duration = math.ceil((offset + 0.3) * 30) / 30
-    if not 30 <= duration <= 60:
+    teaching_beats = timed_teaching_beats(board, segments)
+    issues = timing_issues(teaching_beats) if not reference else []
+    if reference and segments[0]["end"] > 6:
+        issues.append("Shorten the opening to finish within six measured seconds")
+    if not 30 <= duration <= 60 or issues:
         if not fixture and budget["duration_repairs"] < 2:
             budget["duration_repairs"] += 1
             atomic_json(budget_path, budget)
@@ -210,15 +346,27 @@ def generate(
                 TEMPLATES,
                 {
                     "measured_duration": duration,
+                    "timing_issues": issues,
                     "previous": board.model_dump(),
-                    "instruction": "Revise duration; retain every fact and cue",
+                    "instruction": (
+                        "Revise speech length and opening timing; retain every fact and cue. "
+                        "Never fix timing by speeding up speech. "
+                        + (
+                            "No teaching beats or pauses for reference_v2."
+                            if reference
+                            else "Retain teaching beats; the five seconds of pauses are included."
+                        )
+                    ),
                 },
             )
             review = claude.review(brief, revised)
             if not review.passed or review.issues:
                 raise ProviderError("CONTENT_REVIEW_REQUIRED")
             atomic_json(board_path, revised.model_dump())
-            atomic_json(work / "content-review.json", review.model_dump())
+            atomic_json(
+                work / "content-review.json",
+                {**review.model_dump(), "storyboard_digest": digest(revised.model_dump())},
+            )
             return generate(
                 brief,
                 work,
@@ -230,9 +378,10 @@ def generate(
                 check_cancelled=check_cancelled,
                 deadline=deadline,
                 scene_feedback=scene_feedback,
+                storyboard_feedback=storyboard_feedback,
             )
         raise ValueError(
-            f"NARRATION_DURATION_REVIEW: {duration:.2f} seconds; revise script, never speed it up"
+            f"NARRATION_DURATION_REVIEW: {duration:.2f} seconds; {issues}; revise script"
         )
     concat = work / "audio-inputs.txt"
     concat.write_text("".join(f"file 'pack/assets/{p.name}'\n" for p in audio_paths))
@@ -266,11 +415,14 @@ def generate(
     asset_dir = ROOT / ".local/video-assets"
     if brief.format_id == "dialogue_gameplay":
         for role in ("peter", "stewie"):
-            if (asset_dir / f"{role}.png").is_file():
-                shutil.copyfile(asset_dir / f"{role}.png", assets / f"{role}.png")
+            character_source = asset_dir / f"{role}.png"
+            if reference and role == "stewie" and (asset_dir / "stewie-standing-v2.png").is_file():
+                character_source = asset_dir / "stewie-standing-v2.png"
+            if character_source.is_file():
+                shutil.copyfile(character_source, assets / f"{role}.png")
                 characters[role] = f"{role}.png"
         background_file = asset_dir / "parkour.mp4"
-        if background_file.is_file():
+        if background_mode == "gameplay" and background_file.is_file():
             bg_duration = float(probe(background_file)["format"]["duration"])
             if bg_duration < duration + 2:
                 raise ValueError("Gameplay interval too short")
@@ -320,6 +472,20 @@ def generate(
                 timeout=180,
             )
             background = "background.mp4"
+    checkpoint()
+    stage("sourcing_images")
+    images = stage_images(brief, board, claude, work, assets, fixture=fixture)
+    by_segment = {s["id"]: s for s in segments}
+    shots = [
+        {
+            **s.model_dump(),
+            "start": by_segment[s.segment_id]["start"],
+            "end": by_segment[s.segment_id]["end"],
+        }
+        for s in board.shots
+    ]
+    if shots:
+        shots[-1]["end"] = duration
     lesson = {
         "schema_version": "1",
         "format_id": brief.format_id,
@@ -327,9 +493,17 @@ def generate(
         "values": brief.input_values,
         "frame_count": round(duration * 30),
         "events": events,
-        "trace": linked_list_trace(brief.input_values, events),
+        "trace": linked_list_trace(brief.input_values, events)
+        if brief.trace_kind == "linked_list_reverse"
+        else [],
+        "trace_kind": brief.trace_kind,
+        "presentation": brief.presentation,
+        "shots": shots,
+        "images": images,
         "captions": captions,
         "segments": segments,
+        "teaching_beats": teaching_beats,
+        "background_mode": background_mode,
         "characters": characters,
         "background": background,
         "custom_scene": custom_scene,
@@ -376,6 +550,22 @@ def generate(
             ],
         },
     )
+    if render_video and brief.presentation == "reference_v3" and not fixture:
+        stage("reviewing_rendered_frames")
+        render(pack, work / "preview-frames", True, check_cancelled=checkpoint, stills_only=True)
+        review = claude.review_render(brief, lesson, work / "preview-frames")
+        atomic_json(
+            work / "render-review.json",
+            {
+                **review.model_dump(),
+                "lesson_digest": digest(lesson),
+                "model": claude.model,
+                "scope": "sampled_frames",
+            },
+        )
+        atomic_json(work / "provider-usage.json", claude.usage)
+        if not review.passed or review.issues:
+            raise ProviderError("RENDER_REVIEW_REQUIRED")
     stage("rendering")
     while True:
         try:
@@ -427,6 +617,20 @@ def generate(
         "owner_user_id": brief.owner_user_id,
         "status": "validating",
         "quality": report,
+        "teaching_checks": {
+            "policy": "reference-cinematic-2" if reference else POLICY_VERSION,
+            "structure": "passed",
+            "measured_opening": "passed",
+            "prediction_pause_seconds": 0 if reference else 2,
+            "retrieval_pause_seconds": 0 if reference else 3,
+            "engagement_uplift": "unmeasured",
+            "learning_uplift": "unmeasured",
+        },
+        "storyboard_digest": digest(board.model_dump()),
+        "image_credits": images,
+        "editorial_corrections": json.loads((work / "editorial-corrections.json").read_text())
+        if (work / "editorial-corrections.json").exists()
+        else None,
         "provider_usage": getattr(claude, "usage", []),
         "fixture": fixture,
         "custom_scene": custom_scene,

@@ -1,0 +1,54 @@
+{
+  "schema_version": "1",
+  "brief_id": "reference-linked-list-demo",
+  "lesson_request_id": "synthetic-request",
+  "objective_id": "cs-linked-list-reverse",
+  "title": "Reverse a linked list",
+  "learning_goal": "Retain access to the unprocessed suffix while reversing every pointer",
+  "subject": "computer_science",
+  "level": "introductory_undergraduate",
+  "language": "en",
+  "notation": "Python",
+  "assumed_knowledge": [
+    "A node stores a value and a next pointer"
+  ],
+  "must_cover": [
+    "save",
+    "reverse",
+    "advance",
+    "return"
+  ],
+  "must_not_claim": [
+    "This is confirmed exam content"
+  ],
+  "approved_facts": [
+    {
+      "fact_id": "save",
+      "statement": "Save current.next before changing it"
+    },
+    {
+      "fact_id": "reverse",
+      "statement": "Set current.next to previous"
+    },
+    {
+      "fact_id": "advance",
+      "statement": "Advance previous to current and current to saved next"
+    },
+    {
+      "fact_id": "return",
+      "statement": "Return previous as the new head"
+    }
+  ],
+  "input_values": [
+    1,
+    2,
+    3
+  ],
+  "format_id": "visual_explainer",
+  "teaching_approach": "pointer_trace",
+  "target_duration_seconds": 45,
+  "scope": "shared_generic_candidate",
+  "owner_user_id": null,
+  "template_version": "2.0.0",
+  "presentation": "reference_v2"
+}

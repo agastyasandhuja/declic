@@ -126,14 +126,34 @@
         "type": "integer"
       },
       "maxItems": 5,
-      "minItems": 2,
       "title": "Input Values",
       "type": "array"
+    },
+    "trace_kind": {
+      "default": "linked_list_reverse",
+      "enum": [
+        "linked_list_reverse",
+        "none"
+      ],
+      "title": "Trace Kind",
+      "type": "string"
+    },
+    "presentation": {
+      "default": "reference_v3",
+      "enum": [
+        "guided_v1",
+        "reference_v2",
+        "reference_v3"
+      ],
+      "title": "Presentation",
+      "type": "string"
     },
     "format_id": {
       "enum": [
         "dialogue_gameplay",
-        "visual_explainer"
+        "visual_explainer",
+        "space_explainer",
+        "math_explainer"
       ],
       "title": "Format Id",
       "type": "string"
@@ -146,7 +166,7 @@
     "target_duration_seconds": {
       "default": 45,
       "maximum": 60,
-      "minimum": 30,
+      "minimum": 20,
       "title": "Target Duration Seconds",
       "type": "integer"
     },
@@ -173,9 +193,31 @@
       "title": "Owner User Id"
     },
     "template_version": {
-      "default": "1.0.0",
+      "default": "3.0.0",
       "title": "Template Version",
       "type": "string"
+    },
+    "matrix_a": {
+      "items": {
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      },
+      "maxItems": 3,
+      "title": "Matrix A",
+      "type": "array"
+    },
+    "matrix_b": {
+      "items": {
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      },
+      "maxItems": 3,
+      "title": "Matrix B",
+      "type": "array"
     }
   },
   "required": [
@@ -191,7 +233,6 @@
     "must_cover",
     "must_not_claim",
     "approved_facts",
-    "input_values",
     "format_id",
     "teaching_approach"
   ],

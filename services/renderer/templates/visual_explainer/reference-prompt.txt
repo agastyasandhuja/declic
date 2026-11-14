@@ -1,0 +1,16 @@
+Match the user's marine-animal explainer's visual storytelling: full-frame subject
+photographs/illustrations, camera pushes and pans, cutaways to evidence/diagrams,
+occasional two-image comparisons. The subject fills the frame. Use narrator only.
+Do not add a synthetic human face. Prefer an image-driven sequence with at least two
+relevant image requests, interspersed with clear animated labels or a diagram.
+No permanent title, dashboard panels, code listing, quiz screen or progress bar.
+Open on the most visually surprising concrete example. Build the explanation around
+what the viewer is seeing. Refer to the actual concept, not "this image".
+
+Use image shots for most segments. Prefer repeating a strong subject image with a new
+crop or split comparison over ungrounded extra asset requests. No more than four image
+requests. Avoid generic text cards; label actual features visible in the subject images.
+Do not add size comparisons, numbers or functional adaptations absent from approved facts.
+Respect the exact scope of anatomical facts. "Lacks a hard bony shell" does not mean
+"no armor" or "flexible body". Do not describe sea turtles retracting into their shells.
+End with a specific supported insight rather than "perfectly designed" or vague praise.

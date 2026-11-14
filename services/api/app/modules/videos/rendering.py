@@ -12,10 +12,27 @@ from pathlib import Path
 from .media import atomic_json, probe, run, sha256
 
 
-def render(pack: Path, output: Path, preview=False, timeout=1100, check_cancelled=lambda: None):
+def render(
+    pack: Path,
+    output: Path,
+    preview=False,
+    timeout=1100,
+    check_cancelled=lambda: None,
+    *,
+    stills_only=False,
+):
     image = os.environ.get("VIDEO_RENDER_IMAGE", "hackumass-renderer:0.1")
     if not image or image.startswith("-"):
         raise ValueError("Invalid renderer image")
+    lesson = json.loads((pack / "lesson.json").read_text())
+    spatial = (
+        lesson.get("presentation") in {"reference_v2", "reference_v3"}
+        and lesson.get("format_id") == "space_explainer"
+    )
+    cpu_limit = "4" if spatial else "2"
+    # Authored spatial scenes rasterize substantially more geometry; keep an explicit cap.
+    if spatial and timeout == 1100:
+        timeout = 1600
     name = "lesson-" + uuid.uuid4().hex
     output.mkdir(parents=True, exist_ok=True)
     command = [
@@ -34,7 +51,7 @@ def render(pack: Path, output: Path, preview=False, timeout=1100, check_cancelle
         "--security-opt",
         "no-new-privileges",
         "--cpus",
-        "2",
+        cpu_limit,
         "--memory",
         "4g",
         "--pids-limit",
@@ -57,6 +74,8 @@ def render(pack: Path, output: Path, preview=False, timeout=1100, check_cancelle
         f"type=bind,src={pack.resolve()},dst=/job,readonly",
         "-e",
         f"RENDER_SCALE={'0.5' if preview else '1'}",
+        "-e",
+        f"RENDER_STILLS_ONLY={int(stills_only)}",
         "--entrypoint",
         "/bin/sh",
         image,
@@ -110,7 +129,15 @@ def render(pack: Path, output: Path, preview=False, timeout=1100, check_cancelle
                 finally:
                     if process.poll() is None:
                         process.kill()
-                report = validate_output(output, preview)
+                report = (
+                    {"media_checks": "stills_only"}
+                    if stills_only
+                    else validate_output(
+                        output,
+                        preview,
+                        minimum_duration=20 if lesson["format_id"] == "math_explainer" else 30,
+                    )
+                )
                 report["renderer_image_id"] = (
                     run(["docker", "inspect", "--format", "{{.Image}}", name])
                     .stdout.decode()
@@ -124,7 +151,7 @@ def render(pack: Path, output: Path, preview=False, timeout=1100, check_cancelle
         subprocess.run(["docker", "rm", "-f", name], capture_output=True, timeout=30)
 
 
-def validate_output(output, preview=False):
+def validate_output(output, preview=False, *, minimum_duration=30):
     video = output / "lesson.mp4"
     if video.is_symlink() or not video.is_file() or not 1000 < video.stat().st_size < 500_000_000:
         raise ValueError("Invalid output file")
@@ -174,7 +201,11 @@ def validate_output(output, preview=False):
         or v["avg_frame_rate"] != "30/1"
     ):
         raise ValueError("Unexpected video profile")
-    if a["codec_name"] != "aac" or a["sample_rate"] != "48000" or not 30 <= duration <= 60:
+    if (
+        a["codec_name"] != "aac"
+        or a["sample_rate"] != "48000"
+        or not minimum_duration <= duration <= 60
+    ):
         raise ValueError("Unexpected audio/duration")
     measured = run(
         [

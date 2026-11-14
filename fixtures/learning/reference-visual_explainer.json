@@ -1,0 +1,242 @@
+{
+  "schema_version": "1",
+  "title": "The turtle without a hard shell",
+  "segments": [
+    {
+      "segment_id": "seg1",
+      "speaker_role": "narrator",
+      "spoken_text": "The largest sea turtle doesn't have the shell you'd expect.",
+      "fact_ids": [
+        "size",
+        "shell"
+      ],
+      "delivery": "curious"
+    },
+    {
+      "segment_id": "seg2",
+      "speaker_role": "narrator",
+      "spoken_text": "Unlike other sea turtles, a leatherback lacks a hard bony shell.",
+      "fact_ids": [
+        "shell"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "seg3",
+      "speaker_role": "narrator",
+      "spoken_text": "Instead, leathery skin covers connective tissue and overlapping dermal bones.",
+      "fact_ids": [
+        "shell"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "seg4",
+      "speaker_role": "narrator",
+      "spoken_text": "Seven longitudinal ridges run down the carapace, giving it a distinctive shape.",
+      "fact_ids": [
+        "ridges"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "seg5",
+      "speaker_role": "narrator",
+      "spoken_text": "Leatherbacks primarily eat jellyfish and other soft-bodied prey.",
+      "fact_ids": [
+        "diet"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "seg6",
+      "speaker_role": "narrator",
+      "spoken_text": "Pointed jaws help them grasp slippery prey.",
+      "fact_ids": [
+        "adaptation"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "seg7",
+      "speaker_role": "narrator",
+      "spoken_text": "Backward-pointing mouth and throat papillae help retain prey as water flows out.",
+      "fact_ids": [
+        "adaptation"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "seg8",
+      "speaker_role": "narrator",
+      "spoken_text": "The largest living sea turtle has a distinctive shell and jaws that help it grasp soft prey.",
+      "fact_ids": [
+        "shell",
+        "ridges",
+        "adaptation"
+      ],
+      "delivery": "emphatic"
+    }
+  ],
+  "events": [],
+  "teaching_beats": [],
+  "image_requests": [
+    {
+      "asset_id": "leatherback_img",
+      "query": "leatherback",
+      "provider": "commons",
+      "purpose": "Show the leatherback turtle's distinctive ridged carapace covered in leathery skin, illustrating how it differs from the hard bony shell of other sea turtles.",
+      "fact_ids": [
+        "size",
+        "shell",
+        "ridges"
+      ]
+    },
+    {
+      "asset_id": "jellyfish_img",
+      "query": "jellyfish",
+      "provider": "commons",
+      "purpose": "Illustrate the soft-bodied prey that leatherbacks primarily eat.",
+      "fact_ids": [
+        "diet"
+      ]
+    }
+  ],
+  "shots": [
+    {
+      "shot_id": "shot1",
+      "segment_id": "seg1",
+      "kind": "image",
+      "asset_ids": [
+        "leatherback_img"
+      ],
+      "headline": "",
+      "labels": [],
+      "camera": "push",
+      "layout": "full",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "size",
+        "shell"
+      ]
+    },
+    {
+      "shot_id": "shot2",
+      "segment_id": "seg2",
+      "kind": "image",
+      "asset_ids": [
+        "leatherback_img"
+      ],
+      "headline": "No hard bony shell",
+      "labels": [],
+      "camera": "pan_right",
+      "layout": "full",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "shell"
+      ]
+    },
+    {
+      "shot_id": "shot3",
+      "segment_id": "seg3",
+      "kind": "kinetic",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [
+        "Leathery skin",
+        "Connective tissue",
+        "Dermal bones"
+      ],
+      "camera": "push",
+      "layout": "full",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "shell"
+      ]
+    },
+    {
+      "shot_id": "shot4",
+      "segment_id": "seg4",
+      "kind": "image",
+      "asset_ids": [
+        "leatherback_img"
+      ],
+      "headline": "",
+      "labels": [
+        "Ridge"
+      ],
+      "camera": "pan_left",
+      "layout": "full",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "ridges"
+      ]
+    },
+    {
+      "shot_id": "shot5",
+      "segment_id": "seg5",
+      "kind": "image",
+      "asset_ids": [
+        "jellyfish_img"
+      ],
+      "headline": "",
+      "labels": [],
+      "camera": "push",
+      "layout": "full",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "diet"
+      ]
+    },
+    {
+      "shot_id": "shot6",
+      "segment_id": "seg6",
+      "kind": "image",
+      "asset_ids": [
+        "leatherback_img"
+      ],
+      "headline": "Pointed jaws",
+      "labels": [],
+      "camera": "push",
+      "layout": "full",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "adaptation"
+      ]
+    },
+    {
+      "shot_id": "shot7",
+      "segment_id": "seg7",
+      "kind": "kinetic",
+      "asset_ids": [],
+      "headline": "",
+      "labels": [
+        "Papillae"
+      ],
+      "camera": "drift",
+      "layout": "full",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "adaptation"
+      ]
+    },
+    {
+      "shot_id": "shot8",
+      "segment_id": "seg8",
+      "kind": "image",
+      "asset_ids": [
+        "leatherback_img"
+      ],
+      "headline": "",
+      "labels": [],
+      "camera": "pull",
+      "layout": "full",
+      "space_mode": "galaxy",
+      "fact_ids": [
+        "shell",
+        "ridges",
+        "adaptation"
+      ]
+    }
+  ]
+}

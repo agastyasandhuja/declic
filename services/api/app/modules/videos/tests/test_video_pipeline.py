@@ -91,9 +91,9 @@ def test_word_offsets_captions_and_speakers():
 
 
 def test_exact_cue_resolution(board):
-    segment = board.segments[1]
-    words = alignment_words(alignment(segment.spoken_text), len(segment.spoken_text) * 0.1, 5)
     cue = board.events[1].cue
+    segment = next(s for s in board.segments if s.segment_id == cue.segment_id)
+    words = alignment_words(alignment(segment.spoken_text), len(segment.spoken_text) * 0.1, 5)
     assert resolve_cue(cue, segment, words) == 5
 
 

@@ -1,0 +1,30 @@
+{
+  "format_id": "space_explainer",
+  "template_version": "3.0.0",
+  "presentation": "reference_v3",
+  "input_schema": "../../../../contracts/schemas/learning/Storyboard.schema.json",
+  "output": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "codec": "h264"
+  },
+  "components": [
+    "ReferenceLesson",
+    "SpaceScenesV3",
+    "WordCaptions"
+  ],
+  "asset_roles": [
+    "narration",
+    "images"
+  ],
+  "example": "../../../../fixtures/learning/revised-space_explainer.json",
+  "prompt": "reference-prompt.txt",
+  "visual_checks": [
+    "continuous spatial motion",
+    "at least four distinct spatial demonstrations",
+    "stars galaxies and filaments have depth",
+    "sparse readable captions",
+    "illustrative not measured map"
+  ]
+}

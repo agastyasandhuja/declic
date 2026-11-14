@@ -1,0 +1,24 @@
+Teach the narrow objective through DIFFERENT authored demonstrations. For reference_v3
+use at least four different space_mode types, never the same mode in adjacent space shots.
+Available demonstrations:
+light_travel: an emitted pulse travels between a luminous source and an observer;
+lookback: successive emitted pulses and a timeline, showing earlier emission arriving now;
+scale_ladder: Stars → Galaxies → Groups + clusters, a membership diagram, NEVER Earth or sizes;
+gravity: particles converge towards several centers, representing gravitational clustering;
+solar_system: Sun and orbiting planets;
+galaxy: a rotating spiral galaxy;
+cosmic_web: filaments between galaxy-cluster nodes;
+cosmic_sheet: galaxies assembling into a sheet, a different geometry from filaments;
+cosmic_overview: a wide map of clustered galaxies and voids;
+nebula: cloud regions, drifting with distinct depth layers;
+starfield: opening fly-through only, not a default between every scene.
+Choose ONLY scenes supported by approved facts. For a cosmic-web lesson use galaxy,
+gravity, cosmic_web, scale_ladder with a clear conceptual progression; changing camera alone
+is not variety. Use narrator only, 7–10 shots. Short compelling question first, causal
+explanation in the middle, answer at the end. No cards or dense titles.
+Request at least two relevant NASA images, e.g. "spiral galaxy", "galaxy cluster".
+Use these as dedicated image shots when they help distinguish actual telescope data from
+illustrative geometry. Image scenes may alternate with space demonstrations. Do not attach
+photos decoratively to every animation. Always disclose schematics as illustrative, not to scale.
+
+Scene modes matter only on kind space. For image shots set space_mode galaxy on galaxy photos and cosmic_web on web photos; never infer extra visuals from an inactive mode. No unsupported Earth/star size comparisons. For an opening about strings, final payoff: a distribution of matter, not literal strings. Never claim spaceships cannot crash. Galaxies gather into groups and clusters; do not say rarely alone.

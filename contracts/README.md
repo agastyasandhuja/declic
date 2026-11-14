@@ -60,3 +60,18 @@ Internal events are never accepted directly from untrusted mobile clients.
 identity and entertainment: Adi. academics: Amogh. learning and feed: Agastya.
 Until runtime schemas exist, fixture examples must adhere to these Markdown specs.
 Do not assume schemas are enforced merely because this document exists.
+
+Video runtime update (November 14): internal Storyboard gains optional
+`teaching_beats`, required for `guided_v1` generation. Public learning/feed schemas remain
+unchanged; see [decision 004](../docs/decisions/004-video-teaching-beats.md).
+
+Reference v2 update (November 14): `space_explainer` joins the learning/feed candidate
+formats. Internal Brief gains `presentation` and `trace_kind`; Storyboard gains shots
+and public-topic image requests. Reference v2 uses continuous narration with empty
+teaching beats. No image/provider credential or renderer path is accepted from mobile.
+See [decision 005](../docs/decisions/005-reference-driven-video-templates.md).
+
+Reference v3 update (November 14): internal Brief adds bounded matrix inputs and
+`reference_v3`; `math_explainer` joins the learning/feed format enum. Ordinary video
+asset delivery remains unchanged. The worker supports music-led matrix lessons and
+rendered-frame review; see [decision 006](../docs/decisions/006-video-quality-and-math-template.md).
