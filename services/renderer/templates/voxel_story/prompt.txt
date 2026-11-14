@@ -21,6 +21,21 @@ Return an authoring plan with:
 - the opening question and the concrete final payoff;
 - checks for conservation/counts, causal order and misleading simplifications.
 
+For each shot, identify the action being revealed and its framing: establish the
+space, show contact/transfer, then let a reaction land. A close-up must preserve
+the hands and the object involved. Use occasional purposeful camera cuts and
+smooth reframes, with an explicit target and focal length. Resolve narrative
+cue words against the existing speech alignment; tie contact/release views to
+the actual action timeline. Keep a stable caption position for each beat.
+
+Select a facial expression and eyeline for the lead and any visible reacting
+character. Stagger crowd reactions. Faces may notice another actor's action;
+bodies keep facing the task. Expressions must follow visible causes, and a
+reaction should settle rather than loop indefinitely. The local lake adapter
+provides ShotDirection.ts and Acting.ts as starting code; new topics still need
+authored shot positions and actions. These authoring notes do not add fields to
+the current bounded lake JSON schema.
+
 Style: real 3D cube geometry; pixel textures; bright daylight; visible shadows;
 consistent model scale; expressive head/arm/leg pivots; close/medium/wide cuts.
 Camera movement complements an action; it cannot replace it. Objects travel along

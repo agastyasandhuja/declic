@@ -1448,3 +1448,39 @@ with all three disposable Mongo test settings enabled. The separate agent review
 of commit `6e11318` found no blocking issue in the narrated demo path. Mobile
 remains 40 passing tests and renderer 85. No live provider calls were used for
 this final test run.
+
+## Animated-shorts-inspired lake direction — November 14, 2026
+
+Implemented a local source revision after the user approved adapting
+https://github.com/mromidev/claude-animated-shorts. The user subsequently instructed
+"no testing just yet tho". **No tests, builds, renders, previews, media checks or
+provider calls were run for this revision.** Earlier passing results and exported
+MP4s do not validate these edits. No new creative approval has been recorded.
+
+Changes under `services/renderer/experiments/voxel-story/src`:
+- `ShotDirection.ts`: original multi-key plans for all eleven lake beats;
+  deterministic smootherstep sampling, explicit cuts, FOV/target interpolation,
+  bounded cue-word lookup within each narration segment, caption-placement helper.
+  Exported interfaces: `DIRECTION_VERSION` (`voxel-cinematic-v3`), `wordCue`,
+  `lakeShotPlan`, `sampleShot`, `lakeCaptionTop`.
+- `Acting.ts`: opt-in face geometry and absolute-time expressions; exports
+  `addExpressionRig` and `poseExpression`. Original shared ModelKit consumers
+  are unaffected. Mouth sizing now uses the box's actual dimensions in this scene.
+- `World.ts` / `Root.tsx`: wire shot plans to staged word alignment and physical
+  catch/release timing, add a neighbor's glance and staggered disappointment,
+  warmer key/cool ambient lighting with gradual horizon-matched fog color,
+  and lower placement of the existing white word captions.
+
+Updated template authoring instructions, revision README and reusable-asset
+inventory. New code is original; no upstream media or source was copied. No new
+dependencies, public schema fields, production wiring, or fixtures were introduced.
+The existing synthetic common-pool lake storyboard and staged narration remain
+the input; visual-only rendering can reuse the pack without preparing voice again.
+CodeGuard applied: scene selection remains authored, cue text is compared as data,
+and no credentials, executable input, networking or package installation were added.
+
+Commands actually run were read-only source/status inspection (`git status --short`,
+`cat`, `rg`, `head`, `tail`); edits used `apply_patch`. Pending at the user's request:
+type/build checks, deterministic frame/pose checks, full stills and motion review,
+camera occlusion and caption clearance, encoded audio/video verification, and
+creative review. No gallery refresh, publication or iPhone playback was attempted.

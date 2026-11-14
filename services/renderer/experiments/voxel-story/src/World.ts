@@ -1,18 +1,21 @@
 import {cube,box,pixelMaterial,actor,fish,line,beam,crate} from './ModelKit';
 import * as T from './three.module.js';
 import {facing,turn,spots,waterTargets,walkToSpot,eventsFor,posePhase} from './Blocking.mjs';
+import {lakeShotPlan,sampleShot} from './ShotDirection';
+import {addExpressionRig,poseExpression} from './Acting';
 
 // All models/textures are original procedural geometry. No game files or remote assets.
 const clamp=(v:number)=>Math.max(0,Math.min(1,v));
 const ease=(v:number)=>{const q=clamp(v);return q*q*(3-2*q)};
 const lerp=(a:number,b:number,p:number)=>a+(b-a)*p;
-export function createWorld(canvas:HTMLCanvasElement){
+export function createWorld(canvas:HTMLCanvasElement,words:any[]=[]){
  const renderer=new T.WebGLRenderer({canvas,antialias:true,alpha:false,preserveDrawingBuffer:true});
  renderer.setSize(720,1280,false);renderer.setPixelRatio(1);renderer.setClearColor('#8dc6ef');
  renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;
  const scene=new T.Scene();scene.background=new T.Color('#8dc6ef');scene.fog=new T.Fog('#8dc6ef',32,75);
  const camera=new T.PerspectiveCamera(46,720/1280,.1,120);
- scene.add(new T.HemisphereLight('#e6f5ff','#61714d',2.1));const sun=new T.DirectionalLight('#fff0ce',2.6);sun.position.set(-8,15,8);sun.castShadow=true;
+ const skyLight=new T.HemisphereLight('#dcecff','#646480',1.8);scene.add(skyLight);
+ const sun=new T.DirectionalLight('#ffe4b9',2.8);sun.position.set(-8,15,8);sun.castShadow=true;
  sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{left:-15,right:15,top:15,bottom:-15,near:.5,far:50});sun.shadow.bias=-.0005;scene.add(sun);
  const grass=pixelMaterial('#78a84e','grass'),dirt=pixelMaterial('#8a6a42','dirt'),wood=pixelMaterial('#ad7b49','wood'),roof=pixelMaterial('#73553c','wood'),sand=pixelMaterial('#cfbd88','sand');
  box(scene,0,-1.5,0,80,1,80,dirt);
@@ -38,6 +41,7 @@ export function createWorld(canvas:HTMLCanvasElement){
  for(let i=0;i<26;i++){const x=(i%2?-1:1)*(5.8+(i*7%13)*.4),z=-3+(i*11%21)*.52;box(scene,x,.2,z,.08,.5,.08,'#497239');if(i%4===0)box(scene,x,.49,z,.25,.15,.25,i%3?'#f7de65':'#df8d81')}
  const colors=['#ec934c','#668fc4','#9f78a3','#8bbd7d','#d0b25c','#5eb7b1','#d97f7f'];
  const actors=colors.map((c,i)=>{const a=actor(c,i%2?'#bd8965':'#e0ae85',i%3?'#554033':'#34312e');scene.add(a.root);return a});
+ const expressions=actors.map(addExpressionRig);
  const rods=actors.map(()=>{const g=new T.Group();scene.add(g);const shaft=beam(g,[0,0,0],[0,1,0],.065,'#62422c');const cord=line([0,0,0],[0,0,0],'#e6eee3');g.add(cord);g.userData={shaft,cord};return g});
  const crates=spots.map(([x,z])=>crate(scene,x+1.05,z+.25,wood));
  const stock=Array.from({length:24},()=>{const f=fish();scene.add(f);return f});
@@ -54,6 +58,9 @@ export function createWorld(canvas:HTMLCanvasElement){
  const floats=actors.map(()=>box(scene,0,0,0,.1,.15,.1,'#f6df9d'));
  const hands=actors.map(()=>new T.Vector3()),tips=actors.map(()=>new T.Vector3());
  const faceEvidence:any[]=[];
+ const shotPlans=new Map<any,ReturnType<typeof lakeShotPlan>>();
+ const daySky=new T.Color('#8dc6ef'),lateSky=new T.Color('#b8cddd');
+ const daySun=new T.Color('#ffe4b9'),lateSun=new T.Color('#ffd1a3');
  function update(beat:any,u:number,t:number){
   const p=ease(u),s=beat.scene,events=eventsFor(s);
   const crowded=['rush','deplete','empty','commons','cost','rules','restore'].includes(s);
@@ -65,8 +72,11 @@ export function createWorld(canvas:HTMLCanvasElement){
   monitor.arms[0].rotation.x=-.7;monitor.arms[1].rotation.x=-.4;
   monitor.arms[0].rotation.z=s==='rules'?-1.1*ease(u/.2)*(1-ease((u-.55)/.2)):0;
   monitor.head.rotation.x=s==='rules'?.12*Math.sin(u*Math.PI*3):0;
-  const day=s==='rules'?Math.sin(u*Math.PI)*.65:0;sun.intensity=2.6-day;
-  scene.background.set(day>.4?'#edb69a':'#8dc6ef');sunset.position.y=10-day*9;
+  // Continuous color changes, with horizon-matched fog. No threshold color pop.
+  const warmth=s==='rules'?ease(u)*.45:s==='restore'?.45:0;
+  sun.intensity=2.8-warmth*.4;sun.color.copy(daySun).lerp(lateSun,warmth);
+  scene.background.copy(daySky).lerp(lateSky,warmth);scene.fog.color.copy(scene.background);
+  sunset.position.y=10-warmth*6;
   faceEvidence.length=0;
   for(let i=0;i<actors.length;i++){
    const a=actors[i],[x,z]=spots[i],target=waterTargets[i];
@@ -84,16 +94,22 @@ export function createWorld(canvas:HTMLCanvasElement){
    a.torso.position.y=walkingNow?Math.abs(step)*.035:Math.sin(t*1.8+i)*.012;
    a.torso.rotation.set(event?.045*phase.lift:0,0,event?-.04*phase.lift:0);
    a.head.rotation.set(empty?.18:phase.lift?-.1*phase.lift:.08,Math.sin(t*.7+i)*.05,0);
-   // Blink, deliberate head turn, breathing; no uniform waving across the crowd.
-   const blink=(t+i*.73)%3.7;
-   a.eyes.forEach((eye:any)=>{eye.visible=blink<.1});
-   a.mouth.scale.y=empty?.07:.045;
+   const reaction=poseExpression(a,expressions[i],s,u,t,i,phase.lift);
+   // Recoil follows the disappointing catch, then settles. Hand transforms are
+   // evaluated after the pose so held props remain attached to the changed body.
+   a.torso.rotation.x-=reaction.surprise*.055;
+   a.torso.rotation.z+=(i%2?1:-1)*reaction.surprise*.025;
+   if(reaction.notice>0){
+    const catchYaw=facing(pos,spots[0]);
+    const relative=Math.atan2(Math.sin(catchYaw-yaw),Math.cos(catchYaw-yaw));
+    a.head.rotation.y=Math.max(-.65,Math.min(.65,relative))*reaction.notice;
+   }
    a.arms[0].rotation.set(event?-.65+.9*phase.wind-.4*phase.lift:-.7,0,0);
    a.elbows[0].rotation.x=event?-.35-.2*phase.lift:-.3;
    a.arms[1].rotation.set(event?-.55-.3*phase.lift:-.4,0,0);
    a.elbows[1].rotation.x=event?-.5+.15*Math.sin(q*30):-.25;
    if(walkingNow){a.arms[0].rotation.x=-step*.35;a.arms[1].rotation.x=step*.35;a.elbows.forEach((e:any)=>e.rotation.x=-.2)}
-   if(empty){const shrug=Math.sin(Math.PI*ease((u-.25)/.65));a.arms[1].rotation.z=-.55*shrug;a.head.rotation.z=.09*shrug}
+   if(empty){const shrug=Math.sin(Math.PI*ease((u-.25-i*.035)/.65));a.arms[1].rotation.z=-.55*shrug;a.head.rotation.z+=.09*shrug}
    if(s==='rules'){a.arms[0].rotation.x=-.25;a.elbows[0].rotation.x=-.2;a.head.rotation.x=.1*Math.sin(u*Math.PI*4+i)*Math.sin(u*Math.PI)}
    a.root.updateMatrixWorld(true);a.hands[0].getWorldPosition(hands[i]);
    const hand=hands[i],dir=new T.Vector3(Math.sin(yaw),0,Math.cos(yaw));
@@ -153,7 +169,10 @@ export function createWorld(canvas:HTMLCanvasElement){
    const f=hooked[0],q=ease((u-.15)/.5),hand=hands[0],target=waterTargets[0];f.visible=u>.1&&u<.67;rods[0].visible=false;floats[0].visible=false;
    f.position.set(lerp(hand.x,target[0],q),lerp(hand.y,-.6,q)+Math.sin(q*Math.PI)*.35,lerp(hand.z,target[1],q));f.rotation.set(0,t*2,.1*Math.sin(t*15));
   }
-  camera.position.set(...beat.camera[0].map((v:number,i:number)=>lerp(v,beat.camera[1][i],p)));camera.lookAt(...beat.target);
+  if(!shotPlans.has(beat))shotPlans.set(beat,lakeShotPlan(beat,words));
+  const shot=sampleShot(shotPlans.get(beat)!,u);
+  camera.position.set(...shot.position);camera.up.set(0,1,0);camera.lookAt(...shot.target);
+  camera.rotateZ(shot.roll);camera.fov=shot.fov;camera.updateProjectionMatrix();
   renderer.render(scene,camera);
  }
  return {update,evidence:()=>faceEvidence,dispose:()=>{scene.traverse((o:any)=>{if(o.geometry&&o.geometry!==cube)o.geometry.dispose()});renderer.dispose()}};
