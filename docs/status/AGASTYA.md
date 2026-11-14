@@ -1530,3 +1530,19 @@ against disposable Mongo. Consolidated command with all three Mongo test URI
 settings enabled: `services/api/.venv/bin/python -m pytest services/api -q` —
 **465 passed, zero skips**. Independent PDF cache and worker-allowlist reviews
 found no blocking issue. No provider calls were used for automated tests.
+
+Follow-up live import retained 15 text-bearing files but revealed syllabus learning
+outcomes and old exam selection. Retrieval now reserves three of its five file
+reads for lecture/chapter material. Bounded source-quoted concept recovery fills
+missing grounded units without inventing deadlines or exam scope. Revision three
+produced plans across all four courses. Outcome-only facts and uncertain PDF
+notation are rejected; exact authorized citation tags stay out of narration and
+quiz text. One observed corrupted-symbol quiz was quarantined. Obsolete/invalid
+queued jobs were cancelled, preserving the active five-job batch.
+
+The semantic cache now reuses identical compatible fact sets even when headings
+or goals differ. Final consolidated API verification after these changes:
+**494 passed, zero skips**, with the disposable local Mongo configuration and no
+provider calls. The first two accepted live videos reached full rendering after
+content/frame checks; a rejected causal diagram is being replaced with comparison
+visuals. Private storage publication and native quiz verification remain pending.

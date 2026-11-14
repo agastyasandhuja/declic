@@ -38,7 +38,7 @@ def _course_fingerprint(resolver: Resolver, course_id: str) -> str:
     due dates (they drive assessments). If nothing changed, the signature is the
     same and the prior extraction can be reused instead of re-calling Gemini."""
     # Invalidate maps produced before PDF text became a required dependency.
-    parts = ["source-extraction-v2-pdf-text"]
+    parts = ["source-extraction-v3-teaching-files"]
     for source in resolver.sources_for_course(course_id):
         stamp = source.content_hash or source.source_updated_at or ""
         parts.append(f"{source.source_id}:{stamp}:{source.title}:{source.locator}")

@@ -177,3 +177,203 @@ def test_conceptual_uses_of_administrative_words_remain_teachable(title, facts):
     )
     assert teaching_text(source)
     assert prepare_lesson(client, {**REQUEST, "title": title}, [source]).facts == facts
+
+
+def test_learning_outcomes_are_not_conceptual_facts_or_source_evidence():
+    facts = [
+        "Students will learn how to explain effects on the accounting equation.",
+        "Students will learn how to distinguish cash and accrual accounting.",
+    ]
+    source = {**CONCEPT, "title": "Course objectives", "text": " ".join(facts)}
+    assert teaching_text(source) == ""
+    assert teaching_text({**CONCEPT, "title": "Fall course syllabus.pdf"}) == ""
+    client = SimpleNamespace(
+        generate_json=lambda **_: SimpleNamespace(text=json.dumps({**LESSON, "facts": facts}))
+    )
+    with pytest.raises(InsufficientTeachingEvidence):
+        prepare_lesson(client, REQUEST, [CONCEPT])
+
+
+def test_missing_unit_map_recovers_grounded_concepts_with_one_bounded_call(tmp_path):
+    from app.modules.curriculum.planning.planner import build_lesson_plans
+
+    facts = [
+        "An annuity is a series of equal cash flows at regular intervals.",
+        "Discounting a future cash flow converts its value into a present value.",
+    ]
+    calls = []
+
+    def generate(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(
+            text=json.dumps(
+                {
+                    "lessons": [
+                        {
+                            "title": "Cash flow timing",
+                            "evidence": [{"source_id": "lecture", "quote": fact} for fact in facts],
+                        }
+                    ]
+                }
+            )
+        )
+
+    profile = {
+        "profile_id": "p",
+        "revision": 1,
+        "user_id": "alice",
+        "units": [],
+        "unit_ids": [],
+        "assessments": [],
+        "courses": [{**COURSE, "import_status": "partial", "source_inventory": [CONCEPT]}],
+    }
+    resolver = SimpleNamespace(sources_for_course=lambda course_id: [CONCEPT])
+    plans = build_lesson_plans(profile, SimpleNamespace(generate_json=generate), resolver)
+    assert len(calls) == 1 and len(plans[0]["requests"]) == 1
+    request = plans[0]["requests"][0]
+    assert request["source_refs"] == ["lecture"] and request["assessment_ids"] == []
+    assert (
+        request["evidence_status"] == "suggested_practice"
+        and request["exam_scope_status"] == "unknown"
+    )
+    assert request["unit_id"] in profile["unit_ids"]
+    assert profile["units"][0]["objectives"] == ["Cash flow timing"]
+    # Once grounded units exist, planning reuses them without another model call.
+    assert build_lesson_plans(profile, SimpleNamespace(generate_json=generate), resolver)[0][
+        "requests"
+    ]
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize(
+    "evidence",
+    [
+        [{"source_id": "foreign", "quote": CONCEPT["text"]}] * 2,
+        [
+            {
+                "source_id": "lecture",
+                "quote": "This invented quotation never occurs in the source document.",
+            }
+        ]
+        * 2,
+        [{"source_id": "lecture", "quote": CONCEPT["text"]}] * 2,
+    ],
+)
+def test_discovery_cannot_invent_support_or_use_foreign_source(evidence):
+    from app.modules.curriculum.planning.planner import discover_practice_units
+
+    client = SimpleNamespace(
+        generate_json=lambda **_: SimpleNamespace(
+            text=json.dumps({"lessons": [{"title": "Cash flow timing", "evidence": evidence}]})
+        )
+    )
+    assert discover_practice_units("c", [CONCEPT], client) == []
+
+
+def test_discovery_skips_model_when_only_outcomes_or_schedule_is_available():
+    from app.modules.curriculum.planning.planner import discover_practice_units
+
+    client = SimpleNamespace(generate_json=lambda **_: pytest.fail("No model call expected"))
+    assert discover_practice_units("c", [ADMIN], client) == []
+
+
+def test_short_pdf_lines_and_formulas_preserve_teaching_content():
+    source = {
+        **CONCEPT,
+        "title": "Expected value lecture.pdf",
+        "text": "Expected value\nE[X] = sum(x * P(X=x))\nMultiply each possible value\n"
+        "by its probability.\nAdd these weighted values\nto obtain the expectation.\nPage 2",
+    }
+    retained = teaching_text(source)
+    assert "E[X] = sum(x * P(X=x))" in retained
+    assert "Multiply each possible value" in retained and "by its probability." in retained
+    assert "Page 2" not in retained
+
+
+def test_publisher_chap_filename_matches_only_requested_chapter():
+    from app.modules.curriculum.source_quality import matching_teaching_refs
+
+    chapter17 = {**CONCEPT, "title": "williams_finman_20e_chap17_Accessibility.pptx"}
+    chapter1 = {
+        **CONCEPT,
+        "source_id": "unrelated",
+        "title": "williams_finman_20e_chap01_Accessibility.pptx",
+    }
+    assert matching_teaching_refs("Ch.17 Homework", [], [chapter17, chapter1]) == ["lecture"]
+    assert matching_teaching_refs("Chapter 17", [], [chapter1]) == []
+    assert matching_teaching_refs("Chapter 1", [], [chapter1]) == ["unrelated"]
+
+
+def test_only_exact_authorized_inline_citations_are_removed_from_visible_text():
+    from app.modules.quizzes.generation import strip_authorized_citations
+
+    payload = {
+        **LESSON,
+        "facts": [fact + " [lecture]" for fact in LESSON["facts"]],
+        "prompt": LESSON["prompt"] + " [lecture]",
+        "options": [option + " [lecture]" for option in LESSON["options"]],
+        "explanation": LESSON["explanation"] + " [lecture]",
+    }
+    client = SimpleNamespace(generate_json=lambda **_: SimpleNamespace(text=json.dumps(payload)))
+    lesson = prepare_lesson(client, REQUEST, [CONCEPT])
+    assert lesson.facts == LESSON["facts"] and lesson.prompt == LESSON["prompt"]
+    assert lesson.options == LESSON["options"] and lesson.explanation == LESSON["explanation"]
+    assert lesson.source_ids == ["lecture"]
+    assert strip_authorized_citations(
+        {"facts": ["Keep [other] and [lecture-extra] [lecture]."], "source_ids": ["lecture"]},
+        {"lecture"},
+    ) == {"facts": ["Keep [other] and [lecture-extra] ."], "source_ids": ["lecture"]}
+
+
+@pytest.mark.parametrize(
+    "fact",
+    [
+        "The symbol ∢ represents the union of two sets.",
+        "The union of sets is written with the angle symbol ∠.",
+        "The symbol � indicates the intersection of two sets.",
+        "The operation uses the symbol \ue001 between the sets.",
+    ],
+)
+def test_garbled_or_conflicting_pdf_notation_is_unavailable(fact):
+    client = SimpleNamespace(
+        generate_json=lambda **_: SimpleNamespace(
+            text=json.dumps(
+                {
+                    **LESSON,
+                    "facts": [fact, "The intersection contains elements shared by both sets."],
+                }
+            )
+        )
+    )
+    with pytest.raises(InsufficientTeachingEvidence):
+        prepare_lesson(client, REQUEST, [CONCEPT])
+
+
+def test_garbled_source_can_support_verbal_concept_but_not_invented_corrected_symbol():
+    source = {
+        **CONCEPT,
+        "title": "Set operations",
+        "text": "The union contains elements belonging to either set. "
+        "The intersection contains elements shared by both sets. Symbol: ∢",
+    }
+    facts = [
+        "The union contains elements belonging to either set.",
+        "The intersection contains elements shared by both sets.",
+    ]
+    response = {**LESSON, "title": "Set operations", "facts": facts}
+
+    def generate(**kwargs):
+        assert "Never infer or silently correct" in kwargs["system_instruction"]
+        return SimpleNamespace(text=json.dumps(response))
+
+    client = SimpleNamespace(generate_json=generate)
+    assert prepare_lesson(client, REQUEST, [source]).facts == facts
+    response["facts"] = ["The union symbol ∪ combines the elements of both sets.", facts[1]]
+    with pytest.raises(InsufficientTeachingEvidence, match="notation"):
+        prepare_lesson(client, REQUEST, [source])
+    assert (
+        prepare_lesson(
+            client, REQUEST, [{**source, "text": source["text"].replace("∢", "∪")}]
+        ).facts
+        == response["facts"]
+    )

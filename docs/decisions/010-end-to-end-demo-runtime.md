@@ -47,6 +47,14 @@ Grounded lecture practice can coexist with upcoming assignments, without implyin
 confirmed exam coverage. The live test authorizes five selected video jobs; the
 worker allowlist persists independently of process restarts.
 
+Retrieval reserves bounded reads for lecture/chapter sources. If a course map has
+no grounded objectives but real teaching excerpts exist, one bounded Gemini call
+may recover up to three practice concepts with two distinct exact source quotes
+each. Those units remain private, source-bound and unknown in exam scope. PDF
+glyph corruption is not silently corrected, and learning outcomes are not lesson
+facts. Identical approved fact sets within the existing owner/compatibility scope
+reuse one canonical topic even if their generated headings differ.
+
 Generic course visuals opt into `Brief.visual_strategy=semantic_diagram`. This
 adds bounded authored comparison, sequence and cause/effect diagrams with at most
 four short node labels and validated edges. Model output remains data, never

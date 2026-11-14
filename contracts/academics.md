@@ -205,3 +205,12 @@ labels may select matching chapter material but cannot supply its explanation.
 Preparation returns `unavailable` with `INSUFFICIENT_TEACHING_EVIDENCE` before
 model work when no teaching excerpt exists, or when a model returns placeholder
 or administrative facts. No quiz or video job is published in that case.
+
+When extracted lecture text exists but the course map has no supported lesson,
+one bounded planning call may recover up to three practice concepts from five
+authorized excerpts. Each concept requires two distinct verbatim teaching quotes
+from those excerpts. The resulting source-backed units are persisted for service
+and feed eligibility checks, with unknown exam scope and no assessment dates.
+Learning outcomes describe teaching intent, not facts; neither outcomes nor
+syllabus-only material qualify. Short formula and wrapped lecture lines remain
+available to the model.

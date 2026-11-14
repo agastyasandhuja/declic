@@ -22,8 +22,16 @@ _PLACEHOLDER = re.compile(
     re.I,
 )
 _ASSESSMENT_TITLE = re.compile(
-    r"\b(?:exam|midterm|quiz|homework|assignment(?! operators?\b| expressions?\b| statements?\b)|"
+    r"\b(?:syllabus|course outline|course policies|course schedule|exam|midterm|quiz|homework|"
+    r"assignment(?! operators?\b| expressions?\b| statements?\b)|"
     r"worked solutions?|answer key)\b",
+    re.I,
+)
+_OUTCOME = re.compile(
+    r"\b(?:students?|learners?)\s+(?:will|should|can|are expected to)|"
+    r"\byou (?:will learn|will be able|should be able)|"
+    r"\blearning (?:outcomes?|objectives?)\b|"
+    r"^\s*(?:[-•*]|\d+[.)])?\s*(?:explain|identify|describe|distinguish|understand|learn how)\b",
     re.I,
 )
 _NON_TEACHING_KINDS = {"assignment", "calendar_event", "module", "canvas_course", "syllabus"}
@@ -57,7 +65,11 @@ def teaching_text(source):
     statements = [
         part.strip()
         for part in re.split(r"(?<=[.!?])\s+|\n+", text)
-        if len(part.strip()) >= 35 and not _ADMIN.search(part) and not _PLACEHOLDER.search(part)
+        if part.strip()
+        and not re.fullmatch(r"(?:page|slide)?\s*\d+", part.strip(), re.I)
+        and not _ADMIN.search(part)
+        and not _PLACEHOLDER.search(part)
+        and not _OUTCOME.search(part)
     ]
     retained = "\n".join(statements)
     return retained if len(retained) >= 45 and len(retained.split()) >= 8 else ""
@@ -74,15 +86,30 @@ def teaching_sources(sources):
 
 def validate_teaching_lesson(lesson):
     """Reject unsupported placeholders and administrative facts before publication."""
+    text_fields = [lesson.get(key, "") for key in ("title", "prompt", "explanation")]
+    text_fields.extend(lesson.get("facts", []))
+    text_fields.extend(lesson.get("options", []))
+    if any(re.search(r"[\ufffd\ue000-\uf8ff]", text) for text in text_fields):
+        raise InsufficientTeachingEvidence("Uncertain PDF glyphs cannot support a lesson")
+    if any(
+        "union" in fact.casefold() and any(symbol in fact for symbol in "∢∠")
+        for fact in lesson.get("facts", [])
+    ):
+        raise InsufficientTeachingEvidence("Ambiguous set notation cannot support a lesson")
     title = lesson.get("title", "")
     facts = lesson.get("facts", [])
     if (
         not title.strip()
         or _PLACEHOLDER.search(title)
         or _ADMIN.search(title)
+        or _OUTCOME.search(title)
         or len(facts) < 2
         or any(
-            not fact.strip() or _ADMIN.search(fact) or _PLACEHOLDER.search(fact) for fact in facts
+            not fact.strip()
+            or _ADMIN.search(fact)
+            or _PLACEHOLDER.search(fact)
+            or _OUTCOME.search(fact)
+            for fact in facts
         )
     ):
         raise InsufficientTeachingEvidence("Sources do not support a conceptual lesson")
@@ -97,7 +124,9 @@ def matching_teaching_refs(topic, units, sources):
         titles = [unit.get("title", ""), *unit.get("objectives", [])]
         if any(" ".join(title.casefold().split()) == folded for title in titles):
             refs.extend(ref for ref in unit.get("source_refs", []) if ref in eligible)
-    chapter = re.search(r"\b(?:ch(?:apter)?\.?)[\s_-]*(\d+)\b", topic, re.I)
+    chapter = re.search(
+        r"\bch(?:ap(?:ter)?)?\.?\s*(\d+)", topic.replace("_", " ").replace("-", " "), re.I
+    )
     tokens = set(re.findall(r"[a-z]{4,}", folded)) - {
         "chapter",
         "review",
@@ -109,8 +138,10 @@ def matching_teaching_refs(topic, units, sources):
     }
     for ref, source in eligible.items():
         title = source.get("title", "").casefold()
-        title_chapter = re.search(r"\b(?:ch(?:apter)?\.?)[\s_-]*(\d+)\b", title, re.I)
-        if chapter and title_chapter and chapter.group(1) == title_chapter.group(1):
+        title_chapter = re.search(
+            r"\bch(?:ap(?:ter)?)?\.?\s*(\d+)", title.replace("_", " ").replace("-", " "), re.I
+        )
+        if chapter and title_chapter and int(chapter.group(1)) == int(title_chapter.group(1)):
             refs.append(ref)
         elif tokens and len(tokens & set(re.findall(r"[a-z]{4,}", title))) >= min(2, len(tokens)):
             refs.append(ref)

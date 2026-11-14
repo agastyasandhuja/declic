@@ -1,6 +1,8 @@
 """Gemini produces bounded source-grounded lesson facts and a private quiz."""
 
 import json
+import re
+import unicodedata
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -25,6 +27,27 @@ class GroundedLesson(BaseModel):
     explanation: str = Field(min_length=1, max_length=2000)
 
 
+def strip_authorized_citations(payload, source_ids):
+    """Remove exact authorized tags from spoken/display text, never from metadata."""
+    payload = dict(payload)
+    tags = [f"[{source_id}]" for source_id in source_ids]
+
+    def clean(value):
+        if not isinstance(value, str):
+            return value
+        for tag in tags:
+            value = value.replace(tag, "")
+        return re.sub(r"[ \t]{2,}", " ", value).strip()
+
+    for key in ("title", "learning_goal", "subject", "prompt", "explanation"):
+        if key in payload:
+            payload[key] = clean(payload[key])
+    for key in ("facts", "options"):
+        if isinstance(payload.get(key), list):
+            payload[key] = [clean(value) for value in payload[key]]
+    return payload
+
+
 def prepare_lesson(client, request, sources):
     excerpts = [
         {"source_id": source["source_id"], "text": (source.get("text") or "")[:8000]}
@@ -42,9 +65,16 @@ def prepare_lesson(client, request, sources):
             "Teach only the requested objective supported by supplied excerpts. "
             "Use 2-6 short independently verifiable conceptual facts (each under 1000 characters). "
             "Course schedules, chapter labels, due dates, assignment instructions, and the "
-            "existence of coursework are not teaching facts. Never quiz these details. "
+            "existence of coursework are not teaching facts. Neither are learning outcomes "
+            "or statements about what students will learn; explain the actual concept. "
+            "Never quiz these administrative details. "
             "Do not include student names, course identifiers, assignment answers, grades, "
-            "or claims of confirmed exam coverage. Cite only supplied source_ids. "
+            "or claims of confirmed exam coverage. Cite only supplied source_ids in the metadata "
+            "array; never include inline source IDs or citation tags in spoken or quiz text. "
+            "Check conceptual accuracy against the actual excerpts. PDF text can have missing "
+            "or garbled mathematical glyphs. Never infer or silently correct an uncertain "
+            "symbol using prior knowledge. Prefer a plain verbal explanation only if the "
+            "source independently supports that meaning; otherwise return empty facts. "
             "Write one conceptual multiple-choice quiz with exactly one correct option; "
             "correct_index is zero-based. Explain the answer using the lesson facts. "
             "If the sources are insufficient, return an empty facts list so validation fails."
@@ -58,8 +88,18 @@ def prepare_lesson(client, request, sources):
         ),
         response_schema=schema,
     )
-    lesson = GroundedLesson.model_validate(parse_json_object(result.text))
+    payload = strip_authorized_citations(
+        parse_json_object(result.text), {item["source_id"] for item in excerpts}
+    )
+    lesson = GroundedLesson.model_validate(payload)
     validate_teaching_lesson(lesson.model_dump())
+    source_text = " ".join(item["text"] for item in excerpts)
+    if any(
+        ord(char) > 127 and unicodedata.category(char) == "Sm" and char not in source_text
+        for fact in lesson.facts
+        for char in fact
+    ):
+        raise InsufficientTeachingEvidence("Mathematical notation is not supported by the excerpts")
     if (
         lesson.correct_index >= len(lesson.options)
         or len(set(lesson.options)) != len(lesson.options)

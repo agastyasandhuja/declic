@@ -99,10 +99,9 @@ def _file_text(suffix, data):
     if suffix == ".pdf" and data.startswith(b"%PDF-"):
         try:
             reader = PdfReader(io.BytesIO(data), strict=True)
-            return "\n".join(
-                f"Page {index}: {page.extract_text() or ''}"
-                for index, page in enumerate(islice(reader.pages, 20), 1)
-            )
+            pages = [(index, (page.extract_text() or '').strip())
+                     for index, page in enumerate(islice(reader.pages, 20), 1)]
+            return "\n".join(f"Page {index}: {text}" for index, text in pages if text) or None
         except Exception:
             # Encrypted/corrupt PDF or unsupported encoding; keep inline fallback.
             return None

@@ -40,6 +40,52 @@ def resolver_with(source):
     return resolver
 
 
+def test_blank_pdf_does_not_publish_page_numbers_as_teaching_text():
+    writer = PdfWriter()
+    writer.add_blank_page(width=612, height=792)
+    output = io.BytesIO()
+    writer.write(output)
+    assert _file_text(".pdf", output.getvalue()) is None
+
+
+def test_file_selection_reserves_current_chapters_and_lectures_not_old_exams():
+    from app.modules.curriculum.retrieval import teaching_file_ids
+
+    sources = [
+        ResolvedSource(
+            "assignment",
+            "course",
+            "Ch. 17 Homework",
+            "assignment",
+            "canvas",
+            "Ch. 17 Homework | Due: 2099-11-18T23:00:00Z",
+        ),
+        *[
+            ResolvedSource(str(index), "course", title, "file", "canvas", None)
+            for index, title in enumerate(
+                [
+                    "williams_finman_chap01.pptx",
+                    "williams_finman_chap17.pptx",
+                    "Lecture14.pdf",
+                    "Lecture15.pdf",
+                    "Midterm-Fall24.pdf",
+                    "Lecture16-Solutions.pdf",
+                    "syllabus.pdf",
+                ]
+            )
+        ],
+        ResolvedSource("foreign", "other", "Lecture90.pdf", "file", "canvas", None),
+    ]
+
+    class Resolver:
+        def can_open_file(self, course_id, source_id):
+            return True
+
+    assert teaching_file_ids("course", Resolver(), sources) == ["1", "3", "2"]
+    bare = replace(sources[2], source_id="bare-chapter", title="ch17.pdf")
+    assert teaching_file_ids("course", Resolver(), [sources[0], bare]) == ["bare-chapter"]
+
+
 def test_unchanged_inventory_restores_text_without_cross_course_sources():
     source = ResolvedSource(
         "lecture",
