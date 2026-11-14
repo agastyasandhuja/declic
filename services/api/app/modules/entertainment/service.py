@@ -33,6 +33,9 @@ def normalized_items(items):
             continue
         seen.add(key)
         record = {key: item[key] for key in definitions['EntertainmentVideo']['required']}
+        for key in ('like_count', 'comment_count'):
+            if key in item:
+                record[key] = item[key]
         record['creator'] = {key: item['creator'][key] for key in ('handle', 'display_name', 'attribution_url')}
         record['playback'] = {key: item['playback'][key] for key in definitions['PlaybackSource']['required']}
         for timestamp in (record['acquired_at'], record['playback']['expires_at']):

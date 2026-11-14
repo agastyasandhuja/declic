@@ -1788,3 +1788,17 @@ review passes and one reviewed video alongside ongoing still work. 17 focused
 schema, geometry, artifact and contact-evidence tests passed; changed Python Ruff
 checks passed. Final-renderer candidate f4fed794 has freshly inspected 3D examples
 and source-matched date/vector previews; remaining full renders/reviews continue.
+
+
+### Reel engagement metadata — November 14
+
+User-requested visible like/comment totals now pass from the Instagram adapter
+through the allowlisted catalog and unified feed. Optional nullable integer fields
+`like_count` / `comment_count` preserve unknown/hidden values; old catalog rows
+remain compatible. Safe Instagram CDN thumbnails populate the existing field
+for adjacent-card presentation. No provider write or extra per-Reel request is added.
+
+Validation: 41 focused metadata/provider tests passed; generated contracts match
+and `git diff --check` passed. Ruff passes for the new test and feed projection;
+existing entertainment modules retain their pre-existing import/line-length lint.
+Live metadata awaits the next normal catalog refresh and phone UI integration.

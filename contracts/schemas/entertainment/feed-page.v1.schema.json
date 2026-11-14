@@ -42,6 +42,8 @@
           }
         },
         "caption": {"type": "string"},
+        "like_count": {"type": ["integer", "null"], "minimum": 0, "maximum": 9007199254740991},
+        "comment_count": {"type": ["integer", "null"], "minimum": 0, "maximum": 9007199254740991},
         "duration_seconds": {"type": ["number", "null"], "minimum": 0},
         "playback": {"$ref": "#/definitions/PlaybackSource"},
         "thumbnail_url": {"type": ["string", "null"], "format": "uri", "pattern": "^https://"},
