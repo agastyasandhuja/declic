@@ -50,6 +50,39 @@ include a duplicate provider item, unavailable item, expired link, and unknown
 durations. No downloaded media bytes belong in Git. Sample clips are not promised
 to have production portrait framing or a 30–60 second lesson duration.
 
+## Saved Instagram preview in the iOS Simulator
+
+After running the local [Instagram probe](../../services/api/app/modules/entertainment/experiments/README.md),
+stop any existing Metro server and run this from the repository root:
+
+```sh
+npm run ios:instagram
+```
+
+This normalizes the ignored catalog to .local/instagram-probe/feed.v1.json,
+starts Expo on localhost and opens the iPhone simulator. Choose **Explore the
+demo**, then **Your feed**. The header says **SAVED REELS**. In **The lab**, turn
+**Use saved Instagram clips** off to return to synthetic sample clips.
+
+This is the saved batch retrieved from your account, not continuous live retrieval.
+It ends after that batch; it does not send watch feedback to Instagram. Expired
+URLs require running the probe again and restarting the preview. No provider
+login credentials enter the mobile app. IDs use instagram_<provider_video_id>
+for this local preview; a production backend will own stable catalog identity.
+Acquisition mode is cached, and unknown signed-URL expiry stays null.
+
+This mode is deliberately limited to local development iOS bundles. Metro binds
+to 127.0.0.1, rejects non-loopback requests, and refuses private-preview startup
+without --localhost. Normal npm start, web/Android bundles and production exports
+resolve an empty catalog. Actual recommendation metadata and playback URLs stay
+in ignored private files; never commit those files or publish a development bundle
+containing them. No additional API service or database is introduced.
+
+The three A1 acceptance gaps remain open. Before exposing a private feed through
+the backend or to other devices, complete app-token verification and server-side
+ownership checks for each user's Instagram connection. This local simulator test
+does not validate those controls or physical-iPhone playback.
+
 ## Real authentication
 
 Signup, email-confirmation messaging, login, logout, session restoration and token

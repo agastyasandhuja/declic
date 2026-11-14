@@ -32,6 +32,7 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
+    "ios:instagram": "node --import tsx scripts/prepare-instagram.ts && HACKUMASS_INSTAGRAM_PREVIEW=1 expo start --ios --localhost --clear",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts",

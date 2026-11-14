@@ -4,7 +4,7 @@ import type { EntertainmentFeedPage, EntertainmentVideo, PlaybackSource } from '
 import type { ApiClient } from '../../lib/api/client';
 
 export interface FeedSource {
-  mode: 'fixture' | 'api';
+  mode: 'fixture' | 'api' | 'saved_instagram';
   getPage(cursor?: string | null, signal?: AbortSignal): Promise<EntertainmentFeedPage>;
   resolvePlayback(videoId: string): Promise<PlaybackSource>;
 }
@@ -30,6 +30,20 @@ export function createFixtureSource(): FeedSource {
       const item = items.find(video => video.video_id === videoId);
       if (!item) throw new Error('This demo clip is unavailable.');
       return item.playback;
+    },
+  };
+}
+export function createSavedInstagramSource(value: unknown): FeedSource {
+  const page = parseFeedPage(value);
+  const items = eligibleVideos(page.items).filter(item => item.provider === 'instagram');
+  return {
+    mode: 'saved_instagram',
+    async getPage(cursor) {
+      if (cursor) throw new Error('This saved Instagram preview has one batch. Fetch a new catalog for more clips.');
+      return { schema_version: '1', items, next_cursor: null };
+    },
+    async resolvePlayback() {
+      throw new Error('Saved Instagram links cannot refresh themselves. Run the probe and restart the preview.');
     },
   };
 }
