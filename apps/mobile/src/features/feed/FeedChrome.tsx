@@ -1,41 +1,38 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useRef } from 'react';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Brand } from '../../components/Brand';
 import { theme } from '../../theme';
 
-export function FeedHeader({ top, muted, onMute, fill, onFill, onRefresh }: {
-  top: number; muted?: boolean; onMute?(): void; fill?: boolean; onFill?(): void; onRefresh?(): void;
-}) {
-  return (
-    <View pointerEvents="box-none" style={[styles.header, { top }]}>
-      <Brand size={34} />
-      <View pointerEvents="box-none" style={styles.headerActions}>
-        {onRefresh && <FeedIconButton round label="Refresh feed" icon="refresh-outline" onPress={onRefresh} />}
-        {onFill && <FeedIconButton round label={fill ? 'Fit whole video' : 'Fill screen'} icon={fill ? 'contract-outline' : 'expand-outline'} onPress={onFill} />}
-        {onMute && <FeedIconButton round label={muted ? 'Unmute video' : 'Mute video'} icon={muted ? 'volume-mute-outline' : 'volume-high-outline'} onPress={onMute} />}
-      </View>
-    </View>
-  );
+export function FeedHeader({ top }: { top: number }) {
+  return <View pointerEvents="none" style={[styles.header, { top }]}><Brand size={30} /></View>;
 }
 
-export function FeedIconButton({ label, icon, onPress, selected, color = theme.colors.text, round = false, disabled = false, testID }: {
+export function FeedIconButton({ label, icon, onPress, selected, color = theme.colors.text, round = false, disabled = false, testID, reducedMotion = false }: {
   label: string; icon: keyof typeof Ionicons.glyphMap; onPress(): void;
-  selected?: boolean; color?: string; round?: boolean; disabled?: boolean; testID?: string;
+  selected?: boolean; color?: string; round?: boolean; disabled?: boolean; testID?: string; reducedMotion?: boolean;
 }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const press = () => {
+    if (!reducedMotion) {
+      scale.setValue(0.8);
+      Animated.spring(scale, { toValue: 1, friction: 3, tension: 180, useNativeDriver: true }).start();
+    }
+    onPress();
+  };
   return (
-    <Pressable
+    <Animated.View style={{ transform: [{ scale }] }}><Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ selected, disabled }}
       disabled={disabled}
       testID={testID}
-      onPress={onPress}
+      onPress={press}
       style={({ pressed }) => [styles.action, round && styles.round, (pressed || disabled) && styles.dimmed]}
     >
       <Ionicons name={icon} size={round ? 20 : 26} color={color} style={!round && styles.iconShadow} />
-    </Pressable>
+    </Pressable></Animated.View>
   );
 }
 
@@ -57,7 +54,7 @@ export function FeedCaption({ byline, title, caption, children }: {
   );
 }
 
-export const feedRail = { position: 'absolute', right: 10, bottom: 20, gap: 6 } as const;
+export const feedRail = { position: 'absolute', right: 10, bottom: 46, gap: 12 } as const;
 
 const styles = StyleSheet.create({
   header: { position: 'absolute', left: 16, right: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 44 },
@@ -66,7 +63,7 @@ const styles = StyleSheet.create({
   round: { borderRadius: 22, backgroundColor: '#09090B55', borderWidth: 1, borderColor: '#FFFFFF35' },
   dimmed: { opacity: 0.65 },
   iconShadow: { textShadowColor: '#000000B3', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 },
-  description: { position: 'absolute', left: 16, right: 70, bottom: 22, gap: 7 },
+  description: { position: 'absolute', left: 16, right: 70, bottom: 42, gap: 7 },
   byline: { fontFamily: theme.fonts.bold, fontSize: 15, lineHeight: 20, color: theme.colors.text, textShadowColor: '#000000B3', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
   title: { fontFamily: theme.fonts.bold, fontSize: 17, lineHeight: 22, color: theme.colors.text },
   caption: { fontFamily: theme.fonts.body, fontSize: 14, lineHeight: 20, color: theme.colors.text, textShadowColor: '#000000B3', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },

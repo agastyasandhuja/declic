@@ -1,6 +1,6 @@
 import type { PlaybackGate, PlaybackState, PlayerDriver } from './SinglePlayerController';
 
-export interface BufferedPlaybackState extends PlaybackState { activeSlot: 0 | 1; timedOut: boolean; sourceUri: string | null; selection: number }
+export interface BufferedPlaybackState extends PlaybackState { activeSlot: 0 | 1; timedOut: boolean; sourceUri: string | null; selection: number; buffers?: { uri: string | null; ready: boolean }[] }
 interface Slot { inFlight: boolean; uri: string | null; ready: boolean; version: number; queue: Promise<void>; load: Promise<void> }
 const emptySlot = (): Slot => ({ inFlight: false, uri: null, ready: false, version: 0, queue: Promise.resolve(), load: Promise.resolve() });
 
@@ -12,11 +12,13 @@ export class BufferedPlayerController {
   private sourceUri: string | null = null;
   private disposed = false;
   private failed = false;
+  private status = { loading: true, error: null as string | null, timedOut: false };
   private timer: ReturnType<typeof setTimeout> | undefined;
   private gate: PlaybackGate = { foreground: true, focused: true, manuallyPaused: false };
   constructor(private drivers: [PlayerDriver, PlayerDriver], private onState: (state: BufferedPlaybackState) => void, private timeoutMs = 15000) {}
   private emit(loading: boolean, error: string | null = null, timedOut = false) {
-    if (!this.disposed) this.onState({ loading, ready: !loading && !error, error, activeSlot: this.active, timedOut, sourceUri: this.sourceUri, selection: this.version });
+    this.status = { loading, error, timedOut };
+    if (!this.disposed) this.onState({ buffers: this.slots.map(slot => ({ uri: slot.uri, ready: slot.ready })), loading, ready: !loading && !error, error, activeSlot: this.active, timedOut, sourceUri: this.sourceUri, selection: this.version });
   }
   setGate(patch: Partial<PlaybackGate>) { if (this.disposed) return; this.gate = { ...this.gate, ...patch }; this.reconcile(); }
   private reconcile() {
@@ -30,6 +32,7 @@ export class BufferedPlayerController {
     if (slot.uri === uri && !force) return slot.load;
     const requested = ++slot.version;
     slot.uri = uri; slot.ready = false; this.drivers[slotIndex].pause();
+    if (slotIndex !== this.active) this.emit(this.status.loading, this.status.error, this.status.timedOut);
     slot.load = slot.queue = slot.queue.catch(() => undefined).then(async () => {
       if (this.disposed || slot.version !== requested) return;
       slot.inFlight = true;
@@ -40,7 +43,10 @@ export class BufferedPlayerController {
       } catch {
         if (slot.version === requested) { slot.uri = null; slot.ready = false; }
       } finally { slot.inFlight = false; }
-      if (!this.disposed) this.reconcile();
+      if (!this.disposed) {
+        if (slotIndex !== this.active) this.emit(this.status.loading, this.status.error, this.status.timedOut);
+        this.reconcile();
+      }
     });
     return slot.load;
   }
@@ -72,6 +78,9 @@ export class BufferedPlayerController {
     this.emit(false); this.reconcile();
     if (upcoming && upcoming !== uri) void this.load((1 - this.active) as 0 | 1, upcoming);
   }
+  setRate(rate: 1 | 2) {
+    if (!this.disposed) this.drivers.forEach(driver => driver.setRate?.(rate));
+  }
   seekTo(seconds: number) {
     if (!this.disposed && Number.isFinite(seconds) && seconds >= 0) this.drivers[this.active].seekTo?.(seconds);
   }
@@ -83,5 +92,5 @@ export class BufferedPlayerController {
   preload(uri?: string) {
     if (!this.disposed && !this.failed && this.slots[this.active].ready && uri && uri !== this.slots[this.active].uri) void this.load((1 - this.active) as 0 | 1, uri);
   }
-  dispose() { if (this.disposed) return; this.disposed = true; this.version++; clearTimeout(this.timer); this.slots.forEach(slot => slot.version++); this.drivers.forEach(driver => driver.pause()); }
+  dispose() { if (this.disposed) return; this.disposed = true; this.version++; clearTimeout(this.timer); this.slots.forEach(slot => slot.version++); this.drivers.forEach(driver => { driver.setRate?.(1); driver.pause(); }); }
 }

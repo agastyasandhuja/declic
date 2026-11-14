@@ -7,5 +7,6 @@ export interface BufferedVideoViewsProps {
   sourceReady: boolean;
   visible: boolean;
   fill: boolean;
+  adjacent?: { previousUrl?: string; nextUrl?: string; height: number };
   onFrame(selection: number): void;
 }

@@ -1,3 +1,4 @@
+import { DemoLearningSettings } from './DemoLearningSettings';
 import { InstagramConnection } from './InstagramConnection';
 import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ActivityIndicator, AppState, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -17,7 +18,7 @@ const sample: AcademicProfileView = { courses: [
   { course_id: 'demo-dsa', title: 'Heaps and treaps' }, { course_id: 'demo-dsa', title: 'Linked lists' },
   { course_id: 'demo-prob', title: 'Distributions and Bayes' }, { course_id: 'demo-acct', title: 'Statements and cash flow' },
 ], assessments: [] };
-export function CoursesScreen() {
+export function CoursesScreen({ onFeedSettingsChanged = () => {} }: { onFeedSettingsChanged?(): void }) {
   const { mode, api, user } = useAuth(); const demo = mode === 'preview';
   const data = useMemo(() => coursesDataFor(api, user?.user_id ?? mode), [api, user?.user_id, mode]);
   const snapshot = useSyncExternalStore(data.subscribe, data.getSnapshot, data.getSnapshot);
@@ -75,6 +76,7 @@ export function CoursesScreen() {
     {job && <Text style={s.subtitle}>Course import: {job.state.replaceAll('_', ' ')}</Text>}
     {!demo && connection?.status === 'connected' && <Button title="Disconnect Canvas" secondary onPress={() => { void api.request('/v1/canvas/connection', { method: 'DELETE' }).then(() => load()).catch(problem => setError(problem.message)); }} />}
     {!demo && <InstagramConnection />}
+    {!demo && <DemoLearningSettings api={api} onChanged={onFeedSettingsChanged} />}
     {notice && <Text accessibilityRole="alert" style={s.subtitle}>{notice}</Text>}
     <View style={styles.section}><Text style={styles.heading}>Your syllabus</Text>{demo && <Text style={styles.badge}>SAMPLE DATA</Text>}</View>
     {profile?.courses.map((course, i) => <View key={course.course_id} style={styles.course}>

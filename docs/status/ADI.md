@@ -1301,7 +1301,7 @@ outer retry timer to avoid multiplying that budget or retrying rate limits.
 The entertainment-only adapter also carries the upstream twelve-page duplicate
 window bound. Frame recovery and the quiz wire contract are unchanged.
 
-Validation: Node24 TypeScript passes; 54 mobile tests pass including loopback
+Validation: Node 24 TypeScript passes; 54 mobile tests pass including loopback
 proxy, cancellation, cooldown, per-page pacing, rolling windows and saved history;
 60 entertainment tests pass with synthetic providers. Independent backend review
 resolved `live.py` and reran its 27 focused tests. No live provider/model calls.
@@ -1329,7 +1329,7 @@ then reapplies current foreground/focus/manual-pause gates; a response arriving
 in the background cannot restart audio. The existing quiz gate and API contracts
 are unchanged. Layout/styles were left to the separate UI restoration task.
 
-Validation: Node24 TypeScript and all 58 mobile tests pass. Four new lifecycle
+Validation: Node 24 TypeScript and all 58 mobile tests pass. Four new lifecycle
 checks cover the expiry window, one-attempt budget, stale/quiz selection denial,
 and delayed renewal with background/manual pause and first-frame watch credit.
 The synthetic browser test exercises real media elements with mocked auth/API:
@@ -1412,3 +1412,48 @@ The installed phone remains version 6 until reviewed main is rebuilt; no provide
 paid models, video generation or account secrets were used in these checks.
 Security review preserved HTTPS/auth request boundaries and private ownership;
 new cache contains parsed display data only and resets on API/owner change.
+
+### Feed gestures, comments and demo-library controls — November 14, 2026
+
+- Replaced top-right playback buttons with a center-75%-width long-press options
+  sheet (mute, fit/fill, captions, refresh). Holding either outer 12.5% edge hides
+  feed chrome/navigation and temporarily sets playback to 2x. Release, swipe,
+  background, selection changes, menus and disposal reset to 1x.
+- Added fast vertical snap animation with the current and paused adjacent video
+  surfaces. Still exactly two buffers/one audible player: preserve the outgoing
+  paused surface during transition, preload the next after snap and first frame,
+  and retain real optional thumbnails before media is ready. Existing bounded
+  metadata prefetch and stale-preload/event-flush starvation fixes remain.
+- Added animated like/comment/save actions (likes/saves remain app-local session
+  state; no provider writes), a draggable visible progress track and accessible
+  five-second keyboard/screen-reader seek actions. Scrubbing pauses playback;
+  the mixed feed flushes real watch progress and requires an accepted zero-credit
+  playback_seeked event before moving media. Rejected/late seeks cannot bypass
+  a quiz or move a newly selected clip. 2x counts actual visible wall time only.
+- Comments consume authenticated paginated provider comments with bounded parser,
+  cancellation and duplicate filtering. Unsupported/failed access is explicit;
+  no synthetic comments or posting UI. Demo-library setting persists through
+  the backend settings endpoint; successful changes remount/drop all old feed
+  cards/gates. The Courses catalog displays actual published demo video counts.
+- Backend contracts coordinated with feed_performance: GET/PATCH
+  /v1/learning/settings, GET /v1/learning/demo-catalog, GET
+  /v1/entertainment/videos/{video_id}/comments and playback_seeked feed events.
+
+Validation: Node 24 TypeScript check; full mobile test suite: 74 passed. New tests
+cover rate/reset lifecycle, menu/quiz gates, wall-time credit at 2x, seek ordering
+and acknowledgement, late selection fencing, comment validation, and publishing
+paused adjacent-buffer readiness without audio.
+
+CUA Chrome synthetic fixture preview at 390×844: long-press options opened and
+both media elements paused; Fill screen changed fit and closed the menu;
+comments showed truthful unavailable state for fixture clips; like/save toggled;
+mouse scrub moved the actual active media from ~33s to 315s without starting the
+standby; vertical scroll snapped to the next clip with one playing element and
+paused outgoing element one page above. Preview caught and fixed Expo web's raw
+CSS transform mismatch via RN positioning wrappers (both video elements stay
+mounted). No paid/provider calls were made. Real comments, authenticated demo
+mode, physical hold/scrub behavior await integrated backend/native validation.
+
+The Expo HTTPS-to-loopback transport explicitly allows only the agreed read
+comments/catalog/settings routes and PATCH settings. Proxy tests verify auth is
+required, comments remain read-only, and cookies/redirects stay excluded.
