@@ -1,17 +1,136 @@
-# API service
+# Learning API
 
-Proposed Python/FastAPI modular backend. Not initialized yet.
-Agastya owns core, main.py, workers and shared Python dependencies.
-Adi owns auth/entertainment; Amogh owns canvas/curriculum.
+FastAPI core, adaptive feed, quiz grading/progress, and durable worker infrastructure
+are implemented in this stream. MongoDB Atlas is the application datastore;
+Supabase Auth/Storage remain separate domain adapters. See [API_HANDOFF.md](API_HANDOFF.md)
+for ownership, adapter interfaces, mobile integration, and verification boundaries.
 
-MongoDB Atlas is the adopted application database; Supabase provides app Auth and
-object storage. Agastya owns the shared Atlas connection, Python driver and ordered
-database changes. Domain owners draft collections/validators/indexes under their
-database domains. Mobile clients never connect to Atlas; protected routes derive
-ownership from verified Supabase access tokens. See the [database setup plan](../../database/README.md).
-No live database connection or executable database setup exists yet.
+The API can run independently with synthetic adapters. Fixture URLs are deliberately
+non-playable metadata. Passing tests does not establish provider authentication,
+Canvas ingestion, media playback, live Atlas connectivity, or iPhone integration.
 
-Each domain exports a router and service interface. Core registers them.
-See [integration](../../docs/INTEGRATION.md) and [contracts](../../contracts/README.md).
+## Install and run the fixture API
 
-Add install, environment, run, worker and test commands when initialized.
+Prerequisites: Python 3.11+ and uv. From `services/api`:
+
+```sh
+export UV_PROJECT_ENVIRONMENT=.local/api-venv
+uv sync --locked
+export API_ENVIRONMENT=fixture
+export API_PERSISTENCE=fixture_sqlite
+export API_FIXTURE_DATABASE_PATH=.local/api-fixture.db
+export API_FIXTURE_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
+uv run --locked uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000
+```
+
+Use a separate virtual environment for this API; the concurrent video workstream
+has its own requirements and runtime. `.local` and `.env` are ignored by Git.
+The fixture token authenticates only `user_demo_01` and is forbidden in production.
+Do not use fixture authentication with real student data.
+
+Open `/docs` locally to inspect requests. For example, from a shell with the same
+fixture token environment:
+
+```sh
+curl -sS http://127.0.0.1:8000/health
+curl -sS -X POST http://127.0.0.1:8000/v1/feed/sessions \
+  -H "Authorization: Bearer $API_FIXTURE_TOKEN" \
+  -H 'Content-Type: application/json' -d '{}'
+```
+
+The fixture database is durable across API restarts. Fixture mode is explicitly a
+local fake document store backed by SQLite; it is not the production datastore
+and does not emulate all MongoDB behavior. Tests also exercise the real driver
+against an isolated MongoDB replica set.
+
+## MongoDB and real domain adapters
+
+Set server-only `MONGODB_URI`, `MONGODB_DATABASE`, `API_PERSISTENCE=mongodb`, and the
+appropriate `API_ENVIRONMENT`. The URI is never returned/logged. Production
+requires TLS with certificate/hostname verification. Use a least-privilege runtime
+database user; initialization needs a separate identity allowed to create/modify
+collections and indexes. MongoDB must support multi-document transactions.
+
+```sh
+uv run --locked python -m app.core.migrate --apply
+```
+
+This creates/updates only the `api_*` collections and records migration
+`001_api_learning_runtime`. The ordered migration entry point is
+`database/migrations/001_api_learning.py`; generated validator/index definitions
+are in `database/domains/learning/api-runtime-v1.json`. Startup checks the migration
+marker; it never performs production schema changes automatically.
+
+To include the video owner's current index definitions, run:
+
+```sh
+uv run --locked python -m app.core.migrate --apply --include-videos
+```
+
+This applies API migration 001 first, then delegates migration 002 to
+`AtlasVideoRepository.initialize()`. It creates the owner's indexes on
+`video_generation_jobs`, `video_variants`, and `video_outbox`, and records
+`002_video_indexes` only after success. It does not generate/publish media or
+consume the video outbox. Other owners' collections are not initialized here.
+Index builds are not one transaction: a failure can leave earlier indexes in
+place. Resolve conflicting records explicitly, then rerun; setup never deletes
+data to make a unique index succeed.
+
+Inject Adi's verified identity/entertainment adapters, Amogh's authorized academic
+reader, and the video chat's ready-catalog/quiz-definition adapters through
+`create_app`. Inject domain routers through `domain_routers`. Domain routes use
+`core.dependencies.get_current_user`; the Canvas callback uses its own OAuth state.
+Production startup rejects missing/fixture identity. No login/password system is
+implemented here. Without connected catalogs, the feed honestly reports empty
+inventory rather than returning synthetic content in deployed modes.
+
+Run behind HTTPS and configure the trusted reverse proxy explicitly. The phone
+must use a reachable HTTPS API URL; `localhost` on the phone is not this laptop.
+Deployment/Atlas provisioning and live adapter verification remain pending.
+
+## Implemented HTTP routes
+
+- `GET /health`
+- `POST /v1/feed/sessions`
+- `GET /v1/feed?session_id=...&cursor=...&limit=5`
+- `POST /v1/feed/events` (bounded JSON array)
+- `POST /v1/feed/sessions/{session_id}/quiz-gate`
+- `POST /v1/quizzes/{quiz_instance_id}/answers` (`Idempotency-Key` required)
+- `POST /v1/quizzes/{quiz_instance_id}/recover`
+- `GET /v1/learning/progress`
+
+Auth/profile, entertainment, Canvas, curriculum, and video-detail/playback routers
+remain with their owners; core can register them without editing their modules.
+Feed queries never call a model, renderer, or synchronous generation pipeline.
+
+## Worker commands
+
+```sh
+uv run --locked python -m app.workers.main --fixture-echo --once
+uv run --locked python -m app.workers.main --registrar your_domain.worker:register
+```
+
+The first command is allowed only in fixture/test mode. The second is the explicit
+composition seam for an owner-provided registrar; no module of that example name
+is shipped. Jobs with no registered handler stay queued. See the handoff for lease,
+heartbeat, deduplication, cancellation, outbox, and reteaching request semantics.
+
+## Checks
+
+From `services/api`, in the isolated API environment:
+
+```sh
+uv run --locked pytest -q tests
+uv run --locked python ../../scripts/export-api-contracts.py --check
+uv run --locked python ../../scripts/simulate-api-session.py
+```
+
+For the same suite against a real MongoDB replica set, set
+`API_TEST_MONGODB_URI` to the test server URI. The suite creates random `api_test_*`
+databases and drops only those databases afterward. Never point tests at a server
+where that test-database creation/cleanup is not authorized. The app's ordinary
+`MONGODB_DATABASE` is not used for tests.
+
+Format/lint only this chat's files; do not run repository-wide auto-fixes while
+other agents are working. Validation evidence is in
+[Agastya API status](../../docs/status/AGASTYA_API.md).

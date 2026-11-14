@@ -1,0 +1,41 @@
+{
+  "properties": {
+    "pending_quiz_instance_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Pending Quiz Instance Id"
+    },
+    "recommendation_revision": {
+      "title": "Recommendation Revision",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": "1",
+      "default": "1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scroll_locked": {
+      "title": "Scroll Locked",
+      "type": "boolean"
+    },
+    "session_id": {
+      "title": "Session Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "session_id",
+    "pending_quiz_instance_id",
+    "scroll_locked",
+    "recommendation_revision"
+  ],
+  "title": "GateResponse",
+  "type": "object"
+}

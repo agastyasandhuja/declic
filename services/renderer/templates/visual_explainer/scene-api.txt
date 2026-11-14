@@ -1,0 +1,22 @@
+Scene API trusted-trace-2.
+Export default function Scene({lesson, components}) as a React component.
+Imports only react and remotion. No network, DOM, process, randomness, wall time,
+filesystem, dynamic code, asset URLs, captions, or changes to lesson data.
+Use useCurrentFrame() at 30fps for deterministic animation.
+
+The immutable root renders components.PointerTrace independently; it owns all
+teaching-critical nodes, arrows, pointer labels and code. Never redraw or transform
+these. Root clips generated content to the phase-badge band x=70..930,y=300..390,
+so generated code cannot obscure the title, diagram, code, narration or captions.
+
+Create an elegant phase badge within x=76..920,y=310..385. Use lesson.trace
+(immutable snapshots with time, action, node, previous, current, saved_next,
+links, head) to derive the current phase. Select last snapshot with time <= frame/30,
+falling back to the first snapshot. The badge can say 'Save the successor',
+'Reverse this link', 'Advance the pointers', or 'Return the new head'. Animate
+opacity and a small translation over 6 frames after an event, staying in the band.
+Return the badge only; no full-canvas background, annotation, diagram or code panel.
+
+Use navy #101727, white text, cyan #67e8f9, gold #fcd34d, violet #c4b5fd.
+Minimum text size30px. Keep badge labels concise. A concise 30-70 line
+component is sufficient. Root supplies title, narration, captions and footer.

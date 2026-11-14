@@ -1,0 +1,10 @@
+{
+  "format_id": "dialogue_gameplay",
+  "template_version": "1.0.0",
+  "input_schema": "../../../../contracts/schemas/learning/Storyboard.schema.json",
+  "output": {"width": 1080, "height": 1920, "fps": 30, "codec": "h264"},
+  "components": ["PointerTrace", "Character", "Captions"],
+  "asset_roles": ["peter", "stewie", "background", "narration"],
+  "example": "../../../../fixtures/learning/dialogue_gameplay.json",
+  "visual_checks": ["both characters visible", "active speaker follows audio envelope", "middle captions readable", "gameplay muted", "correct pointer trace"]
+}

@@ -1,0 +1,35 @@
+{
+  "properties": {
+    "accepted": {
+      "title": "Accepted",
+      "type": "boolean"
+    },
+    "graded": {
+      "const": false,
+      "default": false,
+      "title": "Graded",
+      "type": "boolean"
+    },
+    "recommendation_revision": {
+      "title": "Recommendation Revision",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": "1",
+      "default": "1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scroll_unlocked": {
+      "title": "Scroll Unlocked",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "accepted",
+    "scroll_unlocked",
+    "recommendation_revision"
+  ],
+  "title": "RecoveryResponse",
+  "type": "object"
+}

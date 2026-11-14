@@ -6,8 +6,9 @@ holds original course files and generated media. This decision does not replace
 Supabase's internal Postgres infrastructure for its managed services.
 
 See the [accepted decision](../docs/decisions/001-proposed-atlas-application-data.md).
-No cluster, database connection, collection validators or executable migrations
-have been created or tested yet.
+API collection validators and executable setup are implemented and tested against
+a local MongoDB replica set. Hosted Atlas configuration and connectivity remain
+unverified. See [API verification](../docs/status/AGASTYA_API.md).
 
 Domain drafts:
 
@@ -24,6 +25,24 @@ The existing migrations directory remains the home for ordered, repeatable Mongo
 database changes. No SQL application schema is planned. Supabase Storage access
 policies are configured separately. Earlier task-guide references to a jobs table
 mean the Atlas jobs collection under the adopted decision.
+
+## Available ordered setup
+
+From `services/api`, using the isolated API environment and configured MongoDB:
+
+```sh
+uv run --locked python -m app.core.migrate --apply
+uv run --locked python -m app.core.migrate --apply --include-videos
+```
+
+The first command applies `001_api_learning.py`: API-owned validators and indexes.
+The second applies 001 followed by `002_video_indexes.py`, which delegates to the
+video owner's public repository initializer. It does not duplicate the owner's
+index definitions or add validators the owner has not provided. Both commands are
+explicit operator actions, separate from HTTP startup. Success markers appear
+only after each migration finishes; index operations can partially succeed before
+a failure. Rerun after explicitly resolving any conflicting existing records.
+No migration deletes data or initializes the identity/entertainment/academic domains.
 
 ## Data boundaries
 

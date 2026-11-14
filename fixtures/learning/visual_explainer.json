@@ -1,0 +1,167 @@
+{
+  "schema_version": "1",
+  "title": "Reverse a linked list",
+  "segments": [
+    {
+      "segment_id": "s0",
+      "speaker_role": "narrator",
+      "spoken_text": "Reversing a linked list is about changing links, not swapping values. Start with one, two, three. Previous is null; current is one.",
+      "fact_ids": [],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s1",
+      "speaker_role": "narrator",
+      "spoken_text": "Save two before touching the first link. Point one to previous, which is null. Move previous to one and current to two.",
+      "fact_ids": [
+        "save",
+        "reverse",
+        "advance"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s2",
+      "speaker_role": "narrator",
+      "spoken_text": "Save three. Point two back to one. Move previous to two and current to three. The saved pointer keeps the unfinished list reachable.",
+      "fact_ids": [
+        "save",
+        "reverse",
+        "advance"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s3",
+      "speaker_role": "narrator",
+      "spoken_text": "Save null at the last node. Point three back to two. Move previous to three and current to null. Now stop.",
+      "fact_ids": [
+        "save",
+        "reverse",
+        "advance"
+      ],
+      "delivery": "neutral"
+    },
+    {
+      "segment_id": "s4",
+      "speaker_role": "narrator",
+      "spoken_text": "Return previous as the new head: three, two, one, null. Remember: save, reverse, advance. Overwrite first, and you lose the rest of the list.",
+      "fact_ids": [
+        "return"
+      ],
+      "delivery": "neutral"
+    }
+  ],
+  "events": [
+    {
+      "action": "intro",
+      "node": 0,
+      "cue": {
+        "segment_id": "s0",
+        "phrase": "Start with",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "save",
+      "node": 0,
+      "cue": {
+        "segment_id": "s1",
+        "phrase": "Save two",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "reverse",
+      "node": 0,
+      "cue": {
+        "segment_id": "s1",
+        "phrase": "Point one",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "advance",
+      "node": 0,
+      "cue": {
+        "segment_id": "s1",
+        "phrase": "Move previous",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "save",
+      "node": 1,
+      "cue": {
+        "segment_id": "s2",
+        "phrase": "Save three",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "reverse",
+      "node": 1,
+      "cue": {
+        "segment_id": "s2",
+        "phrase": "Point two",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "advance",
+      "node": 1,
+      "cue": {
+        "segment_id": "s2",
+        "phrase": "Move previous",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "save",
+      "node": 2,
+      "cue": {
+        "segment_id": "s3",
+        "phrase": "Save null",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "reverse",
+      "node": 2,
+      "cue": {
+        "segment_id": "s3",
+        "phrase": "Point three",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "advance",
+      "node": 2,
+      "cue": {
+        "segment_id": "s3",
+        "phrase": "Move previous",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    },
+    {
+      "action": "finish",
+      "node": 2,
+      "cue": {
+        "segment_id": "s4",
+        "phrase": "Return previous",
+        "occurrence": 0,
+        "edge": "start"
+      }
+    }
+  ]
+}

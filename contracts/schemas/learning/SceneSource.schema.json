@@ -1,0 +1,16 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "source": {
+      "maxLength": 40000,
+      "minLength": 30,
+      "title": "Source",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source"
+  ],
+  "title": "SceneSource",
+  "type": "object"
+}

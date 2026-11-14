@@ -1,0 +1,7 @@
+Write a crisp narrated pointer trace: start with the danger of losing the rest of the
+list, name previous/current/saved-next, demonstrate every operation on three nodes,
+then return previous as the new head. Target 90–120 words. Use narrator only.
+Speak code in natural English. Use distinct exact phrases as cues for each action.
+Emit intro, then save/reverse/advance for each node, then finish. Several consecutive
+actions may share a narration segment, but their cue phrases must be in spoken order.
+Finish with the reversed values and null. No invented dates or exam relevance.

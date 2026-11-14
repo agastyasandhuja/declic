@@ -1,0 +1,167 @@
+{
+  "$defs": {
+    "Cue": {
+      "additionalProperties": false,
+      "properties": {
+        "segment_id": {
+          "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+          "title": "Segment Id",
+          "type": "string"
+        },
+        "phrase": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Phrase",
+          "type": "string"
+        },
+        "occurrence": {
+          "default": 0,
+          "maximum": 10,
+          "minimum": 0,
+          "title": "Occurrence",
+          "type": "integer"
+        },
+        "edge": {
+          "default": "start",
+          "enum": [
+            "start",
+            "end"
+          ],
+          "title": "Edge",
+          "type": "string"
+        }
+      },
+      "required": [
+        "segment_id",
+        "phrase"
+      ],
+      "title": "Cue",
+      "type": "object"
+    },
+    "Event": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "intro",
+            "save",
+            "reverse",
+            "advance",
+            "finish"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "node": {
+          "maximum": 4,
+          "minimum": 0,
+          "title": "Node",
+          "type": "integer"
+        },
+        "cue": {
+          "$ref": "#/$defs/Cue"
+        }
+      },
+      "required": [
+        "action",
+        "node",
+        "cue"
+      ],
+      "title": "Event",
+      "type": "object"
+    },
+    "Segment": {
+      "additionalProperties": false,
+      "properties": {
+        "segment_id": {
+          "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+          "title": "Segment Id",
+          "type": "string"
+        },
+        "speaker_role": {
+          "enum": [
+            "peter",
+            "stewie",
+            "narrator"
+          ],
+          "title": "Speaker Role",
+          "type": "string"
+        },
+        "spoken_text": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Spoken Text",
+          "type": "string"
+        },
+        "fact_ids": {
+          "items": {
+            "pattern": "^[a-zA-Z0-9_-]{1,100}$",
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Fact Ids",
+          "type": "array"
+        },
+        "delivery": {
+          "default": "neutral",
+          "enum": [
+            "neutral",
+            "curious",
+            "sarcastic",
+            "emphatic"
+          ],
+          "title": "Delivery",
+          "type": "string"
+        }
+      },
+      "required": [
+        "segment_id",
+        "speaker_role",
+        "spoken_text",
+        "fact_ids"
+      ],
+      "title": "Segment",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1",
+      "default": "1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "title": {
+      "maxLength": 90,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "segments": {
+      "items": {
+        "$ref": "#/$defs/Segment"
+      },
+      "maxItems": 16,
+      "minItems": 3,
+      "title": "Segments",
+      "type": "array"
+    },
+    "events": {
+      "items": {
+        "$ref": "#/$defs/Event"
+      },
+      "maxItems": 20,
+      "minItems": 3,
+      "title": "Events",
+      "type": "array"
+    }
+  },
+  "required": [
+    "title",
+    "segments",
+    "events"
+  ],
+  "title": "Storyboard",
+  "type": "object"
+}

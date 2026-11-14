@@ -1,0 +1,58 @@
+{
+  "properties": {
+    "active_view_seconds": {
+      "title": "Active View Seconds",
+      "type": "number"
+    },
+    "last_active_at": {
+      "format": "date-time",
+      "title": "Last Active At",
+      "type": "string"
+    },
+    "pending_quiz_instance_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Pending Quiz Instance Id"
+    },
+    "recommendation_revision": {
+      "title": "Recommendation Revision",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": "1",
+      "default": "1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "session_id": {
+      "title": "Session Id",
+      "type": "string"
+    },
+    "started_at": {
+      "format": "date-time",
+      "title": "Started At",
+      "type": "string"
+    },
+    "study_ratio_target": {
+      "title": "Study Ratio Target",
+      "type": "number"
+    }
+  },
+  "required": [
+    "session_id",
+    "started_at",
+    "last_active_at",
+    "active_view_seconds",
+    "study_ratio_target",
+    "recommendation_revision",
+    "pending_quiz_instance_id"
+  ],
+  "title": "SessionResponse",
+  "type": "object"
+}

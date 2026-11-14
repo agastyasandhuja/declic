@@ -1,0 +1,1566 @@
+{
+  "components": {
+    "schemas": {
+      "AnswerRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "selected_option_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "title": "Selected Option Id",
+            "type": "string"
+          },
+          "session_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "selected_option_id"
+        ],
+        "title": "AnswerRequest",
+        "type": "object"
+      },
+      "AnswerResponse": {
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "boolean"
+          },
+          "attempt_id": {
+            "title": "Attempt Id",
+            "type": "string"
+          },
+          "correct": {
+            "title": "Correct",
+            "type": "boolean"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "learning_revision": {
+            "title": "Learning Revision",
+            "type": "integer"
+          },
+          "recommendation_revision": {
+            "title": "Recommendation Revision",
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": "1",
+            "default": "1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "scroll_unlocked": {
+            "title": "Scroll Unlocked",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "accepted",
+          "correct",
+          "explanation",
+          "scroll_unlocked",
+          "learning_revision",
+          "recommendation_revision"
+        ],
+        "title": "AnswerResponse",
+        "type": "object"
+      },
+      "Availability": {
+        "properties": {
+          "entertainment": {
+            "enum": [
+              "ready",
+              "unavailable"
+            ],
+            "title": "Entertainment",
+            "type": "string"
+          },
+          "study": {
+            "enum": [
+              "ready",
+              "unavailable"
+            ],
+            "title": "Study",
+            "type": "string"
+          }
+        },
+        "required": [
+          "study",
+          "entertainment"
+        ],
+        "title": "Availability",
+        "type": "object"
+      },
+      "CourseContext": {
+        "properties": {
+          "course_id": {
+            "title": "Course Id",
+            "type": "string"
+          },
+          "objective_id": {
+            "title": "Objective Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course_id",
+          "title",
+          "objective_id"
+        ],
+        "title": "CourseContext",
+        "type": "object"
+      },
+      "Creator": {
+        "properties": {
+          "attribution_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attribution Url"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "handle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handle"
+          }
+        },
+        "title": "Creator",
+        "type": "object"
+      },
+      "EntertainmentCandidate": {
+        "properties": {
+          "acquired_at": {
+            "format": "date-time",
+            "title": "Acquired At",
+            "type": "string"
+          },
+          "acquisition_mode": {
+            "enum": [
+              "live",
+              "cached",
+              "fixture"
+            ],
+            "title": "Acquisition Mode",
+            "type": "string"
+          },
+          "availability": {
+            "enum": [
+              "ready",
+              "unavailable",
+              "needs_refresh"
+            ],
+            "title": "Availability",
+            "type": "string"
+          },
+          "caption": {
+            "default": "",
+            "maxLength": 10000,
+            "title": "Caption",
+            "type": "string"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/Creator"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 86400.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "playback": {
+            "$ref": "#/components/schemas/Playback"
+          },
+          "provider": {
+            "enum": [
+              "tiktok",
+              "instagram",
+              "fixture"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_video_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "title": "Provider Video Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "1",
+            "default": "1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "thumbnail_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumbnail Url"
+          },
+          "video_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "title": "Video Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "video_id",
+          "provider",
+          "provider_video_id",
+          "playback",
+          "acquired_at",
+          "availability",
+          "acquisition_mode"
+        ],
+        "title": "EntertainmentCandidate",
+        "type": "object"
+      },
+      "EntertainmentItem": {
+        "properties": {
+          "inserted_at": {
+            "format": "date-time",
+            "title": "Inserted At",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "entertainment_video",
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reason Codes",
+            "type": "array"
+          },
+          "video": {
+            "$ref": "#/components/schemas/EntertainmentCandidate"
+          }
+        },
+        "required": [
+          "item_id",
+          "inserted_at",
+          "reason_codes",
+          "kind",
+          "video"
+        ],
+        "title": "EntertainmentItem",
+        "type": "object"
+      },
+      "EventRejection": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "code"
+        ],
+        "title": "EventRejection",
+        "type": "object"
+      },
+      "EventResponse": {
+        "properties": {
+          "accepted_event_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Accepted Event Ids",
+            "type": "array"
+          },
+          "rejected": {
+            "items": {
+              "$ref": "#/components/schemas/EventRejection"
+            },
+            "title": "Rejected",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": "1",
+            "default": "1",
+            "title": "Schema Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "accepted_event_ids",
+          "rejected"
+        ],
+        "title": "EventResponse",
+        "type": "object"
+      },
+      "FeedResponse": {
+        "properties": {
+          "availability": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Availability"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "items": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "entertainment_video": "#/components/schemas/EntertainmentItem",
+                  "quiz": "#/components/schemas/QuizItem",
+                  "study_video": "#/components/schemas/StudyItem"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/EntertainmentItem"
+                },
+                {
+                  "$ref": "#/components/schemas/StudyItem"
+                },
+                {
+                  "$ref": "#/components/schemas/QuizItem"
+                }
+              ]
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "pending_quiz_instance_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Quiz Instance Id"
+          },
+          "recommendation_revision": {
+            "title": "Recommendation Revision",
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": "1",
+            "default": "1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "recommendation_revision",
+          "items",
+          "next_cursor",
+          "pending_quiz_instance_id"
+        ],
+        "title": "FeedResponse",
+        "type": "object"
+      },
+      "GateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "item_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "title": "Item Id",
+            "type": "string"
+          },
+          "quiz_instance_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "title": "Quiz Instance Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "quiz_instance_id",
+          "item_id"
+        ],
+        "title": "GateRequest",
+        "type": "object"
+      },
+      "GateResponse": {
+        "properties": {
+          "pending_quiz_instance_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Quiz Instance Id"
+          },
+          "recommendation_revision": {
+            "title": "Recommendation Revision",
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": "1",
+            "default": "1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "scroll_locked": {
+            "title": "Scroll Locked",
+            "type": "boolean"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "pending_quiz_instance_id",
+          "scroll_locked",
+          "recommendation_revision"
+        ],
+        "title": "GateResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "Playback": {
+        "properties": {
+          "asset_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "kind": {
+            "enum": [
+              "mp4",
+              "hls",
+              "embed"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mime Type"
+          },
+          "url": {
+            "format": "uri",
+            "maxLength": 2083,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "asset_id",
+          "url"
+        ],
+        "title": "Playback",
+        "type": "object"
+      },
+      "PlaybackEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "client_occurred_at": {
+            "format": "date-time",
+            "title": "Client Occurred At",
+            "type": "string"
+          },
+          "event_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "enum": [
+              "playback_started",
+              "playback_progress",
+              "playback_completed",
+              "video_skipped",
+              "playback_failed",
+              "app_backgrounded",
+              "app_foregrounded"
+            ],
+            "title": "Event Type",
+            "type": "string"
+          },
+          "item_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "title": "Item Id",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/PlaybackPayload"
+          },
+          "session_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "session_id",
+          "item_id",
+          "event_type",
+          "client_occurred_at"
+        ],
+        "title": "PlaybackEvent",
+        "type": "object"
+      },
+      "PlaybackPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "position_ms": {
+            "default": 0,
+            "maximum": 86400000.0,
+            "minimum": 0.0,
+            "title": "Position Ms",
+            "type": "integer"
+          },
+          "visible_watch_ms": {
+            "default": 0,
+            "maximum": 86400000.0,
+            "minimum": 0.0,
+            "title": "Visible Watch Ms",
+            "type": "integer"
+          }
+        },
+        "title": "PlaybackPayload",
+        "type": "object"
+      },
+      "QuizCard": {
+        "properties": {
+          "objective_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Objective Ids",
+            "type": "array"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/QuizOption"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "quiz_id": {
+            "title": "Quiz Id",
+            "type": "string"
+          },
+          "quiz_instance_id": {
+            "title": "Quiz Instance Id",
+            "type": "string"
+          },
+          "related_video_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Related Video Ids",
+            "type": "array"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "quiz_instance_id",
+          "quiz_id",
+          "revision",
+          "objective_ids",
+          "prompt",
+          "options",
+          "related_video_ids"
+        ],
+        "title": "QuizCard",
+        "type": "object"
+      },
+      "QuizItem": {
+        "properties": {
+          "inserted_at": {
+            "format": "date-time",
+            "title": "Inserted At",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "quiz",
+            "title": "Kind",
+            "type": "string"
+          },
+          "quiz": {
+            "$ref": "#/components/schemas/QuizCard"
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reason Codes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "item_id",
+          "inserted_at",
+          "reason_codes",
+          "kind",
+          "quiz"
+        ],
+        "title": "QuizItem",
+        "type": "object"
+      },
+      "QuizOption": {
+        "properties": {
+          "option_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "title": "Option Id",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "option_id",
+          "text"
+        ],
+        "title": "QuizOption",
+        "type": "object"
+      },
+      "RecoveryRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "client_event_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "title": "Client Event Id",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "content_error",
+              "submission_unavailable"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "session_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "reason",
+          "client_event_id"
+        ],
+        "title": "RecoveryRequest",
+        "type": "object"
+      },
+      "RecoveryResponse": {
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "boolean"
+          },
+          "graded": {
+            "const": false,
+            "default": false,
+            "title": "Graded",
+            "type": "boolean"
+          },
+          "recommendation_revision": {
+            "title": "Recommendation Revision",
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": "1",
+            "default": "1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "scroll_unlocked": {
+            "title": "Scroll Unlocked",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accepted",
+          "scroll_unlocked",
+          "recommendation_revision"
+        ],
+        "title": "RecoveryResponse",
+        "type": "object"
+      },
+      "SessionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "resume_session_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_.:-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resume Session Id"
+          }
+        },
+        "title": "SessionRequest",
+        "type": "object"
+      },
+      "SessionResponse": {
+        "properties": {
+          "active_view_seconds": {
+            "title": "Active View Seconds",
+            "type": "number"
+          },
+          "last_active_at": {
+            "format": "date-time",
+            "title": "Last Active At",
+            "type": "string"
+          },
+          "pending_quiz_instance_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Quiz Instance Id"
+          },
+          "recommendation_revision": {
+            "title": "Recommendation Revision",
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": "1",
+            "default": "1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "study_ratio_target": {
+            "title": "Study Ratio Target",
+            "type": "number"
+          }
+        },
+        "required": [
+          "session_id",
+          "started_at",
+          "last_active_at",
+          "active_view_seconds",
+          "study_ratio_target",
+          "recommendation_revision",
+          "pending_quiz_instance_id"
+        ],
+        "title": "SessionResponse",
+        "type": "object"
+      },
+      "StudyItem": {
+        "properties": {
+          "constraint_relaxations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Constraint Relaxations",
+            "type": "array"
+          },
+          "course_context": {
+            "$ref": "#/components/schemas/CourseContext"
+          },
+          "inserted_at": {
+            "format": "date-time",
+            "title": "Inserted At",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "study_video",
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reason Codes",
+            "type": "array"
+          },
+          "reason_text": {
+            "title": "Reason Text",
+            "type": "string"
+          },
+          "video": {
+            "$ref": "#/components/schemas/StudySummary"
+          }
+        },
+        "required": [
+          "item_id",
+          "inserted_at",
+          "reason_codes",
+          "kind",
+          "video",
+          "course_context",
+          "reason_text"
+        ],
+        "title": "StudyItem",
+        "type": "object"
+      },
+      "StudySummary": {
+        "properties": {
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "captions_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captions Ref"
+          },
+          "duration_seconds": {
+            "maximum": 60.0,
+            "minimum": 30.0,
+            "title": "Duration Seconds",
+            "type": "number"
+          },
+          "format_id": {
+            "title": "Format Id",
+            "type": "string"
+          },
+          "language": {
+            "title": "Language",
+            "type": "string"
+          },
+          "learning_goal": {
+            "title": "Learning Goal",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "notation": {
+            "title": "Notation",
+            "type": "string"
+          },
+          "objective_id": {
+            "title": "Objective Id",
+            "type": "string"
+          },
+          "playback": {
+            "$ref": "#/components/schemas/Playback"
+          },
+          "schema_version": {
+            "const": "1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "private",
+              "shared_generic"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "status": {
+            "const": "ready",
+            "title": "Status",
+            "type": "string"
+          },
+          "teaching_approach": {
+            "title": "Teaching Approach",
+            "type": "string"
+          },
+          "thumbnail_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumbnail Url"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "video_id": {
+            "title": "Video Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "video_id",
+          "objective_id",
+          "format_id",
+          "teaching_approach",
+          "level",
+          "language",
+          "notation",
+          "scope",
+          "status",
+          "title",
+          "learning_goal",
+          "duration_seconds",
+          "asset_id",
+          "playback",
+          "thumbnail_url",
+          "captions_ref"
+        ],
+        "title": "StudySummary",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "Learning Feed API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "operations"
+        ]
+      }
+    },
+    "/v1/feed": {
+      "get": {
+        "operationId": "feed_v1_feed_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.:-]+$",
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9_.:-]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Feed",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/feed/events": {
+      "post": {
+        "operationId": "events_v1_feed_events_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "$ref": "#/components/schemas/PlaybackEvent"
+                },
+                "maxItems": 100,
+                "minItems": 1,
+                "title": "Body",
+                "type": "array"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Events",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/feed/sessions": {
+      "post": {
+        "operationId": "sessions_v1_feed_sessions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sessions",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/feed/sessions/{session_id}/quiz-gate": {
+      "post": {
+        "operationId": "gate_v1_feed_sessions__session_id__quiz_gate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.:-]+$",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Gate",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/learning/progress": {
+      "get": {
+        "operationId": "progress_v1_learning_progress_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Progress",
+        "tags": [
+          "learning"
+        ]
+      }
+    },
+    "/v1/quizzes/{quiz_instance_id}/answers": {
+      "post": {
+        "operationId": "answer_v1_quizzes__quiz_instance_id__answers_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quiz_instance_id",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.:-]+$",
+              "title": "Quiz Instance Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnswerResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Answer",
+        "tags": [
+          "quizzes"
+        ]
+      }
+    },
+    "/v1/quizzes/{quiz_instance_id}/recover": {
+      "post": {
+        "operationId": "recover_v1_quizzes__quiz_instance_id__recover_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quiz_instance_id",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.:-]+$",
+              "title": "Quiz Instance Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoveryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Recover",
+        "tags": [
+          "quizzes"
+        ]
+      }
+    }
+  }
+}
