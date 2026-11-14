@@ -1,5 +1,21 @@
 # Adi status
 
+## Demo Supabase scope — November 14, 2026
+
+User explicitly deferred fixing the confirmation redirect and configuring custom
+SMTP for this demo. Accepted flow: confirm the email when delivered, then return
+to the app and sign in manually even if the final localhost page fails. Existing
+confirmed demo accounts can continue signing in; broader signup/email-delivery
+acceptance is deferred. Email confirmation remains enabled.
+
+The preceding read-only dashboard inspection found no Storage buckets, a 50 MB
+per-file upload limit, Site URL http://localhost:3000 with no allowed redirects,
+email signup/confirmation enabled, and custom SMTP off. No Supabase settings,
+credentials or permissions were changed. Priorities remain the private
+lesson-videos bucket and authenticated backend/app integration. Academic source
+Storage remains an Amogh handoff. This update changes documentation only;
+`git diff --check` passed. No code tests were rerun.
+
 ## Hosted Atlas initialized — November 14, 2026
 
 **The shared database foundation is now hosted and verified.** The user selected

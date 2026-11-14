@@ -81,6 +81,13 @@ not edited. Agastya still integrates real owner adapters/routes and runtime
 dependencies; Amogh still owns academic persistence. A scoped runtime credential,
 API hosting and physical-device acceptance remain open.
 
+Demo scope decision, November 14: the user accepts confirming an email and then
+returning to the app to sign in manually after the localhost redirect error.
+Redirect UX and custom SMTP are explicitly deferred. Use existing confirmed demo
+accounts for reliable demo access; broader signup/email-delivery acceptance is
+deferred. Keep the current email-confirmation setting enabled. These deferrals
+do not block private Storage setup or authenticated app/API integration.
+
 ## Milestone A2 — provider acquisition experiment
 
 User direction updated November 14, 2026: prioritize Instagram through instagrapi
