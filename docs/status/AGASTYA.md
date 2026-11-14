@@ -1663,3 +1663,36 @@ tests rather than claimed as a completed live submission.
   test_auto_publication.py, test_delivery.py, test_job_allowlist.py, test_retry.py:
   **65 passed**. Ruff on changed implementation/tests: **passed**. These are
   synthetic/mocked checks; no paid generation or provider login was performed.
+
+### Integrated performance deployment — November 14, 2026
+
+- Reviewed and merged PRs 8, 12, 13 and 14. Backend/proxy/workers restarted from
+  main `c2cc2e5`; renderer configuration now points to the built v10 image.
+  Existing five published clips retain their original v9 presentation.
+- Native Release 1.0.0 (7), exact mobile source `5bdbef6`, installed and launched
+  on the connected iPhone. Saved app login and a real Instagram video frame were
+  observed. Sustained scrolling, perceived latency and a real quiz submission
+  on this build still require the student's phone test.
+- Live owner-scoped study projection measured 353 ms cold (one bulk signing
+  request) and 65 ms warm (no signing request), versus 1.224 s serial signing.
+  All five signed private MP4s returned HTTP 206 with 1,024 requested bytes.
+  These are component timings, not end-to-end playback latency guarantees.
+- `npm run typecheck` passed; `npm test` passed all 67 mobile tests after allowing
+  the loopback-only proxy test to bind its port.
+- Integrated backend check passed 72 tests against an isolated MongoDB 7 replica
+  set using `API_TEST_MONGODB_URI` and `PYTHONPATH=services/api`:
+  `services/api/.venv/bin/python -m pytest -q services/api/tests/test_api.py
+  services/api/tests/test_playback_events.py services/api/tests/test_feed_inventory.py
+  services/api/tests/test_prepared_feed_integration.py services/api/tests/test_boundaries.py
+  services/api/tests/test_policy.py services/api/tests/test_video_batch_signing.py
+  services/api/tests/test_bound_video_reader.py
+  services/api/app/modules/videos/tests/test_publication_retry.py`.
+  Provider generation/media in these tests are synthetic; no paid model calls or
+  fabricated playback/quiz activity were added to the student's cloud account.
+  Disposable test container was removed afterward.
+- Local API health returned 200; the public proxy's protected feed-session route
+  returned the expected 401 without credentials. All remote branch heads were
+  ancestors of main and no feature PRs remained open at the deployment audit.
+- Evidence remains private under `.local/performance-mobile-tests.log`,
+  `.local/performance-api-tests.log`, and
+  `.local/iphone-build/main-1ef4b69/build-info.json` with the v7 phone screenshot.
