@@ -1442,3 +1442,9 @@ Claude stage calls at six per job (previously forty), and paused the local video
 worker via VIDEO_GENERATION_ENABLED=false. The existing final diagram probe is
 already past all model calls and may finish CPU rendering/storage without new
 Claude calls. No background generation worker was started for student jobs.
+
+Final cost-control head verification: **403 backend tests passed, zero skipped**
+with all three disposable Mongo test settings enabled. The separate agent review
+of commit `6e11318` found no blocking issue in the narrated demo path. Mobile
+remains 40 passing tests and renderer 85. No live provider calls were used for
+this final test run.
