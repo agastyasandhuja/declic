@@ -128,6 +128,28 @@ class LiveTests(unittest.TestCase):
         self.assertIsNone(second['next_cursor'])
         self.assertEqual(len(provider.calls), 2)
 
+    def test_pacing_hint_and_duplicate_page_keep_the_same_next_cursor_retryable(self):
+        provider = Provider([ProviderPage([reel(1)], 'next_a'),
+                             ProviderPage([reel(1)], 'next_b'), ProviderPage([reel(2)], None)])
+        catalog = LiveInstagramCatalog(OWNER, provider, clock=lambda: NOW,
+            monotonic=lambda: self.time, minimum_interval=2)
+        user = {'user_id': OWNER}
+        first = catalog.list_candidates(user)
+        self.time = 0.5
+        with self.assertRaises(CatalogFailure) as failure:
+            catalog.list_candidates(user, first['next_cursor'])
+        self.assertEqual(failure.exception.code, 'INSTAGRAM_BUSY')
+        self.assertEqual(failure.exception.retry_after, 2)
+        self.assertEqual(provider.calls, [None])
+        self.time = 2
+        duplicate = catalog.list_candidates(user, first['next_cursor'])
+        self.assertEqual(duplicate['items'], [])
+        self.assertIsNotNone(duplicate['next_cursor'])
+        self.time = 4
+        last = catalog.list_candidates(user, duplicate['next_cursor'])
+        self.assertEqual([item['provider_video_id'] for item in last['items']], ['2'])
+        self.assertEqual(provider.calls, [None, 'next_a', 'next_b'])
+
     def test_transient_failure_retains_cursor_and_cooldown_never_becomes_empty_success(self):
         failure = CatalogFailure(503, 'INSTAGRAM_UNAVAILABLE', 'Synthetic safe error')
         provider = Provider([ProviderPage([reel(1)], 'next'), failure, ProviderPage([reel(2)], None)])

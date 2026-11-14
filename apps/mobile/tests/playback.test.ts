@@ -89,6 +89,37 @@ test('post-load stalls time out while manual pause/background reset the watchdog
   assert.equal(stall.sample(1000, 10000, true), false);
 });
 
+import { FirstFrameGuard } from '../src/lib/playback/VisibleWatchTracker';
+test('audio-only playback times out without a rendered frame; selection and background reset the deadline', () => {
+  const guard = new FirstFrameGuard(1000);
+  assert.equal(guard.sample(1, false, 0, true), false);
+  // Native playback/status events may keep arriving while audio advances.
+  assert.equal(guard.sample(1, false, 500, true), false);
+  assert.equal(guard.sample(1, false, 1000, true), true);
+  assert.equal(guard.sample(1, true, 1500, true), false);
+  assert.equal(guard.sample(2, false, 2000, true), false);
+  assert.equal(guard.sample(2, false, 2500, false), false);
+  assert.equal(guard.sample(2, false, 9000, true), false);
+  assert.equal(guard.sample(2, false, 10000, true), true);
+});
+
+test('source readiness identifies the selected URI and surface generation across preload promotion and retry', async () => {
+  let state!: BufferedPlaybackState;
+  const driver = { play() {}, pause() {}, async replaceAsync() {} };
+  const controller = new BufferedPlayerController([driver, driver], value => { state = value; });
+  await controller.setSelection('one', 'two');
+  const first = state.selection;
+  assert.equal(state.sourceUri, 'one');
+  await controller.setSelection('two');
+  assert.equal(state.sourceUri, 'two');
+  assert.ok(state.selection > first);
+  const promoted = state.selection;
+  await controller.setSelection('two', undefined, true);
+  assert.ok(state.selection > promoted);
+  assert.equal(state.ready, true);
+  controller.dispose();
+});
+
 test('late visibility/error callbacks and repeated cleanup never touch released native drivers', async () => {
   let released = false;
   const driver = { play() { assert.equal(released, false); }, pause() { assert.equal(released, false); }, async replaceAsync() { assert.equal(released, false); } };

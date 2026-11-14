@@ -26,3 +26,17 @@ export class PlaybackStallGuard {
     return enabled && nowMs - this.lastMovement >= this.timeoutMs;
   }
 }
+
+/** Audio/media time can advance without a picture; require an actual video frame. */
+export class FirstFrameGuard {
+  private selection: number | null = null;
+  private started: number | null = null;
+  constructor(private timeoutMs = 12000) {}
+  sample(selection: number, rendered: boolean, nowMs: number, enabled: boolean) {
+    if (this.selection !== selection || !enabled || rendered) this.started = null;
+    this.selection = selection;
+    if (!enabled || rendered) return false;
+    this.started ??= nowMs;
+    return nowMs - this.started >= this.timeoutMs;
+  }
+}

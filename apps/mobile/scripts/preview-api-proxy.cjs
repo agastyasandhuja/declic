@@ -38,7 +38,10 @@ function previewApiProxy(next, port = 8000) {
         result.on('data', chunk => { bytes += chunk.length; if (bytes > 4 * 1024 * 1024) { fail(503, 'PREVIEW_UNAVAILABLE', 'Response exceeded its limit.', true); upstream.destroy(); } else output.push(chunk); });
         result.on('end', () => {
           if (response.writableEnded || response.destroyed) return;
-          response.writeHead(result.statusCode ?? 502, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); response.end(Buffer.concat(output));
+          const outgoing = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
+          const retryAfter = result.headers['retry-after'];
+          if (typeof retryAfter === 'string' && /^\d{1,3}$/.test(retryAfter)) outgoing['Retry-After'] = String(Math.min(300, Number(retryAfter)));
+          response.writeHead(result.statusCode ?? 502, outgoing); response.end(Buffer.concat(output));
         });
         result.on('error', () => fail(503, 'PREVIEW_UNAVAILABLE', 'Response interrupted. Retry.', true));
       });

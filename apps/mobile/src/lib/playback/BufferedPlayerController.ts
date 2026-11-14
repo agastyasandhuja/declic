@@ -1,6 +1,6 @@
 import type { PlaybackGate, PlaybackState, PlayerDriver } from './SinglePlayerController';
 
-export interface BufferedPlaybackState extends PlaybackState { activeSlot: 0 | 1; timedOut: boolean }
+export interface BufferedPlaybackState extends PlaybackState { activeSlot: 0 | 1; timedOut: boolean; sourceUri: string | null; selection: number }
 interface Slot { uri: string | null; ready: boolean; version: number; queue: Promise<void>; load: Promise<void> }
 const emptySlot = (): Slot => ({ uri: null, ready: false, version: 0, queue: Promise.resolve(), load: Promise.resolve() });
 
@@ -9,13 +9,14 @@ export class BufferedPlayerController {
   private slots: [Slot, Slot] = [emptySlot(), emptySlot()];
   private active: 0 | 1 = 0;
   private version = 0;
+  private sourceUri: string | null = null;
   private disposed = false;
   private failed = false;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private gate: PlaybackGate = { foreground: true, focused: true, manuallyPaused: false };
   constructor(private drivers: [PlayerDriver, PlayerDriver], private onState: (state: BufferedPlaybackState) => void, private timeoutMs = 15000) {}
   private emit(loading: boolean, error: string | null = null, timedOut = false) {
-    if (!this.disposed) this.onState({ loading, ready: !loading && !error, error, activeSlot: this.active, timedOut });
+    if (!this.disposed) this.onState({ loading, ready: !loading && !error, error, activeSlot: this.active, timedOut, sourceUri: this.sourceUri, selection: this.version });
   }
   setGate(patch: Partial<PlaybackGate>) { if (this.disposed) return; this.gate = { ...this.gate, ...patch }; this.reconcile(); }
   private reconcile() {
@@ -45,6 +46,7 @@ export class BufferedPlayerController {
   async setSelection(uri: string, upcoming?: string, force = false) {
     if (this.disposed) return;
     const requested = ++this.version;
+    this.sourceUri = uri;
     clearTimeout(this.timer);
     this.drivers.forEach(driver => driver.pause());
     this.failed = false;
@@ -69,7 +71,7 @@ export class BufferedPlayerController {
   reportError(timedOut = false) {
     if (this.disposed) return;
     this.failed = true; clearTimeout(this.timer); this.drivers.forEach(driver => driver.pause());
-    this.emit(false, timedOut ? 'This clip is taking too long. Reload the feed or keep scrolling.' : 'This clip could not load. Retry it or keep scrolling.', timedOut);
+    this.emit(false, timedOut ? 'The video picture is taking too long. Retry this clip or keep scrolling.' : 'This clip could not load. Retry it or keep scrolling.', timedOut);
   }
   preload(uri?: string) {
     if (!this.disposed && !this.failed && this.slots[this.active].ready && uri && uri !== this.slots[this.active].uri) void this.load((1 - this.active) as 0 | 1, uri);
