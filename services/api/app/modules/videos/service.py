@@ -1,12 +1,13 @@
 """Public service surface for the academic/API integrator; identity is a trusted argument."""
 
+import json
 import time
 from datetime import UTC, datetime, timedelta
 from threading import Event, Thread
 
 from .generation.providers import ProviderError
-from .models import Brief
-from .pipeline import generate, generation_recipe
+from .models import Brief, digest
+from .pipeline import artifact_digests, generate, generation_recipe
 from .repository import StaleLease
 
 
@@ -92,6 +93,34 @@ class VideoService:
         }
 
 
+def completed_private_manifest(job, brief, work):
+    """Reuse only complete, identical private artifacts; invalid caches fail closed."""
+    path = work / "generation-manifest.json"
+    if not path.exists():
+        if job.get("stage") == "publishing" or job.get("result_ref"):
+            raise ProviderError("COMPLETED_ARTIFACT_MISSING")
+        return None
+    try:
+        manifest = json.loads(path.read_text())
+        board = json.loads((work / "storyboard.json").read_text())
+        expected = brief.generation_key(job["recipe"])
+        if (
+            manifest.get("fixture") is not False
+            or manifest.get("scope") != "private"
+            or manifest.get("owner_user_id") != brief.owner_user_id
+            or brief.owner_user_id != job["owner_user_id"]
+            or manifest.get("recipe") != job["recipe"]
+            or manifest.get("generation_key") != expected
+            or job["generation_key"] != expected
+            or manifest.get("storyboard_digest") != digest(board)
+            or manifest.get("artifact_digests") != artifact_digests(work)
+        ):
+            raise ValueError("Completed artifacts do not match this private job")
+        return manifest
+    except (OSError, ValueError, TypeError, KeyError, AttributeError):
+        raise ProviderError("COMPLETED_ARTIFACT_INVALID") from None
+
+
 def run_once(repository, artifact_root, *, fixture=False, private_demo_storage=None, job_ids=None):
     job = repository.claim() if job_ids is None else repository.claim(job_ids=job_ids)
     if not job:
@@ -115,7 +144,15 @@ def run_once(repository, artifact_root, *, fixture=False, private_demo_storage=N
     thread.start()
     try:
         brief = Brief.model_validate(job["brief"])
-        if job["recipe"] != generation_recipe(
+        private_publication = (
+            private_demo_storage is not None
+            and not fixture
+            and brief.scope == "private"
+            and brief.format_id != "math_explainer"
+        )
+        work = artifact_root / job["job_id"]
+        result = completed_private_manifest(job, brief, work) if private_publication else None
+        if result is None and job["recipe"] != generation_recipe(
             fixture=fixture, custom_scene=job["recipe"].get("custom_scene", False)
         ):
             raise ValueError("Worker recipe differs from queued recipe")
@@ -124,26 +161,25 @@ def run_once(repository, artifact_root, *, fixture=False, private_demo_storage=N
             if lost.is_set():
                 raise StaleLease("Lease lost")
 
-        result = generate(
-            brief,
-            artifact_root / job["job_id"],
-            fixture=fixture,
-            custom_scene=job["recipe"].get("custom_scene", False),
-            stage=stage,
-            check_cancelled=check_cancelled,
-        )
-        if (
-            private_demo_storage is not None
-            and not fixture
-            and brief.scope == "private"
-            and brief.format_id != "math_explainer"
-        ):
+        if result is None:
+            result = generate(
+                brief,
+                work,
+                fixture=fixture,
+                custom_scene=job["recipe"].get("custom_scene", False),
+                stage=stage,
+                check_cancelled=check_cancelled,
+            )
+        if private_publication:
             from .publication import publish_private_demo
 
             stage("publishing")
-            publish_private_demo(
-                repository, private_demo_storage, job, brief, artifact_root / job["job_id"], result
+            repository.update(
+                job["job_id"],
+                job["fence"],
+                {"result_ref": job["job_id"], "video_sha256": result["quality"]["sha256"]},
             )
+            publish_private_demo(repository, private_demo_storage, job, brief, work, result)
             return True
         repository.update(
             job["job_id"],

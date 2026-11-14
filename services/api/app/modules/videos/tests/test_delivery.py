@@ -26,7 +26,7 @@ def test_storage_verifies_ambiguous_upload_and_rejects_wrong_bytes(monkeypatch, 
 
     def respond(request):
         if request.method == "POST":
-            return httpx.Response(409)
+            return httpx.Response(409, json={"code": "ResourceAlreadyExists"})
         return httpx.Response(200, content=returned)
 
     storage = SupabaseVideoStorage(httpx.Client(transport=httpx.MockTransport(respond)))
