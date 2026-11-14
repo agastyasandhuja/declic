@@ -1774,3 +1774,17 @@ retains bounded state rather than increasing it indefinitely. The probe made one
 read after cooldown and printed only counts/types/lengths. Cursor regression and
 existing live-adapter synthetic checks: **34 passed**. Live recovery is pending
 deployment of the patched worker.
+
+Demo visual review repairs: shifted the dialogue diagram above character heads,
+kept null-space input separate from the matrix, removed book decoration through
+date labels, and corrected eigenvector endpoints to exactly 2×/3×. 3D labels now
+project to a bounded screen layer with readable wrapping/collision avoidance and
+camera framing that includes extreme nodes. Exact determinant geometry was also
+corrected from a fivefold to the narrated sixfold area; a regression check covers
+both sixfold expansion and zero-area collapse. Speech was reused throughout.
+Contact sheets now publish atomically with image/frame/pack/source hashes, and
+approval rejects stale sheets. The two-slot queue supports selected still-only
+review passes and one reviewed video alongside ongoing still work. 17 focused
+schema, geometry, artifact and contact-evidence tests passed; changed Python Ruff
+checks passed. Final-renderer candidate f4fed794 has freshly inspected 3D examples
+and source-matched date/vector previews; remaining full renders/reviews continue.

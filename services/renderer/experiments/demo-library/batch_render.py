@@ -53,6 +53,19 @@ def frames(work, lesson_id):
     }
 
 
+def contact_current(work, lesson_id):
+    output = work / "output" / lesson_id
+    try:
+        proof = json.loads((output / "contact-sheet-provenance.json").read_text())
+        return (
+            proof.get("provenance") == expected(work, lesson_id)
+            and proof.get("frames") == frames(work, lesson_id)
+            and proof.get("sheet_sha256") == sha(output / "contact-sheet.jpg")
+        )
+    except (OSError, ValueError, KeyError):
+        return False
+
+
 def approved(work, lesson_id):
     try:
         data = json.loads((work / "approvals" / f"{lesson_id}.json").read_text())
@@ -75,17 +88,24 @@ def main():
     parser.add_argument("--reviewer")
     parser.add_argument("--notes")
     parser.add_argument("--deadline", type=int, default=7200)
+    parser.add_argument("--only", default="")
+    parser.add_argument("--stills-only", action="store_true")
     args = parser.parse_args()
     work = args.work.resolve()
     ids = sorted(
         p.name for p in (work / "pack").iterdir() if (p / "manifest.json").is_file()
     )
+    if args.only:
+        selected = set(args.only.split(","))
+        if not selected <= set(ids):
+            parser.error("Unknown selected lesson ID")
+        ids = [lesson_id for lesson_id in ids if lesson_id in selected]
     if args.command == "approve":
         if args.id not in ids or not args.reviewer or not args.notes:
             parser.error(
                 "approve needs an existing ID, named reviewer and actual review notes"
             )
-        if not current(work, args.id, "stills"):
+        if not current(work, args.id, "stills") or not contact_current(work, args.id):
             parser.error("Current source/pack stills must exist before approval")
         folder = work / "approvals"
         folder.mkdir(exist_ok=True)
@@ -178,12 +198,22 @@ def main():
                 (lesson_id, "stills")
                 for lesson_id in ids
                 if not current(work, lesson_id, "stills")
+                or not contact_current(work, lesson_id)
             ]
             candidates += [
                 (lesson_id, "video")
                 for lesson_id in ids
-                if not current(work, lesson_id, "video") and approved(work, lesson_id)
+                if not args.stills_only
+                and not current(work, lesson_id, "video")
+                and approved(work, lesson_id)
             ]
+            # Reserve one slot for reviewed video when preview work remains.
+            videos = [item for item in candidates if item[1] == "video"]
+            stills = [item for item in candidates if item[1] == "stills"]
+            active_modes = {mode for _, mode in active.values()}
+            candidates = (
+                ([] if "video" in active_modes else videos[:1]) + stills + videos
+            )
             for lesson_id, mode in candidates:
                 if len(active) >= 2:
                     break
@@ -197,7 +227,15 @@ def main():
                     ),
                     flush=True,
                 )
-            if all(current(work, lesson_id, "video") for lesson_id in ids):
+            if all(
+                (
+                    current(work, lesson_id, "stills")
+                    and contact_current(work, lesson_id)
+                )
+                if args.stills_only
+                else current(work, lesson_id, "video")
+                for lesson_id in ids
+            ):
                 print(json.dumps({"complete": len(ids)}), flush=True)
                 return
             if not active and failed:

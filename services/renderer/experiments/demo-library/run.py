@@ -37,6 +37,9 @@ def main():
         parser.error("Prepare and validate the pack first")
     output = work / "output" / args.id
     output.mkdir(parents=True, exist_ok=True)
+    if args.mode == "stills":
+        for name in ("contact-sheet.jpg", "contact-sheet-provenance.json"):
+            (output / name).unlink(missing_ok=True)
     name = f"demo-render-{uuid.uuid4().hex[:12]}"
     command = [
         "docker",

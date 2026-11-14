@@ -68,3 +68,27 @@ def test_cached_video_needs_exact_validated_final_bytes(tmp_path, batch_runner):
     assert runner.current(tmp_path, "demo_one", "video")
     (output / "lesson.mp4").write_bytes(b"changed-video")
     assert not runner.current(tmp_path, "demo_one", "video")
+
+
+def test_contact_sheet_evidence_rejects_stale_sheet_or_frame(tmp_path, batch_runner):
+    runner = batch_runner
+    pack, output = tmp_path / "pack/demo_one", tmp_path / "output/demo_one"
+    pack.mkdir(parents=True)
+    output.mkdir(parents=True)
+    for name in ("lesson.json", "manifest.json"):
+        (pack / name).write_text("{}")
+    (output / "frame-00.png").write_bytes(b"reviewed-frame")
+    (output / "frame-index.json").write_text('[{"file":"frame-00.png"}]')
+    (output / "contact-sheet.jpg").write_bytes(b"current-sheet")
+    proof = {
+        "provenance": runner.expected(tmp_path, "demo_one"),
+        "frames": runner.frames(tmp_path, "demo_one"),
+        "sheet_sha256": runner.sha(output / "contact-sheet.jpg"),
+    }
+    (output / "contact-sheet-provenance.json").write_text(json.dumps(proof))
+    assert runner.contact_current(tmp_path, "demo_one")
+    (output / "contact-sheet.jpg").write_bytes(b"old-sheet")
+    assert not runner.contact_current(tmp_path, "demo_one")
+    (output / "contact-sheet.jpg").write_bytes(b"current-sheet")
+    (output / "frame-00.png").write_bytes(b"new-frame-not-reviewed")
+    assert not runner.contact_current(tmp_path, "demo_one")
