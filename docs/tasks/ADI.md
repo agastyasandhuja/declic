@@ -56,22 +56,71 @@ Acceptance:
 - Feed is accessible without Canvas.
 - API rejects missing/invalid app tokens; caller cannot choose another user ID.
 
+### A1 implementation cross-reference — November 14, 2026
+
+A1 code and independent backend tests are implemented; **live acceptance remains
+open**. See [current delivery evidence](../status/ADI.md#current-a1a3-delivery--november-14-2026)
+for commands, fixtures versus live results, and the remaining device checks.
+
+| A1 item | Implementation and evidence | Remaining acceptance |
+|---|---|---|
+| 1–2. Expo/RN/TS in apps/mobile; root workspace | Native simulator launch, strict TypeScript, Expo Doctor and iOS export pass. | Production signing is outside A1. |
+| 3. Auth/feed navigation and recovery | Native loading, manual pause, route pause, unavailable skip, empty recovery; API/asset deadlines. | Physical-phone sustained swipe/network-loss check. |
+| 4. Supabase signup/login/logout/persistence | SDK signup/login/email-confirmation UX and app-wide restoration. User reported real account creation/email/login on the phone. | Controlled restart, logout/private-state clearing, invalid credentials/offline on device. |
+| 5. Secure device sessions | SecureStore chunking, torn-write/Unicode tests and explicit corrupted-session clearing. No password persistence. | Actual authenticated device restart/logout. |
+| 6. Shared authenticated client and server adapter | HTTPS-only bearer client, safe refresh/replay and body deadline. SupabaseVerifier plus identity router; missing/forged tokens and ownership tested. Real configured Supabase rejected an invalid token with 401. | Successful real-account protected API call and shared-core route assembly. |
+| 7. Fixture entertainment adapter | Five public test clips, finite pages, unavailable/expiry fixtures, no Canvas/Atlas dependency. Native playback/paging observed. | Physical-phone playback acceptance. |
+| 8. Exact setup/env/handoff | Mobile README/.env.example; owned API READMEs, server env placeholders and isolated dependency lock. | Deployment HTTPS API origin and scoped Atlas runtime credential. |
+
+Adi's identity/entertainment repositories, validators, indexes and backfill drafts
+are implemented and tested against a real local MongoDB 8.0.38 server. Hosted
+Atlas now also passes connection, commit/rollback and shared constraint checks.
+The published core/video migrations from Agastya's source snapshot
+36fbc201 are applied; his runtime/migration source and Amogh's academic code were
+not edited. Agastya still integrates real owner adapters/routes and runtime
+dependencies; Amogh still owns academic persistence. A scoped runtime credential,
+API hosting and physical-device acceptance remain open.
+
 ## Milestone A2 — provider acquisition experiment
 
-Test TikTok-Api first, instagrapi as an alternative. Both are unofficial Python
-libraries, not guaranteed working services. Keep them behind the same adapter.
-The initial feed may be nonpersonalized.
+User direction updated November 14, 2026: prioritize Instagram through instagrapi
+because account-specific recommendations are required. Use the existing account
+selected by the user for the first session test. TikTok-Api was researched but
+not live-tested; the user deferred that experiment because its logged-out data
+does not meet this requirement. Both are unofficial Python libraries, not
+guaranteed working services. Keep providers behind the same adapter.
+
+The [local Instagram probe](../../services/api/app/modules/entertainment/experiments/README.md)
+has passed its first live retrieval: four unique Reels and four HTTPS playback
+candidates on November 14, 2026. See [the measured results](../status/ADI.md#a2-instagram-experiment--live-retrieval-verified).
+Test logged-in Reels discovery, not only user_clips (a creator's posted Reels).
+The account owner confirmed the four Reels' topics/creators look familiar. This
+is qualitative evidence of relevance; exact native-app ranking and continued
+recommendation behavior remain unverified.
 
 Separate discovery from playback validation:
 
-1. Retrieve a small list of real clips and metadata.
-2. Normalize them into EntertainmentVideo objects.
+1. Retrieve a small list of real clips and metadata. **Verified:** four Reels
+   retrieved through the existing account's authenticated discovery session;
+   creator, caption, duration, source URL and candidate video URL fields checked.
+2. Normalize them into EntertainmentVideo objects. **Verified for the saved
+   batch:** four records pass the shared v1 schema and feed the local iOS preview.
 3. Verify a playable source for each clip on the actual iPhone.
-4. Test expired/unavailable resources and pagination.
+4. Test expired/unavailable resources and pagination. **Synthetic/local-cache checks pass:** scoped signed cursors, stale batches, expiry, unavailable records, provider cursor traversal/end/repeat handling. Live second-page acquisition and provider URL renewal remain unverified; the probe now supports explicit --pages 2 (maximum 3).
 5. Record provider, timestamp, session requirements and results in your status file.
+
+Simulator preview: `npm run ios:instagram`, then Explore the demo → Your feed.
+Instagram playback was observed in the iPhone 17 simulator, including the fourth
+clip with accumulated watch time. All four CDN URLs returned HTTP 206 video/mp4
+without provider cookies. Physical-iPhone verification remains open; do not mark
+item 3 complete from simulator/HTTP checks. The saved batch has no live pagination.
 
 TikTok-Api documents trending.videos; instagrapi documents user_clips, feed helpers,
 and clip downloads. Do not claim access to a personal FYP from a trending response.
+instagrapi's explore_reels/reels methods target clips/discover and clips/connected;
+discovery retrieval is now live-tested, with account-owner confirmation of familiar
+topics/creators. Connected-feed retrieval, exact native-app ranking and ongoing
+personalization updates remain unverified.
 Provider login/cookies remain on the backend. Prefer a demo account if credentials
 are required. Never embed social account passwords or cookies in the mobile app.
 
@@ -97,6 +146,23 @@ Feed ordering belongs to Agastya's API, not a second mobile recommender.
 Acceptance: demonstrate signup/login and a sustained scroll through playable
 entertainment on a physical iPhone, including one background/resume and one
 unavailable item. Record what was actually tested.
+
+### A3 implementation cross-reference — November 14, 2026
+
+| A3 bullet | Current implementation/evidence |
+|---|---|
+| Full-height cards/vertical paging | FlatList paging and safe-area controls; simulator traversed the five-card fixture feed with the accessible next/skip controls and loaded its second page. Physical gesture acceptance remains open. |
+| Exactly one playing card | BufferedPlayerController pauses the standby before granting active playback; two bounded native buffers, one VideoView. Fake-driver exclusivity/race tests pass. |
+| Pause in background/away | Foreground/focus/visibility/manual gates; simulator watch total retained 39s through background/resume and stopped in The lab. Physical audio exclusivity remains open. |
+| Loading/retry/skip/empty recovery | Native failed-item Skip recovered; load and post-load stall watchdogs, URL resolution on expiry, stale-page reload and cancellable requests. Real renewed Instagram URLs remain untested. |
+| Safe areas/captions | Native layout inspected; three-line captions above tabs, accessible paging alternative. |
+| Small preload buffer | One paused upcoming native player, preferred five-second forward buffer; promotion/reuse tested. Metadata capped at 100 records. |
+| Attribution/source | Creator display/handle and original-source link. |
+| Separate actual watch/skip events | Media-position deltas, wall bounds and loop accounting exclude stalls/seeks/background. Normal paging emits a distinct skip; local diagnostics only. A4 owns server event delivery. |
+
+A3 remains **not accepted** until the physical-iPhone signup/login + sustained
+scroll + background/resume + unavailable-item scenario is observed. Simulator,
+unit and HTTP checks do not substitute for that acceptance.
 
 ## Milestone A4 — integrate learning when ready
 
