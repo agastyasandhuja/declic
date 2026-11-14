@@ -1,8 +1,8 @@
 # Amogh status
 
-Status: M1 code-complete (2026-11-13), tested against synthetic data only.
-**Live Canvas access is not yet validated** — needs Amogh's own token or a
-developer key. Demo path is ready to light up the moment a token is added.
+Status: **M1 complete and verified on real UMass Canvas (2026-11-14).**
+Live access confirmed with Amogh's own access token in `developer_token` mode.
+(Specific course names/IDs are personal data and are not recorded in this file.)
 
 ## Completed
 
@@ -53,10 +53,14 @@ Run from `services/api`:
   → 29 tests pass (Python 3.14.3). All synthetic; fakes stand in for Canvas.
 - `python3 -m app.modules.canvas.validate_access --demo` → prints 3 synthetic
   courses with syllabus previews, clearly labelled synthetic.
-- `python3 -m app.modules.canvas.validate_access --redact` with the UMass base
-  URL and no token → reports "available modes: upload", exits 1 (expected).
-- Not run: any authenticated request to real Canvas; the OAuth flow against
-  real Canvas; `upload_local` on real files.
+- `python3 -m app.modules.canvas.validate_access --redact` against real UMass
+  Canvas (2026-11-14) → mode `developer_token`, 7 accessible current courses
+  listed with syllabus sizes and missing-syllabus flags. **Live M1 pass.**
+- Observation for M2: the list includes Learning Resource Center ("LRC … FA26")
+  tutoring enrollments that duplicate real courses; M2 must filter these so a
+  tutoring section is not ingested as its own course.
+- Not run: the OAuth flow against real Canvas (no developer key yet);
+  `upload_local` on real files.
 
 ## Interfaces and fixtures delivered
 
