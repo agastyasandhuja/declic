@@ -87,12 +87,12 @@
         "display_name": "Android Media test sample",
         "attribution_url": "https://github.com/androidx/media"
       },
-      "caption": "Round and round",
+      "caption": "Another little story",
       "duration_seconds": null,
       "playback": {
         "kind": "mp4",
-        "asset_id": "fixture_asset_fun",
-        "url": "https://storage.googleapis.com/exoplayer-test-media-1/mp4/dizzy-with-tx3g.mp4",
+        "asset_id": "fixture_asset_fun_v2",
+        "url": "https://storage.googleapis.com/exoplayer-test-media-0/shortform_1.mp4",
         "expires_at": null,
         "mime_type": "video/mp4"
       },

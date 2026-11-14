@@ -14,13 +14,18 @@ export interface ApiClientOptions {
 
 export function createApiClient({ baseUrl, getAccessToken, onUnauthorized, fetcher = fetch, timeoutMs = 15000 }: ApiClientOptions): ApiClient {
   let refresh: Promise<string | null> | null = null;
+  const readToken = async (force = false) => {
+    try { return await getAccessToken(force); }
+    catch { throw new ApiError('Unable to verify your session. Check your connection and retry.', 0, 'AUTH_UNAVAILABLE', true); }
+  };
   return { async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     if (!baseUrl) throw new ApiError('Add an API URL in local configuration to connect your backend.', 0, 'API_NOT_CONFIGURED', false);
-    const origin = new URL(baseUrl);
-    if (origin.protocol !== 'https:') throw new ApiError('The authenticated API requires HTTPS.', 0, 'INVALID_API_ORIGIN', false);
+    let origin: URL;
+    try { origin = new URL(baseUrl); } catch { throw new ApiError('Configure a valid HTTPS API origin.', 0, 'INVALID_API_ORIGIN', false); }
+    if (origin.protocol !== 'https:' || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash) throw new ApiError('The authenticated API requires an HTTPS origin.', 0, 'INVALID_API_ORIGIN', false);
     const url = new URL(path, origin);
-    if (!path.startsWith('/v1/') || url.origin !== origin.origin) throw new ApiError('API requests must use a /v1/ path on the configured server.', 0, 'INVALID_API_PATH', false);
-    let token = await getAccessToken();
+    if (!path.startsWith('/v1/') || !url.pathname.startsWith('/v1/') || /%2f|%5c|\\/i.test(url.pathname) || url.origin !== origin.origin || url.hash) throw new ApiError('API requests must use a /v1/ path on the configured server.', 0, 'INVALID_API_PATH', false);
+    let token = await readToken();
     if (!token) throw new ApiError('Sign in to use connected features. Demo mode has no API credentials.', 401, 'AUTH_REQUIRED', false);
     const headers = new Headers(options.headers);
     headers.set('Accept', 'application/json');
@@ -34,9 +39,21 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized, fetch
       if (options.signal?.aborted) controller.abort();
       const timer = setTimeout(abort, timeoutMs);
       let response: Response;
+      let payload: any;
       try {
         headers.set('Authorization', `Bearer ${token}`);
-        response = await fetcher(url.toString(), { ...options, method, headers, body: options.body === undefined ? undefined : JSON.stringify(options.body), signal: controller.signal, redirect: 'error' });
+        // The deadline includes the response body: headers alone are not completion.
+        const operation = async () => {
+          const result = await fetcher(url.toString(), { ...options, method, headers, body: options.body === undefined ? undefined : JSON.stringify(options.body), signal: controller.signal, redirect: 'error' });
+          const body = result.status === 204 ? null : await result.json().catch(() => null);
+          return { result, body };
+        };
+        const aborted = new Promise<never>((_resolve, reject) => {
+          if (controller.signal.aborted) reject(new Error('aborted'));
+          else controller.signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+        });
+        const completed = await Promise.race([operation(), aborted]);
+        response = completed.result; payload = completed.body;
       } catch {
         throw new ApiError(controller.signal.aborted ? 'Request cancelled or timed out. Try again.' : 'Unable to reach the server. Check your connection and retry.', 0, 'NETWORK_ERROR', true);
       } finally {
@@ -44,17 +61,16 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized, fetch
         options.signal?.removeEventListener('abort', abort);
       }
       if (response.status === 401 && attempt === 0) {
-        refresh ??= getAccessToken(true).finally(() => { refresh = null; });
+        refresh ??= readToken(true).finally(() => { refresh = null; });
         token = await refresh;
         if (token && canReplay) continue;
         if (token) throw new ApiError('Session refreshed. Retry this action with an Idempotency-Key.', 409, 'RETRY_WITH_IDEMPOTENCY', true);
       }
       if (response.status === 401) onUnauthorized();
       if (response.status === 204) return undefined as T;
-      const payload = await response.json().catch(() => null);
       if (!response.ok) {
         const detail = payload?.error;
-        throw new ApiError(detail?.message ?? `Request failed (${response.status}).`, response.status, detail?.code ?? 'REQUEST_FAILED', detail?.retryable ?? response.status >= 500, detail?.request_id);
+        throw new ApiError(typeof detail?.message === 'string' ? detail.message : `Request failed (${response.status}).`, response.status, typeof detail?.code === 'string' ? detail.code : 'REQUEST_FAILED', typeof detail?.retryable === 'boolean' ? detail.retryable : response.status >= 500, typeof detail?.request_id === 'string' ? detail.request_id : undefined);
       }
       if (payload === null) throw new ApiError('The server returned an unreadable response.', response.status, 'INVALID_RESPONSE', true);
       return payload as T;

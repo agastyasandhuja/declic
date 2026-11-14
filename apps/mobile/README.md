@@ -1,7 +1,8 @@
 # Mobile prototype
 
 Expo SDK 58 + React Native + TypeScript. Adi owns this app and the root npm
-workspace. Atlas persistence is deferred. Supabase Auth is wired independently;
+workspace. Owned Atlas-compatible repositories and database drafts are ready for backend
+assembly; no Atlas cloud connection is configured. Supabase Auth is wired independently;
 the fixture feed and development demo need no backend.
 
 ## Install and run
@@ -71,7 +72,8 @@ not complete A1 authorization or validate Instagram playback on a physical devic
 1. Choose **Explore the demo** on the sign-in screen. This entry exists only in
    development (`__DEV__` plus EXPO_PUBLIC_ENABLE_PREVIEW, default true).
 2. Swipe the full-height **Your feed** cards. Tap to pause; use the speaker control
-   to mute. Only one player exists. Backgrounding and leaving the feed pause it.
+   to mute. Only the active card plays. One paused upcoming native player preloads a small
+   buffer. Backgrounding and leaving the feed pause both drivers.
 3. Open **Courses** for clearly labeled synthetic course cards.
 4. Open **The lab** for component integration slots and local playback activity.
    Enable **Unavailable clip test** to restart the demo at a deliberate missing
@@ -203,3 +205,37 @@ Behavior tests cover rapid-swipe source races, background/focus gating, playback
 failure recovery, secure-storage torn writes/Unicode, authenticated API refresh,
 timeouts, safe mutation retries, and fixture normalization/pagination. Record actual
 simulator and physical-device acceptance results in docs/status/ADI.md.
+
+
+## A1–A3 reliability update — November 14, 2026
+
+The feed uses at most two native players: one active VideoView/audio source, one
+paused upcoming media buffer (preferred forward duration five seconds). Source
+replacement is serialized per slot. Gates cover visibility, route focus, manual
+pause and app foreground. Load and post-load-stall recovery has a 15-second
+watchdog; a stuck native load can be recovered with Reload feed, which releases
+both players. Retry re-resolves a URL when the selected source supports it.
+Saved Instagram retries reuse the saved URL; they cannot renew an expired link.
+
+Visible watch duration counts measured media movement bounded by wall time,
+excluding stalls, seeks, long sampling gaps and background/hidden time. Regular
+paging emits a separate skip observation. These remain local diagnostics; event
+submission to Agastya's unified-feed/session API is A4 work. Creator/source links
+are available. The arrow button provides an accessible alternative to swipe
+paging. Only 100 metadata records are retained; native media preloading stays at
+one upcoming clip. An exhausted batch offers an explicit reload.
+
+The API helper times out response-body stalls, rejects normalized paths escaping
+/v1, and keeps the session on transient refresh outages. An unreadable saved
+session offers both Retry and an explicit Clear saved session action. Real device
+restart/logout/offline acceptance still needs a controlled account. User-reported
+signup/email/login succeeded, but its confirmation page used the project's
+localhost redirect; return to the app to sign in after confirmation. Production
+Auth site/deep-link allowlisting remains backend/project setup.
+
+Teammates can start immediately with `npm ci`, `npm run ios` and Explore the demo.
+FeatureScreenProps/API/theme/navigation ownership remain as documented above.
+The new [identity setup](../../services/api/app/modules/auth/README.md) and
+[entertainment setup](../../services/api/app/modules/entertainment/README.md) give
+exact isolated API/database test commands and backend dependency requests.
+Physical-iPhone Instagram setup remains paused; no private catalog is tunneled.

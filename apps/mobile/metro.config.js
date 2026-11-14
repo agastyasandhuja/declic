@@ -1,6 +1,7 @@
 const path = require('node:path');
 const { getDefaultConfig } = require('expo/metro-config');
 const { previewCatalogPath, isLoopback } = require('./scripts/instagram-preview.cjs');
+const { previewApiProxy } = require('./scripts/preview-api-proxy.cjs');
 
 const config = getDefaultConfig(__dirname);
 const privatePreview = process.env.HACKUMASS_INSTAGRAM_PREVIEW === '1';
@@ -32,5 +33,9 @@ if (privatePreview && !exporting) {
       handler(request, response, next);
     };
   };
+}
+if (process.env.HACKUMASS_PREVIEW_API === '1' && !exporting) {
+  const enhance = config.server.enhanceMiddleware;
+  config.server.enhanceMiddleware = (middleware, server) => previewApiProxy(enhance ? enhance(middleware, server) : middleware);
 }
 module.exports = config;

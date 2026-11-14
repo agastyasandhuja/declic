@@ -28,7 +28,8 @@ test('saved Instagram adapter has a finite batch and cannot imply live paginatio
   const page = await source.getPage();
   assert.equal(source.mode, 'saved_instagram'); assert.equal(page.items.length, 1); assert.equal(page.next_cursor, null);
   await assert.rejects(source.getPage('next-page'));
-  await assert.rejects(source.resolvePlayback(page.items[0].video_id));
+  assert.deepEqual(await source.resolvePlayback(page.items[0].video_id), page.items[0].playback);
+  await assert.rejects(source.resolvePlayback('missing-video'));
 });
 test('private Instagram catalog only resolves for an explicitly enabled development iOS bundle', () => {
   const options = { appRoot: '/repo/apps/mobile', enabled: true, dev: true, platform: 'ios' };

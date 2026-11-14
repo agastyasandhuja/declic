@@ -21,3 +21,13 @@ test('fixture pages have a stable end and resolve stable video IDs', async () =>
   assert.equal((await source.resolvePlayback(first.items[0].video_id)).asset_id, first.items[0].playback.asset_id);
   await assert.rejects(source.getPage('foreign-cursor')); await assert.rejects(source.resolvePlayback('missing'));
 });
+
+import { appendFeedPage } from '../src/features/feed/source';
+test('later pages preserve active indexes and deduplicate internal IDs as well as provider IDs', () => {
+  const items = parseFeedPage(edgeCases).items;
+  const old = { ...items[0], playback: { ...items[0].playback, expires_at: '2000-01-01T00:00:00Z' } };
+  const collidingId = { ...items[1], video_id: old.video_id };
+  const next = appendFeedPage([old], [collidingId, items[2]]);
+  assert.equal(next[0], old); assert.equal(next.length, 2); assert.equal(next[1].video_id, items[2].video_id);
+  assert.equal(eligibleVideos([items[0], collidingId]).length, 1);
+});

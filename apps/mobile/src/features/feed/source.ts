@@ -10,11 +10,19 @@ export interface FeedSource {
 }
 export function eligibleVideos(videos: EntertainmentVideo[], now = Date.now()) {
   const seen = new Set<string>();
+  const ids = new Set<string>();
   return videos.filter(video => {
     const key = `${video.provider}:${video.provider_video_id}`;
-    if (seen.has(key) || video.availability !== 'ready' || video.playback.kind === 'embed' || (video.playback.expires_at && Date.parse(video.playback.expires_at) <= now)) return false;
-    seen.add(key); return true;
+    if (seen.has(key) || ids.has(video.video_id) || video.availability !== 'ready' || video.playback.kind === 'embed' || (video.playback.expires_at && Date.parse(video.playback.expires_at) <= now)) return false;
+    seen.add(key); ids.add(video.video_id); return true;
   });
+}
+
+export function appendFeedPage(previous: EntertainmentVideo[], incoming: EntertainmentVideo[]) {
+  // Keep existing card indexes stable when an old signed URL expires during pagination.
+  const keys = new Set(previous.map(video => `${video.provider}:${video.provider_video_id}`));
+  const ids = new Set(previous.map(video => video.video_id));
+  return [...previous, ...eligibleVideos(incoming).filter(video => !keys.has(`${video.provider}:${video.provider_video_id}`) && !ids.has(video.video_id))].slice(0, 100);
 }
 export function createFixtureSource(): FeedSource {
   const items = eligibleVideos(parseFeedPage(catalog).items);
@@ -42,8 +50,11 @@ export function createSavedInstagramSource(value: unknown): FeedSource {
       if (cursor) throw new Error('This saved Instagram preview has one batch. Fetch a new catalog for more clips.');
       return { schema_version: '1', items, next_cursor: null };
     },
-    async resolvePlayback() {
-      throw new Error('Saved Instagram links cannot refresh themselves. Run the probe and restart the preview.');
+    async resolvePlayback(videoId) {
+      const item = items.find(video => video.video_id === videoId);
+      if (!item || (item.playback.expires_at && Date.parse(item.playback.expires_at) <= Date.now())) throw new Error('This saved link is unavailable. Retrieve a fresh catalog on the Mac.');
+      // Retry the same saved URL after a transient network failure; never imply renewal.
+      return item.playback;
     },
   };
 }

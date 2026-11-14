@@ -10,7 +10,7 @@ import { Button } from '../../components/Button';
 import { sharedStyles as s, theme } from '../../theme';
 
 export function AuthScreen() {
-  const { enterPreview, error: restoreError, retryRestore } = useAuth();
+  const { enterPreview, error: restoreError, retryRestore, resetSavedSession } = useAuth();
   const [signup, setSignup] = useState(false);
   const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false); const [message, setMessage] = useState<string | null>(null); const [error, setError] = useState<string | null>(null);
@@ -50,6 +50,7 @@ export function AuthScreen() {
         <TextInput accessibilityLabel="Password" testID="password-input" style={s.input} value={password} onChangeText={setPassword} placeholder={signup ? 'At least 8 characters' : 'Your password'} placeholderTextColor="#788377" secureTextEntry autoCapitalize="none" autoCorrect={false} textContentType={signup ? 'newPassword' : 'password'} editable={!busy} onSubmitEditing={() => void submit()} />
         {(error || restoreError) && <Text accessibilityRole="alert" style={styles.error}>{error || restoreError}</Text>}
         {restoreError && <Pressable onPress={retryRestore}><Text style={styles.link}>Retry saved session</Text></Pressable>}
+        {restoreError && <Pressable accessibilityRole="button" onPress={() => void resetSavedSession()}><Text style={styles.link}>Clear saved session and sign in</Text></Pressable>}
         {message && <Text accessibilityRole="alert" style={styles.notice}>{message}</Text>}
         <View style={{ marginTop: 22 }}><Button title={signup ? 'Create account' : 'Sign in'} busy={busy} disabled={!authConfigured} onPress={() => void submit()} testID="auth-submit" /></View>
         <Pressable accessibilityRole="button" disabled={busy} onPress={() => { setSignup(!signup); setError(null); setMessage(null); setPassword(''); }} style={styles.switch}><Text style={s.subtitle}>{signup ? 'Already have an account? ' : 'New here? '}<Text style={styles.link}>{signup ? 'Sign in' : 'Create an account'}</Text></Text></Pressable>
