@@ -1,5 +1,34 @@
 # Adi status
 
+## Expo phone test prepared — November 14, 2026
+
+The user explicitly approved forwarding the app bearer token and personalized
+Reel metadata through Expo's HTTPS tunnel for this iPhone test. Instagram
+passwords/session cookies remain on the Mac. This supersedes the earlier pause
+for this specific authenticated-proxy test; the saved-catalog bundle remains off.
+
+- Verified the isolated Python environment and mobile public configuration exist;
+  no live connection/report was present at the preparation checkpoint. Ports 8000
+  and 8081 were initially free. No package installation was needed.
+- Started `EXPO_NO_TELEMETRY=1 HACKUMASS_PREVIEW_API=1 npm run instagram:mobile --
+  --tunnel --go --port 8081`. The installed CLI uses the Expo tunnel provider by
+  default. Expo Go launch URL/QR were created; no unstable tunnel flag is needed.
+- Public iOS manifest returned **200**; privatePreviewApi is enabled, an iOS bundle
+  URL is advertised, and hostUri matches the allowed HTTPS tunnel origin.
+  Feed proxy returned **503 PREVIEW_UNAVAILABLE** while the backend waits for the
+  local connection. This is transport setup evidence, not live feed acceptance.
+- An ignored local startup helper waits up to 30 minutes for the successful,
+  authenticated connection report, then executes the existing one-process API
+  factory on loopback port 8000 with access logs off. It makes no provider calls
+  while waiting and refuses to replace an existing process occupying that port.
+- QR and startup helpers are ignored under .local/phone-live-test; no credentials,
+  private post URLs or actual tunnel hostname are recorded here. The user runs
+  `npm run instagram:connect` in their own Terminal, then scans the QR and signs
+  into the same app account. Actual pagination/playback verification is pending.
+- Aligned the local branch with the user's renamed remote adi-live-instagram-feed.
+  Future branch pushes use names without codex/ per the user's explicit preference.
+  Documentation-only checkpoint; no application change required a test rerun.
+
 ## Live Instagram feed implementation — November 14, 2026
 
 User requested fresh Instagram feed pages instead of the four preloaded Reels.
