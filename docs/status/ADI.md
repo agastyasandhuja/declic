@@ -44,8 +44,9 @@ by this audit.
 
 **A2 item 1 is complete for the first experiment.** The user ran the probe locally
 with their existing account. The sanitized report confirms authenticated discovery
-retrieval of four unique Reels with four HTTPS video candidates. Native playback,
-normalization, pagination and personalization remain separate pending checks.
+retrieval of four unique Reels with four HTTPS video candidates. The account owner
+confirmed familiar topics/creators. Native playback, normalization, pagination,
+exact feed parity and ongoing personalization updates remain pending checks.
 
 ### Live evidence — November 14, 2026
 
@@ -66,9 +67,13 @@ normalization, pagination and personalization remain separate pending checks.
   IDs; all records have creator handles, caption strings, nonnegative numeric
   durations, Instagram HTTPS source URLs and HTTPS candidate playback URLs.
   report.json and catalog.json are mode 0600 and remain ignored by Git.
-- The report's personalization_verified and native_playback_verified remain false.
-  Account-owner comparison with usual Instagram recommendations is pending.
-  No candidate video URL has yet been tested in Expo or on the actual iPhone.
+- After retrieval, the account owner confirmed that the four Reels' topics or
+  creators look familiar compared with their usual Instagram recommendations.
+  This is qualitative relevance evidence from the selected account, not a test
+  of exact native-app ranking, cross-account differences or ongoing adaptation.
+  The probe's automatic personalization_verified/native_playback_verified flags
+  remain false; it cannot perform this human comparison itself. No candidate
+  video URL has yet been tested in Expo or on the actual iPhone.
 - Commands for this verification: a local Python JSON/metadata validation with
   aggregate-only output; git status; read-only inspection of installed SDK
   version/profile and login handling. No credentials, provider responses, clip
@@ -114,9 +119,10 @@ normalization, pagination and personalization remain separate pending checks.
   command in their own Terminal to enter credentials privately.
 - A2 item 1 (real clips/metadata): verified by the second live attempt above.
   Item 2 (normalized EntertainmentVideo): not implemented by this raw-metadata
-  probe. Item 3 (actual iPhone playback), item 4 (expiry/outage/pagination) and
-  confirmation of account-specific recommendations remain untested. Item 5 now
-  includes the first failure and successful retrieval; append later results here.
+  probe. Item 3 (actual iPhone playback), item 4 (expiry/outage/pagination), exact
+  feed parity and ongoing personalization updates remain untested. Item 5 now
+  includes the first failure, successful retrieval and account-owner relevance
+  comparison; append later results here.
 
 ## Delivered
 

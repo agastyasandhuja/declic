@@ -93,8 +93,9 @@ The [local Instagram probe](../../services/api/app/modules/entertainment/experim
 has passed its first live retrieval: four unique Reels and four HTTPS playback
 candidates on November 14, 2026. See [the measured results](../status/ADI.md#a2-instagram-experiment--live-retrieval-verified).
 Test logged-in Reels discovery, not only user_clips (a creator's posted Reels).
-Authenticated recommendations must be compared with the account's usual feed;
-do not claim exact native-app ranking or personalization from a method name.
+The account owner confirmed the four Reels' topics/creators look familiar. This
+is qualitative evidence of relevance; exact native-app ranking and continued
+recommendation behavior remain unverified.
 
 Separate discovery from playback validation:
 
@@ -109,8 +110,9 @@ Separate discovery from playback validation:
 TikTok-Api documents trending.videos; instagrapi documents user_clips, feed helpers,
 and clip downloads. Do not claim access to a personal FYP from a trending response.
 instagrapi's explore_reels/reels methods target clips/discover and clips/connected;
-discovery retrieval is now live-tested. Connected-feed retrieval, exact native-app
-ranking and personalization remain unverified.
+discovery retrieval is now live-tested, with account-owner confirmation of familiar
+topics/creators. Connected-feed retrieval, exact native-app ranking and ongoing
+personalization updates remain unverified.
 Provider login/cookies remain on the backend. Prefer a demo account if credentials
 are required. Never embed social account passwords or cookies in the mobile app.
 
