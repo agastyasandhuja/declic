@@ -133,6 +133,9 @@ additions still required Retry. Added automatic continuation across three bounde
 duplicate windows (12 empty pages maximum). 46 mobile tests, TypeScript, contracts
 and iOS export pass. Single-clip resume after backgrounding is device-confirmed;
 final no-tap continuation, unavailable recovery and URL renewal remain open.
+Latest handoff checkpoint: the no-tap retest stalled at six without a retry
+prompt. Continuous live Instagram paging is not accepted; use the explicit
+fixture source for repeatable teammate integration while this is investigated.
 The user approved the authenticated Expo tunnel
 transfer for this phone test. Shared core assembly remains Agastya's work; no
 academic or shared database code was changed.

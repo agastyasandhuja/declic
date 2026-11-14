@@ -1,5 +1,42 @@
 # Adi status
 
+## Integration handoff frozen for Agastya — November 14, 2026
+
+At the user's request, publish the latest Adi source at 7a97920 on
+adi-live-instagram-feed for the team merge/test. It includes the earlier mobile,
+identity, Atlas-readiness and Instagram work; there were no uncommitted source
+changes when this handoff was requested. This follow-up records actual limits
+without changing the tested player or another owner's ranking implementation.
+
+- Device-confirmed: correct picture/audio and immediate play on swipe; no black
+  screens in the reported runs. One clip resumes normally after background/return,
+  with no second audible player. The earlier run reached 17 clips using manual
+  retry. Initial early refill produced nine quickly.
+- Live Instagram automatic continuation is **not accepted**. The latest no-tap
+  phone attempt reached six and stalled without a retry prompt; the user preferred
+  the prior run. Its aggregate snapshot recorded 14 provider reads, 56 normalized
+  items, six unique / 50 duplicates and 12 empty windows; no provider error,
+  pacing deferral, cooldown, reconnect or actual provider end. The precise missing
+  client retry prompt remains unresolved. Do not call the current stream reliably
+  continuous from passing synthetic tests or the earlier manually advanced run.
+- For repeatable integration tests, use the explicit fixture entertainment mode
+  (Explore the demo, or turn Use connected feed off for a signed-in app account).
+  This is synthetic test content. Live Instagram remains an optional owner-bound
+  source; provider credentials/session files are local and not part of the merge.
+  Other app accounts need their own authorized connection to use that source.
+- Adi exports the shared authenticated client, app-owned feature/navigation slots,
+  normalized entertainment feed/playback interfaces and identity adapter. Agastya
+  assembles them with his unified feed/session/events/quiz routes; the temporary
+  local live factory is not shared production API assembly.
+- Last actual checks on this source: 46 mobile, 56 live/setup backend and 13
+  experiment tests passed; TypeScript, versioned contract checks and iOS export
+  (848 modules) passed. No source/dependency change accompanies this handoff note.
+
+Remaining for Adi after integration: live continuation regression above, unavailable
+and URL-renewal device recovery, controlled session restart/logout/offline checks,
+and mounting the owners' academic/mixed-feed/quiz exports. Auth redirect polish
+and custom SMTP remain deferred by the user.
+
 ## Earlier refill and per-page pacing — November 14, 2026
 
 The user confirmed the updated phone app has good picture and audio with no black
