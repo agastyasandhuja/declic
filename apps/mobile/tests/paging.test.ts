@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fixture from '../../../fixtures/entertainment/feed.json';
 import { parseFeedPage } from '../src/contracts/validate';
 import type { FeedSource } from '../src/features/feed/source';
-import { fetchAvailablePage, fetchRefillPage, abortableDelay } from '../src/features/feed/paging';
+import { fetchAvailablePage, fetchRefillPage, abortableDelay, unifiedFeedQuery } from '../src/features/feed/paging';
 import { ApiError } from '../src/lib/api/client';
 
 const item = parseFeedPage(fixture).items[0];
@@ -155,4 +155,17 @@ test('rate limits bypass extra windows and background cancellation prevents the 
     if (waits === 4) { abort.abort(); await abortableDelay(ms, signal); }
   }));
   assert.equal(count, 4);
+});
+
+test('mixed-feed initial and continuation reads preserve the server cursor page-size binding', () => {
+  const first = unifiedFeedQuery('session');
+  const opaqueCursor = 'server-signed-page-size-5';
+  // This models the server cursor's bound query, not a caller-controlled limit.
+  const bound = { session_id: first.get('session_id'), page_size: first.get('limit') };
+  const continuation = unifiedFeedQuery('session', opaqueCursor);
+  assert.equal(first.has('cursor'), false);
+  assert.equal(continuation.get('cursor'), opaqueCursor);
+  assert.equal(continuation.get('session_id'), bound.session_id);
+  assert.equal(continuation.get('limit'), bound.page_size);
+  assert.equal(unifiedFeedQuery('session').get('limit'), bound.page_size);
 });

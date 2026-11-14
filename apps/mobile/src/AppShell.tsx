@@ -1,3 +1,4 @@
+import { MediaCacheBoundary } from './lib/playback/MediaCache';
 import { UnifiedFeedScreen } from './features/feed/UnifiedFeedScreen';
 import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -52,9 +53,9 @@ function SignedInShell() {
 function SessionGate() {
   const { mode, user } = useAuth();
   if (mode === 'loading') return <View style={[s.screen, { alignItems: 'center', justifyContent: 'center', gap: 20 }]}><ActivityIndicator color={theme.colors.accent} /><Text style={s.subtitle}>Picking up where you left off…</Text></View>;
-  return mode === 'signed_out' ? <AuthScreen /> : <SignedInShell key={`${mode}:${user?.user_id}`} />;
+  return <MediaCacheBoundary owner={mode === 'signed_in' ? `${config.apiBaseUrl}:${user?.user_id}` : mode === 'preview' ? 'preview' : null}>{mode === 'signed_out' ? <AuthScreen /> : <SignedInShell key={`${mode}:${user?.user_id}`} />}</MediaCacheBoundary>;
 }
-export default function AppShell() { const [loaded, error] = useFonts({ [theme.fonts.display]: require('../assets/fonts/Syne-ExtraBold.ttf'), [theme.fonts.body]: require('../assets/fonts/PlusJakartaSans-Regular.ttf'), [theme.fonts.bold]: require('../assets/fonts/PlusJakartaSans-Bold.ttf') }); if (!loaded && !error) return <View style={s.screen}><ActivityIndicator color={theme.colors.accent} /></View>; return <SafeAreaProvider><AuthProvider><StatusBar style="light" /><SessionGate /></AuthProvider></SafeAreaProvider>; }
+export default function AppShell() { const [loaded, error] = useFonts({ [theme.fonts.display]: require('../assets/fonts/Syne-ExtraBold.ttf'), [theme.fonts.body]: require('../assets/fonts/PlusJakartaSans-Regular.ttf'), [theme.fonts.bold]: require('../assets/fonts/PlusJakartaSans-Bold.ttf') }); return <SafeAreaProvider><AuthProvider><StatusBar style="light" />{!loaded && !error ? <View style={s.screen}><ActivityIndicator color={theme.colors.accent} /></View> : <SessionGate />}</AuthProvider></SafeAreaProvider>; }
 const styles = StyleSheet.create({
   screen: { flex: 1 }, hidden: { display: 'none' }, tabs: { backgroundColor: theme.colors.background, paddingTop: 6, paddingHorizontal: 16 }, tabTrack: { flexDirection: 'row', backgroundColor: theme.colors.surface, padding: 4, borderRadius: 999, borderWidth: 1, borderColor: theme.colors.elevated }, tab: { flex: 1, minHeight: 44, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, borderRadius: 999 }, activeIcon: { backgroundColor: theme.colors.text }, tabLabel: { color: theme.colors.muted, fontSize: 13, fontFamily: theme.fonts.bold }, placeholder: { padding: 26, gap: 22, flex: 1 },
 });

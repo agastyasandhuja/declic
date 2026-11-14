@@ -67,3 +67,10 @@ export async function fetchRefillPage(source: FeedSource, previous: Entertainmen
     await wait((window + 1) * 2000, signal);
   }
 }
+
+/** Backend cursors bind page_size; initial, refill and reset reads must agree. */
+export function unifiedFeedQuery(sessionId: string, cursor: string | null = null) {
+  const query = new URLSearchParams({ session_id: sessionId, limit: '5' });
+  if (cursor) query.set('cursor', cursor);
+  return query;
+}

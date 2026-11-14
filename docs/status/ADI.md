@@ -1457,3 +1457,57 @@ mode, physical hold/scrub behavior await integrated backend/native validation.
 The Expo HTTPS-to-loopback transport explicitly allows only the agreed read
 comments/catalog/settings routes and PATCH settings. Proxy tests verify auth is
 required, comments remain read-only, and cookies/redirects stay excluded.
+
+## Wider bounded preload and comments while playing — November 14, 2026
+
+Mobile follow-up on merged main `c8040d7`. Mixed-feed pages consistently use five cards because backend cursors bind page
+size; font loading and saved-auth restoration run concurrently. Metadata fills fifteen
+upcoming cards, stopping at quiz boundaries. Fresh authenticated feed/session
+validation still happens on every cold start; no feed cards are persisted.
+
+Two playback players retain active/immediate-next media. A third, always-muted,
+unattached player serially warms the next six MP4 starts only after the current
+and next players have two seconds of buffered headroom. It never calls play,
+never replaces either playback player, cancels stale/background work, and stops
+for the session after a memory warning. Expo's native LRU is capped at 128 MiB;
+HLS isn't put through the wider warmup. Only the owner/API marker persists in
+SecureStore; native bytes may be reused after the same authenticated scope
+returns. Different account/API or logout clears media with players unmounted;
+cache initialization failures fall back to uncached playback. This is partial
+media warmup, not a promise of six fully downloaded videos or zero-delay swipes.
+
+Comments use a 12-video, 60-second first-page cache scoped to explicit owner and
+API client, with abortable shared in-flight requests. Current-clip prefetch waits
+1.2 seconds and media headroom. The 62%-height sheet keeps playback running but
+locks feed swipes and suspends watch credit while it obscures the video. Counts
+come from the optional provider fields, render compactly, and remain absent when
+unknown. The action rail sits higher. Edge hold gives one light haptic (Expo
+Haptics 58.0.8), shows a 2× indicator, and retains all release/background/selection
+rate resets. Reduced-motion users don't get the optional activation haptic.
+
+Scrolling uses the existing native paging and native-driven transform without a
+per-frame JS scroll listener. Actual posters cover source/first-frame transitions.
+Guidance consulted: [Apple scroll views](https://developer.apple.com/design/human-interface-guidelines/scroll-views)
+and [AVPlayer waiting behavior](https://developer.apple.com/documentation/avfoundation/avplayer/automaticallywaitstominimizestalling).
+Installed Expo Video 58.0.14 source was checked for caching, bufferedPosition,
+replaceAsync cancellation, and the no-active-players cache-management restriction.
+
+Validation: Node 24 `npm run typecheck --workspace @hackumass/mobile` passes;
+`npm test --workspace @hackumass/mobile`: **84 passed** (including local loopback
+proxy fixtures). New tests cover bounded/serial warmup, cancellation, expiry/HLS,
+current/next buffer preservation, account/API cache isolation/expiry, warmup to
+sheet request adoption, cache failure fallback, haptic edge triggering, comments
+watch gating, and compact counts. `git diff --check` passes. No provider/model
+calls were made for these tests. Native buffering/haptics and updated layout
+still require the follow-up build/device check; version 9 remains installed until
+that build succeeds.
+
+The subsequent physical v9 report exposed a real Expo iOS rate-setter hazard:
+`playbackRate` writes `AVPlayer.rate` and starts a paused player. The old controller
+wrote both slots and the screens unmuted both. The fix applies rate only to the
+allowed active slot, centrally mutes/pauses standby on every transition, keeps
+paused/background/error/disposed paths silent, and fences late native playing
+callbacks. The always-muted warmer also pauses unexpected native play callbacks.
+A regression uses a fake rate setter that actually starts playback and checks
+hold, release, pause, slot promotion, late callbacks, mute and disposal. This
+fix is included before the v10 build; physical double-audio retest remains pending.

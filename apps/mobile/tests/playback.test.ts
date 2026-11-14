@@ -166,3 +166,29 @@ test('adjacent buffer readiness is published without granting its audio or reset
   assert.equal(playing[1 - state.activeSlot], false);
   controller.dispose();
 });
+
+test('iOS rate setter starts playback: hold/release never starts or unmutes standby, paused or disposed players', async () => {
+  const playing = [false, false], muted = [false, false], rates = [1, 1];
+  const writes: { slot: number; rate: number }[] = [];
+  const drivers = [0, 1].map(slot => ({
+    play() { playing[slot] = true; }, pause() { playing[slot] = false; },
+    setMuted(value: boolean) { muted[slot] = value; },
+    // Model the observed Expo iOS behavior, not a passive property assignment.
+    setRate(rate: number) { rates[slot] = rate; playing[slot] = true; writes.push({ slot, rate }); },
+    async replaceAsync(_uri: string) {},
+  })) as any;
+  let active = 0;
+  const controller = new BufferedPlayerController(drivers, state => { active = state.activeSlot; });
+  await controller.setSelection('one'); controller.preload('two'); await new Promise(resolve => setImmediate(resolve));
+  const check = () => { assert.equal(playing[1 - active], false); assert.equal(muted[1 - active], true); assert.ok(playing.filter((value, slot) => value && !muted[slot]).length <= 1); };
+  writes.length = 0; controller.setRate(2); check(); assert.equal(rates[active], 2); assert.ok(writes.every(write => write.slot === active));
+  controller.setRate(1); check(); assert.equal(rates[active], 1);
+  controller.setGate({ manuallyPaused: true }); const count = writes.length; controller.setRate(2); assert.equal(writes.length, count); assert.deepEqual(playing, [false, false]);
+  controller.setRate(1); controller.setGate({ manuallyPaused: false }); check();
+  controller.setMuted(true); assert.deepEqual(muted, [true, true]); controller.setMuted(false); check();
+  await controller.setSelection('two'); controller.setRate(2); check();
+  // A late native source callback tries to restart the old surface.
+  playing[1 - active] = true; controller.enforcePlaybackOwner((1 - active) as 0 | 1); check();
+  controller.setGate({ foreground: false }); controller.setRate(1); assert.deepEqual(playing, [false, false]); assert.deepEqual(muted, [true, true]);
+  controller.dispose(); controller.setRate(2); assert.deepEqual(playing, [false, false]); assert.deepEqual(muted, [true, true]);
+});

@@ -7,7 +7,7 @@ export class FeedInteraction {
   state = idle();
   private active = false;
   private selection: string | null = null;
-  constructor(private publish: (state: InteractionState) => void, private setRate: (rate: 1 | 2) => void) {}
+  constructor(private publish: (state: InteractionState) => void, private setRate: (rate: 1 | 2) => void, private confirmHold: () => void = () => {}) {}
   private update(patch: Partial<InteractionState>) {
     this.state = { ...this.state, ...patch };
     this.setRate(this.state.speed); this.publish(this.state);
@@ -18,6 +18,7 @@ export class FeedInteraction {
   }
   hold(zone: HoldZone) {
     if (!this.active || !this.selection || this.state.scrubbing || this.state.comments || this.state.menu) return;
+    if (zone === 'edge' && this.state.speed !== 2) this.confirmHold();
     this.update(zone === 'edge' ? { speed: 2, hidden: true } : { speed: 1, hidden: false, menu: true });
   }
   release() { if (this.state.speed !== 1 || this.state.hidden) this.update({ speed: 1, hidden: false }); }
@@ -34,4 +35,8 @@ export class FeedInteraction {
 export function scrubTarget(locationX: number, width: number, duration: number) {
   if (!Number.isFinite(locationX) || !Number.isFinite(width) || !Number.isFinite(duration) || width <= 0 || duration <= 0) return null;
   return Math.min(Math.max(0, duration - 0.05), Math.max(0, locationX / width * duration));
+}
+
+export function interactionGates(state: InteractionState) {
+  return { playbackBlocked: state.menu || state.scrubbing, scrollBlocked: state.menu || state.scrubbing || state.comments };
 }
