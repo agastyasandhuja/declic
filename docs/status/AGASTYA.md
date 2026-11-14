@@ -1696,3 +1696,53 @@ tests rather than claimed as a completed live submission.
 - Evidence remains private under `.local/performance-mobile-tests.log`,
   `.local/performance-api-tests.log`, and
   `.local/iphone-build/main-1ef4b69/build-info.json` with the v7 phone screenshot.
+
+## Shared demo catalog, comments, and seek backend — November 14, 2026
+
+Implemented owner-scoped learning settings (default demo false), complete generic
+reader routing, atomic cursor/card/gate invalidation without grading, and explicit
+24-video/four-course/48-quiz registry validation. Demo mode never reads private
+academic bindings and wrong answers never schedule private generation. Both quiz
+definitions rotate via bounded session history. Request-local mode/manifest/variant
+memoization avoids per-card database fanout; PATCH invalidates it immediately and
+no cache survives an HTTP request. New files and contracts describe interfaces.
+
+The operator-only generic publication bridge checks normalized source, every pack
+artifact, render provenance, actual media-check report, and explicit content/quiz/
+frame/audio review hashes. It uses the existing verified Storage upload and Atlas
+publication fence, records Codex agent review (never human approval), and leaves
+storage-failed publications awaiting explicit retry without model generation.
+No real demo content has been approved or published by these backend tests.
+
+Read-only Instagram comments use the existing pinned single-attempt transport,
+owner-retained catalog and active connection. Bounded opaque cursors, cache,
+deduplication, rate cooldown and post-network connection checks prevent account
+crossing and retries. One live diagnostic stopped before provider retrieval because
+the current owner's retained catalog had expired (`CATALOG_NOT_FOUND`); comments
+are validated with synthetic provider responses, not yet claimed live-working.
+
+`playback_seeked` accepts an actual seek target with unchanged reported watch time,
+requires active foreground playback, resets anchors and awards zero credit.
+Existing progress still rejects unannounced backwards motion and implausible time.
+
+Initial checks: 25 focused tests passed against disposable MongoDB 7 on local port
+27030 (including mode transactions, APIs, comments, seek and migrations). Expanded
+publication/request-cache/regression checks are recorded in the follow-up below.
+No paid model calls, provider writes, or private-to-public asset promotion occurred.
+
+Expanded isolated MongoDB verification: **57 passed, zero skips** across demo
+catalog/publication, request-cache isolation, comments, playback/seek, migrations,
+runtime, API, recommendation policy, bound video reader and playback renewal.
+New Python files also pass Ruff. Publication fixtures use dummy bytes explicitly;
+these tests verify exact-artifact fencing/retries, not playable media generation.
+
+Subsequent live owner-only diagnosis identified the missing Instagram catalog:
+a valid page contained five Reels but its next provider cursor grew from 4056 to
+4116 characters. The adapter's 4096-character guard rejected the whole page,
+then background refresh retried the same cursor until catalog TTL deletion.
+The adapter now preserves valid items and ends continuation when a cursor exceeds
+its bound or repeats; the next scheduled refresh starts a fresh stream. This
+retains bounded state rather than increasing it indefinitely. The probe made one
+read after cooldown and printed only counts/types/lengths. Cursor regression and
+existing live-adapter synthetic checks: **34 passed**. Live recovery is pending
+deployment of the patched worker.

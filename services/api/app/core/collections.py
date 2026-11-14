@@ -1,5 +1,6 @@
 """API-owned collections; never initialize producer-owned collections here."""
 
+demo_catalogs = "api_demo_catalogs"
 users = "api_user_state"
 sessions = "api_feed_sessions"
 occurrences = "api_feed_occurrences"
@@ -18,6 +19,7 @@ bindings = "api_topic_bindings"
 quiz_bank = "api_quiz_bank"
 
 KEYS = {
+    demo_catalogs: ("catalog_id",),
     connections: ("user_id", "provider"),
     topics: ("user_id", "topic_id"),
     bindings: ("user_id", "objective_id"),

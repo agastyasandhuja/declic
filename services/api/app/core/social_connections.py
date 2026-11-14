@@ -519,6 +519,8 @@ class ConnectedCatalogService(CatalogService):
     def __init__(self, repository, social, **kwargs):
         super().__init__(repository, **kwargs)
         self.social = social
+        from app.modules.entertainment.comments import OwnedComments
+        self.comments = OwnedComments(social, repository)
 
     def resolve_playback(self, video_id, user):
         # Feed playback uses cached URLs directly. This endpoint is an explicit

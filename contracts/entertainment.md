@@ -126,3 +126,29 @@ The app should retain already-loaded clips and keep the app session intact.
 
 No provider watch/seen-state writes or parity with the native recommendation
 ranking are claimed. See [integration scope and memory/lifecycle bounds](../docs/decisions/adi-live-instagram-feed.md).
+
+## Read-only connected Reel comments
+
+`GET /v1/entertainment/videos/{video_id}/comments?cursor=&limit=20` requires
+app authentication. The server resolves only an Instagram clip already in that
+owner's current retained catalog, using that owner's active encrypted connection.
+No caller-supplied provider media ID, cookie, account, or URL is accepted.
+
+Response: `{schema_version: "1", items, next_cursor, availability, reason?}`.
+Each item has `comment_id`, plain `text` (up to 4000 characters),
+`author: {username, display_name}`, `like_count`, and nullable zoned `created_at`.
+`availability` is `available` or `unavailable`. Empty comments are distinct from
+unsupported/disconnected/disabled comments, which carry a fixed reason. Only
+public display fields are returned; avatar URLs and private provider objects are
+not forwarded. Replies and posting/liking/deleting are outside this interface.
+
+Limit is 1–20. Opaque server cursors bind owner, connection, Reel and page size,
+expire after five minutes and are kept in a 128-entry process-local bound.
+Each page miss makes at most one provider request with the existing 3s connect/7s
+read timeouts and no automatic login/checkpoint handling. Overflow comments are
+retained for the next page; at most five upstream pages are traversed and IDs are
+deduplicated. Responses cache for 60 seconds in another 128-entry bound. Every
+cache access still verifies current owner/catalog/connection; in-flight results
+are discarded after disconnect/replacement. Provider cooldowns prevent immediate
+retries. Invalid/expired cursors return 409; unavailable provider errors are
+sanitized 409/503, never an app-auth 401.

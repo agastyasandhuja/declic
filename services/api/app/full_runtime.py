@@ -8,6 +8,8 @@ from app.core.config import Settings
 from app.core.connections import Connections
 from app.core.connections import create_router as canvas_router
 from app.core.credential_vault import CredentialVault
+from app.core.demo_catalog import DemoCatalog, LearningSettings, ModeReader
+from app.core.demo_catalog import create_router as learning_settings_router
 from app.core.database import Database
 from app.core.environment import ROOT, load_environment
 from app.core.errors import APIError, error_response
@@ -78,6 +80,8 @@ def create_app():
         if settings.catalog_cursor_secret
         else None,
     )
+    learning_settings = LearningSettings(database)
+    demo = DemoCatalog(database, videos)
     app = core_app(
         settings=settings,
         database=database,
@@ -87,10 +91,10 @@ def create_app():
                 settings.supabase_url, settings.supabase_publishable_key.get_secret_value()
             )
         ),
-        academics=FeedAcademicReader(academics),
+        academics=ModeReader(learning_settings, demo, FeedAcademicReader(academics)),
         entertainment=FeedEntertainmentReader(catalog),
-        videos=BoundVideoReader(videos, database),
-        quiz_reader=StoredQuizzes(database),
+        videos=ModeReader(learning_settings, demo, BoundVideoReader(videos, database)),
+        quiz_reader=ModeReader(learning_settings, demo, StoredQuizzes(database)),
         domain_routers=(
             create_identity_router(verified_record, profiles),
             create_entertainment_router(verified_record, catalog),
@@ -99,6 +103,7 @@ def create_app():
             video_router(videos),
             social_router(pipeline.social),
             preparation_router(database),
+            learning_settings_router(learning_settings, demo),
         ),
         require_identity_catalog=True,
     )

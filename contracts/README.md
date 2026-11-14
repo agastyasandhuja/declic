@@ -106,3 +106,9 @@ November 14 generic visual support: optional internal `Brief.visual_strategy` an
 for abstract topics. Existing visual policies remain the default. Deploy the worker
 and semantic-capable renderer together; no public video/feed field changes are
 required. See [generic semantic diagrams](learning.md#generic-semantic-diagrams-november-14).
+
+November 14 account-level generic demo: [demo-catalog](demo-catalog.md) defines
+opt-in learning settings, four generic courses, 24 reviewed videos/48 quizzes,
+atomic ungraded mode switches, and explicit agent-reviewed publication. Feed adds
+`playback_seeked` for zero-credit seeks. Entertainment adds bounded owner-connected
+read-only Reel comments; no Instagram write operation is exposed.

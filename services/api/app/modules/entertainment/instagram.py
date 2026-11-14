@@ -150,8 +150,14 @@ class InstagramReelsProvider:
             if not isinstance(rows, list) or len(rows) > 100 or not isinstance(paging, dict):
                 raise ValueError()
             next_cursor = paging.get('max_id') or None
-            if next_cursor is not None and (not isinstance(next_cursor, str) or len(next_cursor) > 4096):
+            if next_cursor is not None and not isinstance(next_cursor, str):
                 raise ValueError()
+            # Discover cursors accumulate viewed IDs and eventually exceed this
+            # bounded server cache. Preserve this valid page; ending continuation
+            # lets the next background refresh start a fresh stream instead of
+            # retrying the same too-large cursor until the whole catalog expires.
+            if next_cursor and (len(next_cursor) > 4096 or next_cursor == cursor):
+                next_cursor = None
             if paging.get('more_available') is False:
                 next_cursor = None
             media = [row['media'] for row in rows if isinstance(row, dict) and isinstance(row.get('media'), dict) and not row.get('is_ad')]
