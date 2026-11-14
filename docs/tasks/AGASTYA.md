@@ -134,6 +134,63 @@ wrong answer, unlock and alternate explanation. Record live/cached/mock modes.
 Prepare already-rendered assets so the demo does not depend on generation latency,
 but demonstrate the real generation path separately.
 
+## Milestone G7 — research-backed personalization (post-demo)
+
+Planned work, not implemented or validated. Follow the extension in
+[PROJECT.md](../PROJECT.md#planned-extension-research-backed-personalization) and
+its [primary research references](../REFERENCES.md#adaptive-recommendations-and-learning).
+G4 remains the demo baseline and fallback; G7 must not block G1–G6 acceptance.
+
+### Foundation and evaluation design
+
+- [ ] Inventory existing exposure/quiz events and available ready variants;
+  identify gaps without treating mock adapters as live instrumentation.
+- [ ] Propose a versioned decision log: context, eligible actions, chosen action,
+  selection probability, policy version, occurrence IDs and outcome links.
+  Draft owner-scoped Atlas validators/indexes and retention rules; integrate
+  through Agastya's migration and contract process before deploying.
+- [ ] Coordinate proposed helpfulness/preferences UI with Adi and objective
+  difficulty/prerequisite metadata with Amogh. Use synthetic fixtures and local
+  fake adapters until those owner interfaces are agreed.
+- [ ] Define separate experience and learning metrics, reward/attribution rules,
+  delayed recall and transfer questions, baseline assignment, follow-up windows,
+  sample-size assumptions and success thresholds before collecting pilot results.
+  Record missing assessments separately from incorrect answers.
+- [ ] Build deterministic synthetic scenarios for sparse history, uneven course
+  inventories, delayed/missing outcomes, duplicate events and unavailable variants.
+  Label their results as algorithm mechanics rather than measured learning gains.
+
+### Template personalization pilot
+
+- [ ] Implement a small contextual bandit starting with LinUCB over eligible
+  formats/teaching approaches, using pooled starting estimates and bounded
+  exploration. Condition preferences on topic and prior knowledge.
+- [ ] Keep insertion timing fixed during the initial template experiment; record
+  known selection probabilities and verify logged action support before offline
+  evaluation. Do not infer causal improvements from deterministic history alone.
+- [ ] Verify ownership/ready-asset filtering, course fairness, exploration limits,
+  repeat avoidance, retry-safe logging and deterministic fallback under failure.
+- [ ] Compare with the fixed baseline using delayed learning and experience
+  outcomes. Report uncertainty, difficulty differences and follow-up attrition;
+  do not promote a policy based solely on watch time or immediate quiz accuracy.
+
+### Review and insertion experiments
+
+- [ ] Fit and calibrate half-life regression against real retrieval outcomes;
+  compare recall prediction and review outcomes with the simple review baseline.
+  Preserve neutral unknown mastery and course/exam/prerequisite constraints.
+- [ ] Evaluate an action-centered insertion policy against entertainment as the
+  baseline action, within progressive density, spacing, coverage and user limits.
+  Test that inventory recovery cannot create a wall of lessons and that study
+  exposure cannot collapse to zero simply to improve engagement.
+- [ ] Run a separate timing experiment with stable template selection. Establish
+  retained learning per active minute alongside absolute learning, enjoyment and
+  course coverage; document delayed attribution and long-term effects not captured
+  by a short-horizon bandit reward.
+- [ ] Record actual pilot commands/results, policy versions, limitations and
+  rollback criteria in the status file. Claim improved learning only after real
+  comparative evidence; retain all phone acceptance checks in INTEGRATION.md.
+
 ## Meaningful checks
 
 Job idempotency/leases, cross-user catalog access, no answer-key leakage,
