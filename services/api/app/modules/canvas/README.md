@@ -32,7 +32,8 @@ only releases it for the one bound app user.
 ## Commands (run from `services/api`)
 
 ```sh
-python3 -m unittest app.modules.canvas.tests.test_m1 app.modules.canvas.tests.test_oauth   # synthetic, no network
+python3 -m unittest app.modules.canvas.tests.test_m1 app.modules.canvas.tests.test_oauth app.modules.canvas.tests.test_courses
+python3 -m app.modules.canvas.validate_access --demo      # synthetic preview, no token needed
 python3 -m app.modules.canvas.validate_access             # live: who am I + active courses
 python3 -m app.modules.canvas.validate_access --redact    # counts only, safe to paste
 python3 -m app.modules.canvas.upload_local --user-id <app user> --course "<label>" file.pdf
@@ -50,4 +51,6 @@ Uploads accept .pdf, .pptx, .docx, .txt, .md up to 25 MB and are copied to
 - `oauth.build_authorization_url`, `oauth.StateStore`, `oauth.exchange_code`,
   `oauth.refresh_access_token` — school sign-in; the student's password is
   only ever typed into the school's own login page.
+- `courses.summarize_current_courses(client)` — the student's own current
+  courses with a syllabus preview and per-course missing-source notes.
 - `ingestion.uploads.store_upload(...)` — returns `(SourceDocument, created)`.

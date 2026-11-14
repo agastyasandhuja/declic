@@ -1,7 +1,8 @@
 # Amogh status
 
-Status: M1 in progress (2026-11-13). Code scaffolding done and tested against
-synthetic data only. **Live Canvas access is not yet validated.**
+Status: M1 code-complete (2026-11-13), tested against synthetic data only.
+**Live Canvas access is not yet validated** — needs Amogh's own token or a
+developer key. Demo path is ready to light up the moment a token is added.
 
 ## Completed
 
@@ -17,6 +18,11 @@ synthetic data only. **Live Canvas access is not yet validated.**
 - Canvas OAuth sign-in helpers (`oauth.py`): authorization URL, single-use
   state bound to the app user, code exchange, token refresh. Untested against
   real Canvas because no developer key exists yet.
+- Course preview (`courses.py`): reads the student's own active courses with
+  syllabus body, strips HTML for display, records missing syllabus per course
+  without failing the others. This is the demo-facing M1 output.
+- `--demo` mode and synthetic demo data so the output shape is viewable with
+  no token (clearly labelled "not a live sync").
 
 ## Research findings (2026-11-13, UMass Amherst)
 
@@ -43,8 +49,10 @@ synthetic data only. **Live Canvas access is not yet validated.**
 
 Run from `services/api`:
 
-- `python3 -m unittest app.modules.canvas.tests.test_m1 app.modules.canvas.tests.test_oauth`
-  → 26 tests pass (Python 3.14.3). All synthetic; fakes stand in for Canvas.
+- `python3 -m unittest app.modules.canvas.tests.test_m1 app.modules.canvas.tests.test_oauth app.modules.canvas.tests.test_courses`
+  → 29 tests pass (Python 3.14.3). All synthetic; fakes stand in for Canvas.
+- `python3 -m app.modules.canvas.validate_access --demo` → prints 3 synthetic
+  courses with syllabus previews, clearly labelled synthetic.
 - `python3 -m app.modules.canvas.validate_access --redact` with the UMass base
   URL and no token → reports "available modes: upload", exits 1 (expected).
 - Not run: any authenticated request to real Canvas; the OAuth flow against
@@ -62,7 +70,8 @@ Run from `services/api`:
 - External blocker: UMass-issued Canvas developer key for the OAuth sign-in.
   Must be requested from UMass IT; approval is not guaranteed and may be slow.
 - External: whether UMass lets students create a personal access token —
-  unknown; check Canvas > Account > Settings > Approved Integrations.
+  unknown; Amogh to check https://umamherst.instructure.com/profile/settings
+  under "Approved Integrations" for a "+ New Access Token" button.
 - Request to Agastya: initialize the Python manifest/FastAPI core so the canvas
   router can be registered; an HTTP client dependency (e.g. httpx) for M2
   concurrent ingestion; shared jobs table handler contract; private storage
@@ -73,6 +82,7 @@ Run from `services/api`:
 
 - Email UMass IT to request a developer key (redirect URI needed from Agastya's
   API host first).
-- Add own token to `.env.canvas.local`, run `validate_access`, record the result.
+- Amogh checks for the token button; if present, add it to `.env.canvas.local`,
+  run `validate_access --redact`, and record the live result here.
 - If token creation is blocked, demonstrate upload mode and record the blocker.
 - Then M2: inventory modules, pages, files, assignments, calendar events.
