@@ -1593,3 +1593,19 @@ video bitrate at 6 Mbps with a 12 Mb buffer so 60-second gameplay clips remain
 within the demo delivery budget. This retains 1080×1920, 30fps and aligned audio.
 The completed fifth file is being compressed and revalidated without another
 script, voice, or model generation call.
+
+The completed five-video batch is now private and ready in Atlas/Supabase.
+All five signed video URLs returned HTTP 206 for a 1 KiB range, and each projected
+course objective has an active quiz. The final 49.749s dialogue was reduced from
+59,519,551 to 39,186,004 bytes; AAC packet hashes and duration are unchanged, and
+1080p/30fps/audio loudness/media checks passed. No additional model calls were
+used for the delivery repair. The test batch retains its recorded v9 presentation;
+lower dialogue captions apply to subsequent v10 renders.
+
+Release 1.0.0 (6), source main `cde623f`, was installed and launched on the physical
+iPhone. A screenshot confirms saved app login, restored typography/navigation,
+and actual Instagram video frames. User can update the cookie without first
+disconnecting. The remaining reported work is feed repetition and loading latency;
+those optimizations are in separate reviewed branches. The live account has no
+persisted quiz attempt yet, so backend grading remains covered by integration
+tests rather than claimed as a completed live submission.
