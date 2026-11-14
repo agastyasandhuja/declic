@@ -5,6 +5,7 @@ import * as Crypto from 'expo-crypto';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../state/AuthProvider';
 import { ApiError } from '../../lib/api/client';
+import { PlaybackRecovery, needsPlaybackRefresh } from '../../lib/playback/PlaybackRecovery';
 import { BufferedVideoViews } from '../../lib/playback/BufferedVideoViews';
 import { BufferedPlayerController, type BufferedPlaybackState } from '../../lib/playback/BufferedPlayerController';
 import type { PlayerDriver } from '../../lib/playback/SinglePlayerController';
@@ -39,6 +40,7 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
   const session = useRef<string | null>(null); const sessionPromise = useRef<Promise<string> | null>(null);
   const cursor = useRef<string | null>(null); const pending = useRef(false); const mounted = useRef(true);
   const generation = useRef(0); const revision = useRef<number | null>(null);
+  const recovery = useRef(new PlaybackRecovery());
   const terminal = useRef(new Set<string>()); const retryingVideo = useRef<string | null>(null);
   const itemRef = useRef<UnifiedItem | undefined>(undefined); const indexRef = useRef(0); indexRef.current = index;
   const heightRef = useRef(height); heightRef.current = height;
@@ -117,16 +119,22 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
     }
   }, [focused, foreground, loading, load]);
   useLayoutEffect(() => () => controller.dispose(), [controller]);
-  useLayoutEffect(() => { controller.setGate({ focused: focused && !!video, foreground, manuallyPaused: paused }); }, [controller, focused, foreground, paused, current?.item_id, !!video]);
+  useLayoutEffect(() => {
+    recovery.current.observe(video ? current!.item_id : null, focused && foreground);
+    controller.setGate({ focused: focused && !!video && !needsPlaybackRefresh(video.playback.expires_at) && retryingVideo.current !== current?.item_id, foreground, manuallyPaused: paused });
+  }, [controller, focused, foreground, paused, current?.item_id, video?.playback.expires_at, !!video]);
   useEffect(() => { first.muted = preferences.muted; second.muted = preferences.muted; }, [first, second, preferences.muted]);
-  useEffect(() => { const subscription = AppState.addEventListener('change', state => { const active = state === 'active'; controller.setGate({ foreground: active }); setForeground(active); emit(active ? 'app_foregrounded' : 'app_backgrounded', player.currentTime * 1000, watch.current.totalMs); if (active) emit('playback_started', player.currentTime * 1000, watch.current.totalMs); void flush(); }); return () => subscription.remove(); }, [controller, player, emit, flush]);
+  useEffect(() => { const subscription = AppState.addEventListener('change', state => { const active = state === 'active'; visibility.current.foreground = active; const selected = itemRef.current; const stale = selected && selected.kind !== 'quiz' && needsPlaybackRefresh(selected.video.playback.expires_at); controller.setGate({ foreground: active, ...(active && stale ? { focused: false } : {}) }); setForeground(active); emit(active ? 'app_foregrounded' : 'app_backgrounded', player.currentTime * 1000, watch.current.totalMs); if (active) emit('playback_started', player.currentTime * 1000, watch.current.totalMs); void flush(); }); return () => subscription.remove(); }, [controller, player, emit, flush]);
   useEffect(() => {
     watch.current = new VisibleWatchTracker(); stalled.current = new PlaybackStallGuard(); setPaused(false); setAnswer(null); setExplanation(null); setGateReady(false); answerKey.current = Crypto.randomUUID(); submittedAnswer.current = null;
     if (video) emit('playback_started');
   }, [current?.item_id, emit]);
   useEffect(() => {
-    if (video) { if (video.playback.expires_at && Date.parse(video.playback.expires_at) <= Date.now() + 10000) void retryVideo(); else void controller.setSelection(video.playback.url, nextUrl); }
+    if (video && !needsPlaybackRefresh(video.playback.expires_at) && retryingVideo.current !== current?.item_id) void controller.setSelection(video.playback.url, nextUrl);
   }, [current?.item_id, video?.playback.url, controller]);
+  useEffect(() => {
+    if (video && current && focused && foreground && (needsPlaybackRefresh(video.playback.expires_at) || (playback.error && playback.sourceUri === video.playback.url)) && recovery.current.claim(current.item_id)) void retryVideo();
+  }, [current?.item_id, focused, foreground, video?.playback.expires_at, video?.playback.url, playback.error, playback.sourceUri]);
   // React has now attached the selected surface; reapply the existing playback gates.
   useEffect(() => { if (sourceReady) controller.setGate({}); }, [controller, sourceReady, playback.selection]);
   useEffect(() => { if (playback.ready) controller.preload(nextUrl); }, [controller, playback.ready, nextUrl]);
@@ -179,14 +187,16 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
   async function retryVideo() {
     if (!video || !current || current.kind === 'quiz' || retryingVideo.current === current.item_id) return;
     const itemId = current.item_id; retryingVideo.current = itemId; setError(null);
-    controller.setGate({ focused: false });
+    controller.setGate({ focused: false }); setRenderedSelection(null);
+    watch.current.sample(player.currentTime * 1000, Date.now(), false);
     try {
       const route = current.kind === 'study_video' ? 'learning' : 'entertainment';
       const fresh = parsePlayback(await api.request(`/v1/${route}/videos/${video.video_id}/playback`));
       if (!mounted.current || itemRef.current?.item_id !== itemId) return;
+      if (needsPlaybackRefresh(fresh.expires_at)) throw new Error('The refreshed video link has expired. Retry shortly.');
       setItems(old => old.map(item => item.item_id === itemId && item.kind !== 'quiz' ? { ...item, video: { ...item.video, playback: fresh } } : item));
-      controller.setGate({ focused: visibility.current.focused && visibility.current.foreground });
       await controller.setSelection(fresh.url, nextUrl, true);
+      if (mounted.current && itemRef.current?.item_id === itemId) controller.setGate({ focused: visibility.current.focused && visibility.current.foreground });
     } catch (problem) { if (mounted.current && itemRef.current?.item_id === itemId) { controller.reportError(); setError(problem instanceof Error ? problem.message : 'This video is unavailable.'); } }
     finally { if (retryingVideo.current === itemId) retryingVideo.current = null; }
   }

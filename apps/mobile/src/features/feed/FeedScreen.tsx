@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { EntertainmentVideo } from '../../contracts/generated';
+import { PlaybackRecovery, needsPlaybackRefresh } from '../../lib/playback/PlaybackRecovery';
 import { BufferedVideoViews } from '../../lib/playback/BufferedVideoViews';
 import { BufferedPlayerController, type BufferedPlaybackState } from '../../lib/playback/BufferedPlayerController';
 import type { PlayerDriver } from '../../lib/playback/SinglePlayerController';
@@ -32,9 +33,9 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
   const [pageError, setPageError] = useState<string | null>(null); const [paused, setPaused] = useState(false);
   const [pageNeedsReset, setPageNeedsReset] = useState(false);
   const muted = preferences.muted; const setMuted = (value: boolean) => setPreferences({ ...preferences, muted: value }); const [foreground, setForeground] = useState(AppState.currentState === 'active');
-  const [retry, setRetry] = useState(0);
   const [fillVideo, setFillVideo] = useState(false);
-  const appliedRetry = useRef(0);
+  const recovery = useRef(new PlaybackRecovery()); const retryingVideo = useRef<string | null>(null);
+  const viewableRef = useRef(viewable); viewableRef.current = viewable;
   const [playback, setPlayback] = useState<BufferedPlaybackState>({ loading: true, ready: false, error: null, activeSlot: 0, timedOut: false, sourceUri: null, selection: 0 });
   const [renderedSelection, setRenderedSelection] = useState<number | null>(null);
   const firstFrame = useRef(new FirstFrameGuard()); const stalled = useRef(new PlaybackStallGuard());
@@ -100,7 +101,7 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
     if (pendingScrollIndex.current !== null && height > 0 && videos.length) {
       list.current?.scrollToOffset({ offset: pendingScrollIndex.current * height, animated: false });
       pendingScrollIndex.current = null;
-      controller.setGate({ focused: focused && foreground && viewable });
+      controller.setGate({ focused: focused && foreground && viewable && !!video && !needsPlaybackRefresh(video.playback.expires_at) && retryingVideo.current !== video.video_id });
     }
   }, [videos, height, controller, focused, foreground, viewable]);
   useEffect(() => {
@@ -108,14 +109,17 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
   }, [index, videos.length, nextCursor, focused, foreground, loading, pageError, fetchPage]);
   useEffect(() => {
     const listener = AppState.addEventListener('change', state => {
-      const active = state === 'active'; controller.setGate({ foreground: active }); setForeground(active);
+      const active = state === 'active'; const stale = needsPlaybackRefresh(current.current.video?.playback.expires_at); controller.setGate({ foreground: active, ...(active && stale ? { focused: false } : {}) }); if (!active) focusGate.current = false; setForeground(active);
       watch.current.sample(player.currentTime * 1000, Date.now(), false);
     });
     return () => listener.remove();
   }, [controller, player]);
   // Layout cleanup silences both drivers before Expo releases their native objects.
   useLayoutEffect(() => () => controller.dispose(), [controller]);
-  useLayoutEffect(() => { controller.setGate({ focused: focused && viewable, foreground, manuallyPaused: paused }); }, [controller, focused, foreground, viewable, paused]);
+  useLayoutEffect(() => {
+    recovery.current.observe(video?.video_id ?? null, focused && foreground && viewable);
+    controller.setGate({ focused: focused && viewable && !!video && !needsPlaybackRefresh(video.playback.expires_at) && retryingVideo.current !== video.video_id, foreground, manuallyPaused: paused });
+  }, [controller, focused, foreground, viewable, paused, video?.video_id, video?.playback.expires_at]);
   useEffect(() => { firstPlayer.muted = muted; secondPlayer.muted = muted; }, [firstPlayer, secondPlayer, muted]);
   useEffect(() => {
     setNative({ owner: player, status: player.status, isPlaying: player.playing });
@@ -125,28 +129,14 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
   }, [player]);
   useEffect(() => { watch.current = new VisibleWatchTracker(); stalled.current = new PlaybackStallGuard(); setWatchMs(0); setPaused(false); if (video && !allowReplay) history.remember(video); }, [video?.video_id, history, allowReplay]);
   useEffect(() => {
-    controller.setGate({ focused: !!video && focusGate.current && viewable });
-    if (!video) return;
-    let cancelled = false;
-    const force = retry !== appliedRetry.current; appliedRetry.current = retry;
-    const select = async () => {
-      try {
-        let playback = video.playback;
-        if (playback.expires_at && Date.parse(playback.expires_at) <= Date.now()) {
-          controller.setGate({ focused: false });
-          playback = await source.resolvePlayback(video.video_id);
-          if (cancelled) return;
-          if (playback.expires_at && Date.parse(playback.expires_at) <= Date.now()) throw new Error('Expired playback');
-          setVideos(previous => previous.map(item => item.video_id === video.video_id ? { ...item, playback } : item));
-          controller.setGate({ focused: focusGate.current && viewable });
-        }
-        const uri = brokenClip && index === 0 ? 'https://storage.googleapis.com/gtv-videos-bucket/sample/missing-demo-clip.mp4' : playback.url;
-        if (!cancelled) void controller.setSelection(uri, videos[index + 1]?.playback.url, force);
-      } catch { if (!cancelled) controller.reportError(); }
-    };
-    void select();
-    return () => { cancelled = true; };
-  }, [controller, source, video?.video_id, video?.playback.url, video?.playback.expires_at, retry, brokenClip]);
+    if (!video || needsPlaybackRefresh(video.playback.expires_at) || retryingVideo.current === video.video_id) return;
+    controller.setGate({ focused: focusGate.current && viewableRef.current });
+    const uri = brokenClip && index === 0 ? 'https://storage.googleapis.com/gtv-videos-bucket/sample/missing-demo-clip.mp4' : video.playback.url;
+    void controller.setSelection(uri, videos[index + 1]?.playback.url);
+  }, [controller, video?.video_id, video?.playback.url, video?.playback.expires_at, brokenClip]);
+  useEffect(() => {
+    if (video && focused && foreground && viewable && (needsPlaybackRefresh(video.playback.expires_at) || (playback.error && playback.sourceUri === video.playback.url)) && recovery.current.claim(video.video_id)) void retryVideo();
+  }, [video?.video_id, focused, foreground, viewable, video?.playback.expires_at, video?.playback.url, playback.error, playback.sourceUri]);
   // React has now attached the selected surface; reapply the existing playback gates.
   useEffect(() => { if (sourceReady) controller.setGate({}); }, [controller, sourceReady, playback.selection]);
   useEffect(() => { if (playback.ready) controller.preload(videos[index + 1]?.playback.url); }, [controller, playback.ready, videos[index + 1]?.playback.url]);
@@ -187,18 +177,25 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
     if (visible && located < 0) return; // Ignore a late callback for an evicted card.
     const next = located < 0 ? undefined : located;
     // Gate audio synchronously while no card crosses the visibility threshold.
-    controllerRef.current.setGate({ focused: next != null && focusGate.current });
+    controllerRef.current.setGate({ focused: next != null && focusGate.current && !needsPlaybackRefresh(visible?.item.playback.expires_at) && retryingVideo.current !== visible?.item.video_id });
     setViewable(next != null);
     if (next != null && next !== selectedIndex.current) { recordSkip.current(); selectedIndex.current = next; setIndex(next); }
   }).current;
   async function retryVideo() {
-    if (!video) return;
+    if (!video || retryingVideo.current === video.video_id) return;
     const selected = video.video_id; const request = generation.current;
+    retryingVideo.current = selected;
+    controller.setGate({ focused: false }); setRenderedSelection(null);
+    watch.current.sample(player.currentTime * 1000, Date.now(), false);
     try {
       const fresh = await source.resolvePlayback(selected);
       if (request !== generation.current || current.current.video?.video_id !== selected) return;
-      setVideos(previous => previous.map(item => item.video_id === selected ? { ...item, playback: fresh } : item)); setRetry(value => value + 1);
-    } catch { if (current.current.video?.video_id === selected) controller.reportError(); }
+      if (needsPlaybackRefresh(fresh.expires_at)) throw new Error('Expired playback');
+      setVideos(previous => previous.map(item => item.video_id === selected ? { ...item, playback: fresh } : item));
+      await controller.setSelection(fresh.url, videosRef.current[selectedIndex.current + 1]?.playback.url, true);
+      if (request === generation.current && current.current.video?.video_id === selected) controller.setGate({ focused: focusGate.current && viewableRef.current });
+    } catch { if (request === generation.current && current.current.video?.video_id === selected) controller.reportError(); }
+    finally { if (retryingVideo.current === selected) retryingVideo.current = null; }
   }
   function skip() {
     if (index < videos.length - 1) list.current?.scrollToIndex({ index: index + 1, animated: !preferences.reducedMotion });
