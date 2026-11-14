@@ -1460,8 +1460,8 @@ required, comments remain read-only, and cookies/redirects stay excluded.
 
 ## Wider bounded preload and comments while playing — November 14, 2026
 
-Mobile follow-up on merged main `c8040d7`. Initial mixed-feed page is two cards;
-font loading and saved-auth restoration run concurrently. Metadata fills fifteen
+Mobile follow-up on merged main `c8040d7`. Mixed-feed pages consistently use five cards because backend cursors bind page
+size; font loading and saved-auth restoration run concurrently. Metadata fills fifteen
 upcoming cards, stopping at quiz boundaries. Fresh authenticated feed/session
 validation still happens on every cold start; no feed cards are persisted.
 
@@ -1493,7 +1493,7 @@ Installed Expo Video 58.0.14 source was checked for caching, bufferedPosition,
 replaceAsync cancellation, and the no-active-players cache-management restriction.
 
 Validation: Node 24 `npm run typecheck --workspace @hackumass/mobile` passes;
-`npm test --workspace @hackumass/mobile`: **82 passed** (including local loopback
+`npm test --workspace @hackumass/mobile`: **83 passed** (including local loopback
 proxy fixtures). New tests cover bounded/serial warmup, cancellation, expiry/HLS,
 current/next buffer preservation, account/API cache isolation/expiry, warmup to
 sheet request adoption, cache failure fallback, haptic edge triggering, comments

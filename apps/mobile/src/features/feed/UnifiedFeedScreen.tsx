@@ -27,7 +27,7 @@ import { FeedQuiz, type QuizFeedback } from './FeedQuiz';
 import type { PlaybackPreferences } from '../settings/ProfileScreen';
 import { FeedEventBuffer } from './FeedEventBuffer';
 import { seekFeedVideo } from './FeedSeek';
-import { createPageReader } from './paging';
+import { createPageReader, unifiedFeedQuery } from './paging';
 import { shouldPrefetchPage } from './source';
 import { appendUnified, parseUnifiedPage, type UnifiedItem } from './unified';
 
@@ -100,8 +100,7 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
         const refreshed = await api.request<{session_id: string}>('/v1/feed/sessions', { method: 'POST', body: { resume_session_id: id, refresh_unseen: true }, headers: { 'Idempotency-Key': Crypto.randomUUID() } });
         if (refreshed.session_id !== id) throw new Error('Your feed session changed. Please reopen the feed.');
       }
-      const query = new URLSearchParams({ session_id: id, limit: values.current.length === 0 ? '2' : '5' });
-      if (!reset && cursor.current) query.set('cursor', cursor.current);
+      const query = unifiedFeedQuery(id, reset ? null : cursor.current);
       const pacedRead = createPageReader(abort.signal);
       const read = () => pacedRead(async () => parseUnifiedPage(await api.request(`/v1/feed?${query}`, { signal: abort.signal })));
       const available = (page: ReturnType<typeof parseUnifiedPage>) => page.items.some(item => reset || !values.current.some(previous => previous.item_id === item.item_id));
