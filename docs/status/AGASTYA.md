@@ -1697,6 +1697,34 @@ tests rather than claimed as a completed live submission.
   `.local/performance-api-tests.log`, and
   `.local/iphone-build/main-1ef4b69/build-info.json` with the v7 phone screenshot.
 
+### 2026-11-14 — explicit local generic demo authoring
+
+- Added `app.modules.videos.local_demo` schema/validation/parallel preparation with
+  bounded generic facts, segments, quizzes and typed scene nodes/edges. No Claude
+  API calls; existing ElevenLabs cache/voices remain, macOS speech is explicit and
+  labeled estimated alignment. Preparation does not approve or publish anything.
+- Added a dedicated isolated demo composition for dialogue, graphics, narrated
+  worked math, task-facing cartoons, real Three.js geometry and timelines. Reuses
+  ModelKit and white word captions; outputs bind pack/lesson/source digests.
+- 11 focused local-demo schema/grounding/bounds tests passed; changed Python Ruff
+  checks and render.mjs Node syntax check passed. Actual Docker synthetic 3D still
+  run produced 18 frames; inspected geometry and facing, then raised person-label
+  placement. Synthetic smoke used generated tone audio, not real narration and not
+  a publishable lesson. Course content, full audio/motion reviews and actual demo
+  video renders remain pending. No production catalog writes or paid model calls.
+
+Local demo follow-up: all 24 reviewed scripts now have real cached ElevenLabs
+narration (38.2–50.6 seconds), with Roger/Charlie/Callum/Liam course leads and
+configured Peter/Stewie dialogue. The first two full 1080p MP4s passed existing
+media checks after audio-only normalization: rank 38.3s / 1,254,788 bytes and matrix
+multiplication 40.6s / 1,409,865 bytes. Initial unnormalized audio correctly failed
+loudness checks; speech and rendered pictures were reused. Remaining movies and
+full continuous audio/motion review are still in progress, not publication-ready.
+A persistent two-slot render coordinator exports stills first, waits on explicit
+frame/pack/source-bound approvals, normalizes final audio and retains completed
+artifacts across restart. Generic reviewed inputs, 48 quiz questions, source links
+and deterministic scene rules are saved under fixtures/learning/demo-library;
+raw Claude Code responses, provider secrets and media remain ignored locally.
 ## Shared demo catalog, comments, and seek backend — November 14, 2026
 
 Implemented owner-scoped learning settings (default demo false), complete generic
@@ -1746,3 +1774,17 @@ retains bounded state rather than increasing it indefinitely. The probe made one
 read after cooldown and printed only counts/types/lengths. Cursor regression and
 existing live-adapter synthetic checks: **34 passed**. Live recovery is pending
 deployment of the patched worker.
+
+Demo visual review repairs: shifted the dialogue diagram above character heads,
+kept null-space input separate from the matrix, removed book decoration through
+date labels, and corrected eigenvector endpoints to exactly 2×/3×. 3D labels now
+project to a bounded screen layer with readable wrapping/collision avoidance and
+camera framing that includes extreme nodes. Exact determinant geometry was also
+corrected from a fivefold to the narrated sixfold area; a regression check covers
+both sixfold expansion and zero-area collapse. Speech was reused throughout.
+Contact sheets now publish atomically with image/frame/pack/source hashes, and
+approval rejects stale sheets. The two-slot queue supports selected still-only
+review passes and one reviewed video alongside ongoing still work. 17 focused
+schema, geometry, artifact and contact-evidence tests passed; changed Python Ruff
+checks passed. Final-renderer candidate f4fed794 has freshly inspected 3D examples
+and source-matched date/vector previews; remaining full renders/reviews continue.
