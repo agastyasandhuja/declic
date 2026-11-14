@@ -1696,3 +1696,19 @@ tests rather than claimed as a completed live submission.
 - Evidence remains private under `.local/performance-mobile-tests.log`,
   `.local/performance-api-tests.log`, and
   `.local/iphone-build/main-1ef4b69/build-info.json` with the v7 phone screenshot.
+
+### 2026-11-14 — explicit local generic demo authoring
+
+- Added `app.modules.videos.local_demo` schema/validation/parallel preparation with
+  bounded generic facts, segments, quizzes and typed scene nodes/edges. No Claude
+  API calls; existing ElevenLabs cache/voices remain, macOS speech is explicit and
+  labeled estimated alignment. Preparation does not approve or publish anything.
+- Added a dedicated isolated demo composition for dialogue, graphics, narrated
+  worked math, task-facing cartoons, real Three.js geometry and timelines. Reuses
+  ModelKit and white word captions; outputs bind pack/lesson/source digests.
+- 11 focused local-demo schema/grounding/bounds tests passed; changed Python Ruff
+  checks and render.mjs Node syntax check passed. Actual Docker synthetic 3D still
+  run produced 18 frames; inspected geometry and facing, then raised person-label
+  placement. Synthetic smoke used generated tone audio, not real narration and not
+  a publishable lesson. Course content, full audio/motion reviews and actual demo
+  video renders remain pending. No production catalog writes or paid model calls.
