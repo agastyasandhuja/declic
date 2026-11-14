@@ -39,7 +39,11 @@ experience. For the demo, the entertainment feed may be nonpersonalized.
 | Cross-course diversity | Do not saturate a feed or generation batch with one unit |
 | A few demos, no strict cost cap | Prioritize working quality, while retaining usage visibility |
 
-Proposed defaults, not new user requirements: Expo, Supabase, FastAPI, Remotion,
+Adopted database decision: MongoDB Atlas stores application records; Supabase
+provides Auth and object storage. This replaces the initial Postgres application
+database proposal. See the [accepted decision](decisions/001-proposed-atlas-application-data.md).
+
+Remaining proposed defaults, not new user requirements: Expo, FastAPI, Remotion,
 bounded database workers, ratio thresholds, numerical ranking weights, quiz
 frequency, and initial generation batch sizes. Tune these without changing
 confirmed product behavior.
@@ -72,17 +76,19 @@ Shared lesson reuse is in scope even without a public share button.
 
 ```mermaid
 flowchart TD
-    Phone["React Native iPhone app"] --> Auth["App authentication"]
+    Phone["React Native iPhone app"] --> Auth["Supabase Auth"]
     Phone --> API["FastAPI backend"]
+    API --> Database["MongoDB Atlas: application records"]
+    API --> Storage["Supabase Storage: documents and media"]
     API --> Entertainment["Entertainment adapters"]
     API --> Learning["Feed and quiz services"]
     API --> Canvas["Canvas ingestion"]
     Canvas --> Gemini["Gemini course and lesson planning"]
-    Gemini --> Jobs["Persistent job queue"]
+    Gemini --> Jobs["Atlas-backed persistent jobs"]
     Jobs --> Claude["Claude lesson and scene generation"]
     Claude --> Voice["ElevenLabs narration"]
     Voice --> Render["Isolated Remotion renderer"]
-    Render --> Catalog["Video catalog and storage"]
+    Render --> Catalog["Trusted publication: Atlas catalog + Storage files"]
     Catalog --> Learning
     Gemini --> Learning
 ```
@@ -90,8 +96,11 @@ flowchart TD
 This is a modular monolith plus background workers, not a fleet of independent
 microservices. Python domains share the API runtime and database; Node owns
 rendering. All long-running ingestion, model calls, and rendering run off the
-HTTP request path. Supabase is proposed for app identity, Postgres, and object
-storage. No hosted resources have been provisioned by this scaffold.
+HTTP request path. MongoDB Atlas is the application database; Supabase provides
+app identity and object storage. Atlas holds source metadata, versioned course
+profiles/plans, video metadata, jobs, quizzes and feed state. Original source files
+and generated media bytes belong in Storage. No hosted resources have been
+provisioned by this scaffold.
 
 | Component | Responsibility | Explicit boundary |
 |---|---|---|
@@ -289,14 +298,17 @@ private prompts or credentials.
 
 ## 10. Background jobs and availability
 
-Use a persistent jobs table initially, with type, state, deduplication key,
+Use a persistent Atlas jobs collection initially, with type, state, deduplication key,
 attempt count, lease expiry, heartbeat, input reference, output reference, and
 sanitized error. Workers atomically claim queued jobs; expired leases can retry.
 Do not render in a FastAPI request or rely on an in-memory queue for durable work.
 
 Job states: queued → running → succeeded; running may become retry_wait or failed.
-Cancellation is explicit. Publication is a transaction: an asset is selectable
-only after storage upload and catalog metadata both succeed.
+Cancellation is explicit. Upload and validate asset files before transactionally
+publishing ready catalog metadata and its outbox event in Atlas. An asset is
+selectable only after storage upload and catalog publication both succeed.
+Storage upload is outside the database transaction, so retries and cleanup of
+orphaned objects must be explicit.
 
 Processing is incremental. Course profiles can be ready while some variants are
 still rendering. The app shows per-course ready/processing/needs_review/error,
@@ -413,10 +425,17 @@ failure event and continue. Live retrieval is never required on each swipe.
 | Quiz definitions/answers | Agastya | Question delivery separate from answer storage |
 | Quiz attempts/mastery/feed sessions/events | Agastya | Owner only |
 
-Enable RLS wherever database tables are exposed. Server privileged credentials do
-not eliminate application ownership checks. Private files use private buckets
-and short-lived access URLs. Mobile publishable configuration is separate from
-service-role keys. Retain only material necessary for the feature; disconnect
+All application records above live in Atlas collections; account credentials stay
+with Supabase Auth and file bytes stay in Storage. Keep source metadata, profile
+revisions and unbounded event histories in separate records rather than one large
+user document. Preserve the existing wire contracts and opaque string IDs.
+
+Every private Atlas query checks ownership derived from verified app identity.
+The mobile app uses the authenticated API, never a direct Atlas connection.
+Supabase RLS does not protect Atlas collections. For private files, the backend
+checks Atlas ownership before issuing short-lived signed URLs; retain restrictive
+Storage policies. Mobile publishable configuration is separate from server keys
+and the Atlas URI. Retain only material necessary for the feature; disconnect
 revokes future sync and supports removing private derived content.
 
 Raw files and credentials never enter the repository. Validate uploaded file types

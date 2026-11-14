@@ -6,15 +6,19 @@ See the root README for the directory map and AGENTS.md for enforcement.
 Use one modular API, one React Native app and one render worker. Individual domain
 routers and workers can be tested alone against fakes.
 
+The [accepted database decision](decisions/001-proposed-atlas-application-data.md)
+uses MongoDB Atlas for application data and jobs, Supabase Auth for accounts, and
+Supabase Storage for documents/media. Existing v1 wire contracts stay unchanged.
+
 | Shared surface | Single editor | How others contribute |
 |---|---|---|
 | Root JS workspace config and lockfile | Adi | Send package/version/import requirements |
 | apps/mobile routes and app providers | Adi | Export components from feature packages |
 | API main.py, core auth dependency, Python manifest | Agastya | Export router; request dependencies |
-| Shared job table and dispatch | Agastya | Domain handler contract |
+| Shared Atlas jobs collection and dispatch | Agastya | Domain handler contract |
 | Academic contract and source semantics | Amogh | Propose additions with example payload |
 | Feed/quiz/render contracts | Agastya | Propose consumer requirements |
-| Ordered database migrations | Agastya | Domain-owned draft files |
+| Atlas connection and ordered database changes | Agastya | Domain-owned collection/validator/index drafts |
 
 Every domain should have its own README with run instructions, a public interface,
 synthetic fixtures, and meaningful tests. There is no root executable yet.
@@ -99,7 +103,8 @@ phone and must not be localhost on the phone. Long-lived secrets are server-only
 | Variable family | Owner | Location |
 |---|---|---|
 | EXPO_PUBLIC_API_BASE_URL, public Supabase URL/key | Adi | Mobile public config |
-| Supabase server/database credentials | Agastya | Backend secret environment |
+| MONGODB_URI, MONGODB_DATABASE | Agastya | Backend secret environment; never mobile |
+| Supabase verification config and privileged Storage credentials | Agastya | Backend secret environment |
 | Canvas domain, OAuth key/secret, local demo token | Amogh | Backend secrets; token bound to test user |
 | GEMINI_API_KEY, GEMINI_MODEL | Amogh | Curriculum worker |
 | ANTHROPIC_API_KEY, CLAUDE_MODEL | Agastya | Generation worker |
@@ -112,10 +117,22 @@ Never put service-role keys in EXPO_PUBLIC variables.
 
 ## Database workflow
 
-Domain owners prepare changes in database/domains/<domain>. Agastya assembles
-ordered migrations in database/migrations and records dependencies. Do not have
-three agents alter one initial-schema SQL file. Use current CLI guidance when
-generating actual migration files; no executable migrations exist in this scaffold.
+Domain owners prepare Atlas collection validators, indexes and backfill drafts
+in database/domains/<domain>. Agastya assembles ordered, repeatable MongoDB changes
+in database/migrations, owns the shared connection/driver configuration, and
+records dependencies. The directory name remains; application SQL migrations are
+replaced by MongoDB database changes. Supabase Storage policies remain separate.
+No executable database setup or live connection exists in this scaffold yet.
+
+The verified Supabase subject remains user_id. Atlas _id values stay internal;
+do not rename contract fields or introduce a second identity. Every private query
+enforces ownership server-side; Supabase RLS does not apply to Atlas. Authorize
+private Storage URLs using Atlas ownership before issuing them to the app.
+
+Use unique indexes and transactions where domain changes and outbox events must
+commit together. Jobs use atomic claims, leases and bounded retries. Storage
+uploads precede ready-asset publication and require retry/orphan-cleanup handling.
+See [the database setup handoff](../database/README.md) for shared setup ownership.
 
 ## Updates
 
