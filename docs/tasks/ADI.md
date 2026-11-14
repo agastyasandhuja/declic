@@ -90,14 +90,17 @@ does not meet this requirement. Both are unofficial Python libraries, not
 guaranteed working services. Keep providers behind the same adapter.
 
 The [local Instagram probe](../../services/api/app/modules/entertainment/experiments/README.md)
-is prepared and tested with fakes. Live retrieval awaits local credential entry.
+has passed its first live retrieval: four unique Reels and four HTTPS playback
+candidates on November 14, 2026. See [the measured results](../status/ADI.md#a2-instagram-experiment--live-retrieval-verified).
 Test logged-in Reels discovery, not only user_clips (a creator's posted Reels).
 Authenticated recommendations must be compared with the account's usual feed;
 do not claim exact native-app ranking or personalization from a method name.
 
 Separate discovery from playback validation:
 
-1. Retrieve a small list of real clips and metadata.
+1. Retrieve a small list of real clips and metadata. **Verified:** four Reels
+   retrieved through the existing account's authenticated discovery session;
+   creator, caption, duration, source URL and candidate video URL fields checked.
 2. Normalize them into EntertainmentVideo objects.
 3. Verify a playable source for each clip on the actual iPhone.
 4. Test expired/unavailable resources and pagination.
@@ -106,7 +109,8 @@ Separate discovery from playback validation:
 TikTok-Api documents trending.videos; instagrapi documents user_clips, feed helpers,
 and clip downloads. Do not claim access to a personal FYP from a trending response.
 instagrapi's explore_reels/reels methods target clips/discover and clips/connected;
-their existence is source evidence, not a live integration or personalization test.
+discovery retrieval is now live-tested. Connected-feed retrieval, exact native-app
+ranking and personalization remain unverified.
 Provider login/cookies remain on the backend. Prefer a demo account if credentials
 are required. Never embed social account passwords or cookies in the mobile app.
 

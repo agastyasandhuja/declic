@@ -40,7 +40,41 @@ reran root `npm run typecheck`, `npm test` and `npm run contracts:check`:
 all passed, including 14/14 tests. No new live Auth or device test is implied
 by this audit.
 
-## A2 Instagram experiment — prepared, live test pending
+## A2 Instagram experiment — live retrieval verified
+
+**A2 item 1 is complete for the first experiment.** The user ran the probe locally
+with their existing account. The sanitized report confirms authenticated discovery
+retrieval of four unique Reels with four HTTPS video candidates. Native playback,
+normalization, pagination and personalization remain separate pending checks.
+
+### Live evidence — November 14, 2026
+
+- First attempt: November 14, 2026, 07:49:28–07:50:33 UTC. Report showed
+  ClientNeedsUpgradeError, authenticated=false and zero retrieved clips. The user
+  identified an incorrect password. The error class alone did not establish an
+  outdated app, a challenge or valid credentials; upstream [issue 2807](https://github.com/subzeroid/instagrapi/issues/2807)
+  documents that ambiguity.
+- Local inspection confirmed instagrapi 3.2.12 and its default Android app profile
+  449.0.0.52.84 with its matching Bloks configuration. No package/profile/code
+  change or automated login retry was made between the two attempts.
+- Second attempt, after the user's credential correction: November 14, 2026,
+  07:54:21–07:54:47 UTC. The user ran the same probe in their own Terminal.
+  report.json: stage=retrieved, authenticated=true, surface=discover, requested=5,
+  retrieved=4, https_candidates=4. The request asks for up to five; four is a
+  successful partial page, not evidence of pagination or a five-item guarantee.
+- Checked the local catalog without printing its private contents: four unique
+  IDs; all records have creator handles, caption strings, nonnegative numeric
+  durations, Instagram HTTPS source URLs and HTTPS candidate playback URLs.
+  report.json and catalog.json are mode 0600 and remain ignored by Git.
+- The report's personalization_verified and native_playback_verified remain false.
+  Account-owner comparison with usual Instagram recommendations is pending.
+  No candidate video URL has yet been tested in Expo or on the actual iPhone.
+- Commands for this verification: a local Python JSON/metadata validation with
+  aggregate-only output; git status; read-only inspection of installed SDK
+  version/profile and login handling. No credentials, provider responses, clip
+  IDs, creator names, recommendation content or signed media URLs were committed.
+
+### Preparation and boundaries
 
 - User requires account-specific entertainment and chose Instagram with their
   existing account's history. TikTok-Api was researched, not live-tested; its
@@ -78,11 +112,11 @@ by this audit.
 - Computer-use access to Terminal was rejected by the tool's safety restriction.
   No alternative control path was attempted. The user must run the documented
   command in their own Terminal to enter credentials privately.
-- A2 item 1 (real clips/metadata): pending local login and a successful response.
+- A2 item 1 (real clips/metadata): verified by the second live attempt above.
   Item 2 (normalized EntertainmentVideo): not implemented by this raw-metadata
   probe. Item 3 (actual iPhone playback), item 4 (expiry/outage/pagination) and
-  confirmation of account-specific recommendations remain untested. Item 5 is
-  this preparation record; append actual live results when available.
+  confirmation of account-specific recommendations remain untested. Item 5 now
+  includes the first failure and successful retrieval; append later results here.
 
 ## Delivered
 
