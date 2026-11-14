@@ -56,6 +56,30 @@ Acceptance:
 - Feed is accessible without Canvas.
 - API rejects missing/invalid app tokens; caller cannot choose another user ID.
 
+### A1 implementation cross-reference — November 14, 2026
+
+A1 is **in progress, not accepted**. All eight mobile implementation items have
+code or documentation, but live authentication and backend enforcement have not
+passed acceptance. "Implemented" below describes code present, not a successful
+real-account test. See [A1 acceptance evidence and remaining work](../status/ADI.md#a1-acceptance-audit)
+for the separate acceptance checklist.
+
+| A1 item | Implementation | Evidence and remaining verification |
+|---|---|---|
+| 1. Expo + React Native + TypeScript in apps/mobile | [Mobile manifest](../../apps/mobile/package.json), [entry point](../../apps/mobile/index.ts), [TypeScript config](../../apps/mobile/tsconfig.json) | Typecheck, Expo Doctor 20/20 and iOS export passed; app launched in the iPhone 17 simulator. |
+| 2. Repository root remains a workspace | [Root manifest](../../package.json), [lockfile](../../package-lock.json) | Root commands target the mobile workspace; install, typecheck and tests passed. |
+| 3. Auth/feed navigation and loading/error states | [App shell](../../apps/mobile/src/AppShell.tsx), [auth screen](../../apps/mobile/src/features/auth/AuthScreen.tsx), [feed screen](../../apps/mobile/src/features/feed/FeedScreen.tsx) | Demo navigation, empty-email validation and unavailable-clip recovery observed. Real auth/network failure paths remain unverified. |
+| 4. Supabase signup/login/logout and persistence | [Supabase client](../../apps/mobile/src/lib/auth/supabase.ts), [auth screen](../../apps/mobile/src/features/auth/AuthScreen.tsx), [session provider](../../apps/mobile/src/state/AuthProvider.tsx) | SDK calls, email-confirmation messaging, restoration and refresh implemented. Successful account creation, confirmation, login, restart and logout still need a controlled account. |
+| 5. Secure session storage; no password persistence | [Native SecureStore adapter](../../apps/mobile/src/lib/auth/sessionStorage.native.ts), [chunked storage](../../apps/mobile/src/lib/auth/chunkedStorage.ts), [storage tests](../../apps/mobile/tests/storage.test.ts) | Fake-store tests passed for adapter recreation, Unicode, interrupted writes and removal. Actual authenticated device storage/restart/logout remains unverified. Web uses per-tab sessionStorage. |
+| 6. One authenticated API client and expired-session handling | [API client](../../apps/mobile/src/lib/api/client.ts), [session binding](../../apps/mobile/src/state/AuthProvider.tsx), [API tests](../../apps/mobile/tests/api.test.ts) | Fake-API tests passed for bearer attachment, refresh, expiry, timeouts and safe replay. Live backend integration and server token/ownership enforcement remain pending. |
+| 7. Independent fixture entertainment adapter | [Feed adapters](../../apps/mobile/src/features/feed/source.ts), [catalog](../../fixtures/entertainment/feed.json), [fixture tests](../../apps/mobile/tests/fixtures.test.ts) | Fixture validation/pagination tests passed; all five media URLs returned HTTP 206. Playback observed in the simulator without Canvas, Atlas or FastAPI. |
+| 8. Exact setup/device commands and public env names | [Mobile setup guide](../../apps/mobile/README.md), [environment example](../../apps/mobile/.env.example) | Install/start/simulator/phone instructions and placeholders present. Actual .env stays ignored; physical-phone procedure is documented but not yet validated. |
+
+Next A1 work: validate real Auth on the simulator/device, then implement Adi's
+server auth adapter and coordinate Agastya's core dependency/route assembly to
+test protected endpoints. These checks do not require Atlas application-data
+persistence. The user's current database deferral does not mark them complete.
+
 ## Milestone A2 — provider acquisition experiment
 
 Test TikTok-Api first, instagrapi as an alternative. Both are unofficial Python

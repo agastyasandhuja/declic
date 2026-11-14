@@ -12,6 +12,33 @@ as `d864185`. Existing environment/status work was preserved when branching.
 The implemented app, fixtures, schemas, tests and setup guide are committed as
 `aae5dca` (`feat(mobile): add fixture-first Expo prototype and auth shell`).
 
+## A1 acceptance audit
+
+Cross-checked the implementation against all eight numbered requirements in
+[Milestone A1](../tasks/ADI.md#milestone-a1--app-and-identity). The task guide now
+links each requirement to its implementation and evidence. **A1 remains in
+progress:** implementation coverage is not acceptance, and the fixture demo does
+not establish successful real authentication.
+
+| A1 acceptance criterion | Actual result | Work needed to accept |
+|---|---|---|
+| New account and returning-user login | Implemented, not validated end to end. Public Supabase settings respond and require email confirmation. | Create a controlled account, confirm its email, sign out and sign back in using the app. |
+| Invalid credentials and network loss give usable messages | Message branches exist; empty-email UI validation observed. Fake API timeout test passed. Live Auth rejection/network-loss behavior not tested. | Exercise a rejected login and an offline request, then reconnect and retry successfully. |
+| Restart retains a valid session; logout clears private state | SDK persistence/restoration and native SecureStore adapter implemented. Fake-store recreation/removal tests passed; actual authenticated restart/logout not observed. | Sign in, terminate/relaunch the app, confirm the same account is restored, sign out, and relaunch to verify authentication is required and private shell state is cleared. |
+| Feed accessible without Canvas | Passed for the development fixture demo in the iPhone simulator. No Canvas, Atlas or FastAPI dependency. | Recheck the same feed after real sign-in and on the physical iPhone; those paths remain unverified. |
+| API rejects missing/invalid tokens and caller-selected identity | Not implemented/validated by this prototype. Client token handling is unit-tested, but services/api/app/modules/auth is still a scaffold. | Adi implements verify_access_token; Agastya integrates get_current_user and router assembly. Test missing, invalid, expired and forged tokens plus cross-user access against protected routes. |
+
+Prioritize the remaining A1 Auth and authorization work before provider acquisition
+(A2). The prototype also contains part of A3 playback and A4 integration slots;
+those additions do not complete A1 acceptance. Atlas profile/catalog persistence
+remains deferred by user direction. Token verification and basic Auth acceptance
+can proceed independently of that database work.
+
+Audit verification: reread the current implementations and test coverage, and
+reran root `npm run typecheck`, `npm test` and `npm run contracts:check`:
+all passed, including 14/14 tests. No new live Auth or device test is implied
+by this audit.
+
 ## Delivered
 
 - Read root/nested instructions, Adi's task guide, project/integration documents,
@@ -131,8 +158,9 @@ The implemented app, fixtures, schemas, tests and setup guide are committed as
    confirmation, invalid credentials, login, app restart with session retained,
    logout/private-state clearing, and network-loss recovery. Storage behavior is
    unit-tested; an actual authenticated SecureStore session is not yet observed.
-4. Agastya's backend handoff: core token verification / get_current_user and
-   authenticated GET /v1/me, plus assembly of the entertainment routes. Missing /
+4. Backend auth remains shared work: Adi owns the auth module's
+   verify_access_token adapter and identity route implementation; Agastya owns
+   core get_current_user and router assembly. These are still scaffolded. Missing /
    invalid token rejection and cross-user ownership require backend integration
    tests. This mobile prototype does not implement a fake accepting server.
 5. Set EXPO_PUBLIC_API_BASE_URL to the reachable HTTPS API origin, restart Metro,
