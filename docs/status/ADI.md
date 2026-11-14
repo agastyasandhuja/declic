@@ -1370,3 +1370,45 @@ into recovery without discarding that anchor. Two additional tests cover this
 behavior. Combined TypeScript and 60 mobile tests pass; all three bundled fonts
 have valid static sfnt tables and no variable-font fvar table. Native verification
 follows installation; no new browser preview was started for the combined UI.
+
+### Mobile loading audit and fixes — November 14, 2026
+
+User reports on installed main cde623f / Release 1.0.0(6): slow Courses and video
+loads, repeating/insufficient Instagram inventory. This patch covers mobile wait
+paths; backend inventory/signing/transaction work is coordinated separately.
+
+- Courses publishes connection, parsed academic profile, preparation and job
+  results independently. Previously it awaited profile+connection, then
+  preparation, then job before displaying the course snapshot. A failed optional
+  section no longer discards successful sections.
+- Display snapshots are memory-only, scoped to both authenticated owner ID and
+  API instance (which owns origin/auth context); no PAT, cookie, raw source or
+  session credential is cached. Tab reentry retains usable data. Full reads occur
+  at most every 30 seconds; preparation/active-job refresh remains 10 seconds.
+  Concurrent polls coalesce; unmount/background aborts and fences late results.
+  Explicit refresh/mutation refresh follows an in-flight poll once; cancelling
+  the tab also cancels that queued followup.
+- Pagination event flush now waits for events queued when invoked. Previously a
+  response slower than the 3-second progress interval could keep adding work to an
+  endless drain, blocking the subsequent feed request. Events remain ordered,
+  deduplicated by ID and retained on failure; quiz activation still awaits all
+  queued pre-gate events. No synthetic watch time or relaxed quiz gate.
+- A stale preload occupying one native replacement queue no longer blocks a new
+  URI when the other paused slot is free. One active player and one bounded
+  standby remain. Media preload starts after the visible first frame and only
+  while foreground/focused. Eight-item page prefetch is metadata, not eight
+  native media downloads.
+- iOS starts at playable data using waitsToMinimizeStalling=false instead of
+  inheriting AVPlayer's deliberate startup wait; retains the five-second forward
+  buffer, keyed first-frame recovery, bounded seek recovery and stall watchdog.
+
+Validation: Node24 `npm run typecheck --workspace @hackumass/mobile`;
+`npm test --workspace @hackumass/mobile` (66 tests passed).
+New synthetic tests cover incremental publication with stalled preparation/job,
+cache owner isolation, partial failure, cancellation/forced refresh, slow stale
+preload bypass with audio exclusivity, and continuously arriving event progress.
+These deterministic tests do not establish physical network/startup timings.
+The installed phone remains version 6 until reviewed main is rebuilt; no providers,
+paid models, video generation or account secrets were used in these checks.
+Security review preserved HTTPS/auth request boundaries and private ownership;
+new cache contains parsed display data only and resets on API/owner change.

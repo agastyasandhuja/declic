@@ -1,14 +1,14 @@
 import { InstagramConnection } from './InstagramConnection';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ActivityIndicator, AppState, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Crypto from 'expo-crypto';
 import { Button } from '../../components/Button';
 import { useAuth } from '../../state/AuthProvider';
-import { ApiError } from '../../lib/api/client';
+import { coursesDataFor } from './CoursesData';
 import { sharedStyles as s, theme } from '../../theme';
-import { parseAcademicProfile, type AcademicProfileView } from './academicData';
+import { type AcademicProfileView } from './academicData';
 const sample: AcademicProfileView = { courses: [
   { course_id: 'demo-dsa', title: 'Data structures', import_status: 'ready', missing_sources: [] },
   { course_id: 'demo-prob', title: 'Probability', import_status: 'needs_review', missing_sources: ['Lecture slides'] },
@@ -17,31 +17,32 @@ const sample: AcademicProfileView = { courses: [
   { course_id: 'demo-dsa', title: 'Heaps and treaps' }, { course_id: 'demo-dsa', title: 'Linked lists' },
   { course_id: 'demo-prob', title: 'Distributions and Bayes' }, { course_id: 'demo-acct', title: 'Statements and cash flow' },
 ], assessments: [] };
-interface Connection { status: 'connected' | 'disconnected' | 'reconnect_required' | 'error'; institution_origin?: string; last_sync_at?: string | null; job_id?: string }
 export function CoursesScreen() {
-  const { mode, api } = useAuth(); const demo = mode === 'preview';
-  const [profile, setProfile] = useState<AcademicProfileView | null>(demo ? sample : null);
-  const [connection, setConnection] = useState<Connection | null>(null);
+  const { mode, api, user } = useAuth(); const demo = mode === 'preview';
+  const data = useMemo(() => coursesDataFor(api, user?.user_id ?? mode), [api, user?.user_id, mode]);
+  const snapshot = useSyncExternalStore(data.subscribe, data.getSnapshot, data.getSnapshot);
+  const { connection, preparation, job, loading } = snapshot;
+  const profile = demo ? sample : snapshot.profile;
   const [token, setToken] = useState('');
   const tokenInput = useRef<React.ComponentRef<typeof TextInput>>(null);
-  const [preparation, setPreparation] = useState<{academic_generation_configured: boolean; video_generation_enabled?: boolean; imports_and_lessons: Record<string, number>; videos: Record<string, number>} | null>(null);
-  const [job, setJob] = useState<{state: string} | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false); const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null); const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [actionError, setError] = useState<string | null>(null); const [notice, setNotice] = useState<string | null>(null);
+  const error = actionError ?? snapshot.error;
   const load = useCallback(async () => {
     if (demo) return;
-    setLoading(true); setError(null);
-    try {
-      const [conn, data] = await Promise.all([api.request<Connection>('/v1/canvas/connection'), api.request<unknown>('/v1/academics/profile').catch(error => { if (error instanceof ApiError && error.status === 404) return null; throw error; })]);
-      if (!['connected', 'disconnected', 'reconnect_required', 'error'].includes(conn.status)) throw new Error('Unable to read Canvas status. Please retry.');
-      setPreparation(await api.request('/v1/preparation'));
-      setConnection(conn); if (conn.job_id) setJob(await api.request<{state: string}>(`/v1/academics/jobs/${conn.job_id}`)); setProfile(data === null ? null : parseAcademicProfile(data));
-    } catch (problem) { setError(problem instanceof Error ? problem.message : 'Unable to load courses. Please retry.'); }
-    finally { setLoading(false); }
-  }, [api, demo]);
-  useEffect(() => { void load(); const listener = AppState.addEventListener('change', state => { if (state === 'active') void load(); }); return () => listener.remove(); }, [load]);
-  useEffect(() => { if (demo || connection?.status !== 'connected') return; const timer = setInterval(() => { if (AppState.currentState === 'active') void load(); }, 10000); return () => clearInterval(timer); }, [demo, connection?.status, load]);
+    setRefreshing(true); setError(null);
+    try { await data.load(true); } finally { setRefreshing(false); }
+  }, [data, demo]);
+  useEffect(() => {
+    if (demo) return;
+    const refresh = () => { if (AppState.currentState === 'active') void data.load(); };
+    refresh();
+    const timer = setInterval(refresh, 10000);
+    const listener = AppState.addEventListener('change', state => { if (state === 'active') refresh(); else data.cancel(); });
+    return () => { clearInterval(timer); listener.remove(); data.cancel(); };
+  }, [data, demo]);
   async function connect() {
     if (demo) { setNotice('Sign in to connect your own Canvas courses. These cards are a sample semester.'); return; }
     if (token.trim().length < 10) { setNotice('Paste your Canvas personal access token below, then save it.'); tokenInput.current?.focus(); return; }
@@ -63,10 +64,10 @@ export function CoursesScreen() {
     catch (problem) { setError(problem instanceof Error ? problem.message : 'Unable to retry preparation.'); } finally { setBusy(false); }
   }
   const accents = [theme.colors.accent, theme.colors.coral, theme.colors.success];
-  return <SafeAreaView style={s.screen} edges={['top']}><ScrollView refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} tintColor={theme.colors.accent} />} contentContainerStyle={styles.content}>
+  return <SafeAreaView style={s.screen} edges={['top']}><ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load()} tintColor={theme.colors.accent} />} contentContainerStyle={styles.content}>
     <Text accessibilityRole="header" style={s.title}>Courses</Text>
     <View style={styles.summary}><Ionicons name="school-outline" size={30} color={theme.colors.accent} /><View style={{ flex: 1, gap: 6 }}><Text style={styles.heading}>{profile?.courses.length ?? 0} {demo ? 'sample courses' : 'courses'}</Text><Text style={s.subtitle}>{demo ? 'Explore a synthetic semester.' : 'Imported from Canvas'}</Text></View></View>
-    {!demo && loading && <ActivityIndicator color={theme.colors.accent} />}
+    {!demo && loading && !profile && <ActivityIndicator color={theme.colors.accent} />}
     {error && <View style={s.card}><Text accessibilityRole="alert" style={styles.error}>{error}</Text><Button title="Retry courses" secondary onPress={() => void load()} /></View>}
     <View style={[s.card, { gap: 12 }]}><Text style={styles.heading}>{connection?.status === 'connected' ? 'Canvas is connected' : connection?.status === 'reconnect_required' ? 'Reconnect Canvas' : 'Connect Canvas'}</Text><Text style={s.subtitle}>{connection?.status === 'connected' ? 'Refresh to bring in your latest coursework.' : 'Connect Canvas for lessons from your courses. You can keep scrolling while they prepare.'}</Text><Button title={connection?.status === 'connected' ? 'Sync courses' : 'Connect Canvas'} busy={busy} onPress={() => void (connection?.status === 'connected' ? sync() : connect())} /></View>
     {!demo && connection?.status !== 'connected' && <View style={[s.card, { gap: 12 }]}><Text style={s.subtitle}>In Canvas, open Account → Settings → New Access Token. Paste your token here to connect your courses.</Text><TextInput ref={tokenInput} accessibilityLabel="Canvas personal access token" secureTextEntry autoCapitalize="none" autoCorrect={false} value={token} onChangeText={setToken} placeholder="Canvas personal access token" placeholderTextColor={theme.colors.muted} style={s.input} /><Button title="Save Canvas token" busy={busy} onPress={() => void connect()} /></View>}

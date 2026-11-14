@@ -48,7 +48,7 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
   const list = useRef<FlatList<UnifiedItem>>(null); const values = useRef(items); values.current = items;
   const events = useMemo(() => new FeedEventBuffer(api), [api]);
   const watch = useRef(new VisibleWatchTracker()); const answerKey = useRef(Crypto.randomUUID()); const submittedAnswer = useRef<string | null>(null);
-  const setup = (p: VideoPlayer) => { p.loop = true; p.staysActiveInBackground = false; p.audioMixingMode = 'doNotMix'; p.bufferOptions = { preferredForwardBufferDuration: 5 }; };
+  const setup = (p: VideoPlayer) => { p.loop = true; p.staysActiveInBackground = false; p.audioMixingMode = 'doNotMix'; p.bufferOptions = { preferredForwardBufferDuration: 5, waitsToMinimizeStalling: false }; };
   const first = useVideoPlayer(null, setup); const second = useVideoPlayer(null, setup);
   const controller = useMemo(() => new BufferedPlayerController([first, second].map(p => ({ play: () => p.play(), pause: () => p.pause(), seekTo: (seconds: number) => { p.currentTime = seconds; }, replaceAsync: (uri: string | null) => p.replaceAsync(uri ? { uri } : null) })) as [PlayerDriver, PlayerDriver], setPlayback), [first, second]);
   const player = playback.activeSlot === 0 ? first : second;
@@ -136,14 +136,15 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
     if (video) emit('playback_started');
   }, [current?.item_id, emit]);
   useEffect(() => {
-    if (video && !needsPlaybackRefresh(video.playback.expires_at) && retryingVideo.current !== current?.item_id) void controller.setSelection(video.playback.url, nextUrl);
+    if (video && !needsPlaybackRefresh(video.playback.expires_at) && retryingVideo.current !== current?.item_id) void controller.setSelection(video.playback.url);
   }, [current?.item_id, video?.playback.url, controller]);
   useEffect(() => {
     if (video && current && focused && foreground && (needsPlaybackRefresh(video.playback.expires_at) || (playback.error && playback.sourceUri === video.playback.url)) && recovery.current.claim(current.item_id)) void retryVideo();
   }, [current?.item_id, focused, foreground, video?.playback.expires_at, video?.playback.url, playback.error, playback.sourceUri]);
   // React has now attached the selected surface; reapply the existing playback gates.
   useEffect(() => { if (sourceReady) controller.setGate({}); }, [controller, sourceReady, playback.selection]);
-  useEffect(() => { if (playback.ready) controller.preload(nextUrl); }, [controller, playback.ready, nextUrl]);
+  // Give the visible clip its first frame before competing for bandwidth.
+  useEffect(() => { if (sourceReady && frameRendered && focused && foreground) controller.preload(nextUrl); }, [controller, sourceReady, frameRendered, focused, foreground, nextUrl]);
   useEffect(() => {
     if (!video) return;
     let ticks = 0;
@@ -208,7 +209,7 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
       if (!mounted.current || itemRef.current?.item_id !== itemId) return;
       if (needsPlaybackRefresh(fresh.expires_at)) throw new Error('The refreshed video link has expired. Retry shortly.');
       setItems(old => old.map(item => item.item_id === itemId && item.kind !== 'quiz' ? { ...item, video: { ...item.video, playback: fresh } } : item));
-      await controller.setSelection(fresh.url, nextUrl, true);
+      await controller.setSelection(fresh.url, undefined, true);
       if (mounted.current && itemRef.current?.item_id === itemId) controller.setGate({ focused: visibility.current.focused && visibility.current.foreground });
     } catch (problem) { if (mounted.current && itemRef.current?.item_id === itemId) { controller.reportError(); setError(problem instanceof Error ? problem.message : 'This video is unavailable.'); } }
     finally { if (retryingVideo.current === itemId) retryingVideo.current = null; }
