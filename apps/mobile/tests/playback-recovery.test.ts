@@ -61,3 +61,31 @@ test('late renewal preserves background/manual gates and frame verification befo
   watch.sample(1000, 2500, true); assert.equal(watch.totalMs, 1000);
   controller.dispose();
 });
+
+import { PlaybackSeek } from '../src/lib/playback/PlaybackRecovery';
+test('renewal waits for one seek to the last observed position and cannot add watch credit during it', () => {
+  const seek = new PlaybackSeek(); const watch = new VisibleWatchTracker();
+  watch.sample(14500, 0, true); watch.sample(15000, 500, true);
+  seek.capture('clip', 15000, 1);
+  assert.equal(seek.anchor('clip', 0), 15000); // resume/start uses an actual prior observation
+  assert.equal(seek.settled('clip', 0, 60000, 600), 'waiting');
+  assert.equal(seek.takeTarget('foreign', 2, 600), null);
+  assert.equal(seek.takeTarget('clip', 1, 600), null); // late frame from the old source
+  assert.equal(seek.takeTarget('clip', 2, 600), 15000);
+  assert.equal(seek.takeTarget('clip', 2, 700), null); // no repeated seeks per frame
+  assert.equal(seek.settled('clip', 0, 60000, 1000), 'waiting');
+  watch.sample(0, 1000, false); assert.equal(watch.totalMs, 500);
+  assert.equal(seek.settled('clip', 15000, 60000, 1500), 'ready');
+  watch.sample(15000, 1500, false); watch.sample(15500, 2000, true);
+  assert.equal(watch.totalMs, 500); // seeking 15 seconds added no visible time
+  watch.sample(16000, 2500, true); assert.equal(watch.totalMs, 1000);
+  assert.equal(seek.anchor('clip', 16000), 16000); // subsequent server progress remains monotonic
+});
+
+test('a failed seek times out without losing its prior anchor on a manual retry', () => {
+  const seek = new PlaybackSeek(); seek.capture('clip', 15000, 1); seek.takeTarget('clip', 2, 0);
+  assert.equal(seek.settled('clip', 100, 60000, 5000), 'timeout');
+  seek.capture('clip', 100, 2);
+  assert.equal(seek.takeTarget('clip', 3, 6000), 15000);
+  seek.clear(); assert.equal(seek.isPending('clip'), false);
+});

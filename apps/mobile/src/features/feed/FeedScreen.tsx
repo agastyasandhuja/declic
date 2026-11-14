@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, FlatList, Linking, Share, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useVideoPlayer, type VideoPlayer } from 'expo-video';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { EntertainmentVideo } from '../../contracts/generated';
-import { PlaybackRecovery, needsPlaybackRefresh } from '../../lib/playback/PlaybackRecovery';
+import { PlaybackRecovery, PlaybackSeek, needsPlaybackRefresh } from '../../lib/playback/PlaybackRecovery';
 import { BufferedVideoViews } from '../../lib/playback/BufferedVideoViews';
 import { BufferedPlayerController, type BufferedPlaybackState } from '../../lib/playback/BufferedPlayerController';
 import type { PlayerDriver } from '../../lib/playback/SinglePlayerController';
@@ -15,7 +14,7 @@ import type { FeedSource, FeedHistory } from './source';
 import { appendFeedWindow, shouldPrefetchPage, unseenVideos } from './source';
 import { fetchRefillPage } from './paging';
 import { Button } from '../../components/Button';
-import { Brand } from '../../components/Brand';
+import { FeedCaption, FeedHeader, FeedIconButton, FeedScrim, feedRail } from './FeedChrome';
 import type { PlaybackPreferences } from '../settings/ProfileScreen';
 import { theme } from '../../theme';
 
@@ -34,6 +33,7 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
   const [pageNeedsReset, setPageNeedsReset] = useState(false);
   const muted = preferences.muted; const setMuted = (value: boolean) => setPreferences({ ...preferences, muted: value }); const [foreground, setForeground] = useState(AppState.currentState === 'active');
   const [fillVideo, setFillVideo] = useState(false);
+  const resumeSeek = useRef(new PlaybackSeek());
   const recovery = useRef(new PlaybackRecovery()); const retryingVideo = useRef<string | null>(null);
   const viewableRef = useRef(viewable); viewableRef.current = viewable;
   const [playback, setPlayback] = useState<BufferedPlaybackState>({ loading: true, ready: false, error: null, activeSlot: 0, timedOut: false, sourceUri: null, selection: 0 });
@@ -49,7 +49,7 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
   const watch = useRef(new VisibleWatchTracker()); const selectedIndex = useRef(index); selectedIndex.current = index;
   const firstPlayer = useVideoPlayer(null, setupPlayer); const secondPlayer = useVideoPlayer(null, setupPlayer);
   const controller = useMemo(() => {
-    const driver = (instance: VideoPlayer): PlayerDriver => ({ play: () => instance.play(), pause: () => instance.pause(), replaceAsync: uri => instance.replaceAsync({ uri }) });
+    const driver = (instance: VideoPlayer): PlayerDriver => ({ play: () => instance.play(), pause: () => instance.pause(), seekTo: seconds => { instance.currentTime = seconds; }, replaceAsync: uri => instance.replaceAsync({ uri }) });
     return new BufferedPlayerController([driver(firstPlayer), driver(secondPlayer)], setPlayback);
   }, [firstPlayer, secondPlayer]);
   const controllerRef = useRef(controller); controllerRef.current = controller;
@@ -127,7 +127,7 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
     const playing = player.addListener('playingChange', event => setNative(value => value.owner === player ? { ...value, isPlaying: event.isPlaying } : value));
     return () => { status.remove(); playing.remove(); };
   }, [player]);
-  useEffect(() => { watch.current = new VisibleWatchTracker(); stalled.current = new PlaybackStallGuard(); setWatchMs(0); setPaused(false); if (video && !allowReplay) history.remember(video); }, [video?.video_id, history, allowReplay]);
+  useEffect(() => { resumeSeek.current.clear(); watch.current = new VisibleWatchTracker(); stalled.current = new PlaybackStallGuard(); setWatchMs(0); setPaused(false); if (video && !allowReplay) history.remember(video); }, [video?.video_id, history, allowReplay]);
   useEffect(() => {
     if (!video || needsPlaybackRefresh(video.playback.expires_at) || retryingVideo.current === video.video_id) return;
     controller.setGate({ focused: focusGate.current && viewableRef.current });
@@ -157,6 +157,12 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
     stalled.current.sample(player.currentTime * 1000, Date.now(), enabled);
     const timer = setInterval(() => {
       const position = Math.max(0, Math.round(player.currentTime * 1000));
+      if (resumeSeek.current.isPending(video.video_id)) {
+        const settled = resumeSeek.current.settled(video.video_id, position, player.duration * 1000, Date.now());
+        watch.current.sample(position, Date.now(), false);
+        if (settled === 'timeout' && sourceReady) controller.reportError(true);
+        return;
+      }
       if (stalled.current.sample(position, Date.now(), enabled)) controller.reportError(true);
       const total = watch.current.sample(position, Date.now(), eligible, player.duration * 1000);
       setWatchMs(total);
@@ -185,6 +191,7 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
     if (!video || retryingVideo.current === video.video_id) return;
     const selected = video.video_id; const request = generation.current;
     retryingVideo.current = selected;
+    resumeSeek.current.capture(selected, player.currentTime * 1000, playback.selection);
     controller.setGate({ focused: false }); setRenderedSelection(null);
     watch.current.sample(player.currentTime * 1000, Date.now(), false);
     try {
@@ -203,45 +210,56 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
     // A finished batch must not silently loop back to the first clip.
     else setPageError('You’re caught up. Fresh clips will appear when you reload.');
   }
+  const liked = !!video && clickedIds.includes(video.video_id);
+  const saved = !!video && savedIds.includes(video.video_id);
+  function onFrame(selection: number) {
+    if (selectionRef.current !== selection) return;
+    const id = current.current.video?.video_id;
+    const target = id ? resumeSeek.current.takeTarget(id, selection, Date.now()) : null;
+    if (target !== null) { controller.seekTo(target / 1000); watch.current.sample(target, Date.now(), false); }
+    setRenderedSelection(selection);
+  }
   return <View testID="feed-screen" style={styles.root} onLayout={event => { if (event.nativeEvent.layout.height > 0) setHeight(event.nativeEvent.layout.height); }}>
-    <BufferedVideoViews players={[firstPlayer, secondPlayer]} playback={playback} sourceReady={sourceReady} visible={videos.length > 0 && height > 0} fill={fillVideo} onFrame={selection => { if (selectionRef.current === selection) setRenderedSelection(selection); }} />
+    <BufferedVideoViews players={[firstPlayer, secondPlayer]} playback={playback} sourceReady={sourceReady} visible={videos.length > 0 && height > 0} fill={fillVideo} onFrame={onFrame} />
     {videos.length > 0 && height > 0 ? <FlatList ref={list} data={videos} extraData={index} removeClippedSubviews={false} keyExtractor={item => item.video_id} pagingEnabled snapToInterval={height} decelerationRate="fast" showsVerticalScrollIndicator={false}
       initialNumToRender={2} maxToRenderPerBatch={2} windowSize={3} getItemLayout={(_, position) => ({ length: height, offset: height * position, index: position })}
       viewabilityConfig={{ itemVisiblePercentThreshold: 80 }} onViewableItemsChanged={onViewable}
       renderItem={({ item, index: cardIndex }) => <View style={{ height, backgroundColor: 'transparent' }}>
-        <LinearGradient pointerEvents="none" colors={['#00000070', 'transparent', '#00000018', '#000000E8']} locations={[0, 0.35, 0.55, 1]} style={StyleSheet.absoluteFill} />
+        <FeedScrim />
         {cardIndex === index && <Pressable accessibilityRole="button" accessibilityLabel={paused ? 'Play video' : 'Pause video'} testID="toggle-playback" onPress={() => setPaused(value => !value)} style={styles.touchArea}>
           {paused && !playback.error && <View style={styles.pauseIcon}><Ionicons name="play" size={38} color="white" /></View>}
         </Pressable>}
         {cardIndex === index && (!sourceReady || !frameRendered || (native.status === 'loading' && !native.isPlaying)) && !playback.error && <View pointerEvents="none" style={styles.center}><ActivityIndicator color={theme.colors.accent} size="large" /><Text style={styles.loadingText}>Finding your flow…</Text></View>}
         {cardIndex === index && playback.error && <View style={styles.center}><View style={styles.errorCard}><Ionicons name="cloud-offline-outline" size={30} color={theme.colors.accent} /><Text style={styles.errorTitle}>A small interruption.</Text><Text style={styles.errorText}>{playback.error}</Text><Button title="Retry clip" onPress={() => void retryVideo()} /><Button title="Skip clip" secondary onPress={skip} />{playback.timedOut && <Button title="Reload feed" secondary onPress={onReload} />}</View></View>}
-        <View pointerEvents="box-none" style={[styles.description, { bottom: 27 }]}><View style={styles.tag}><Ionicons name="film-outline" size={11} color={theme.colors.accent} /><Text style={styles.tagText}>{source.mode === 'fixture' ? 'SAMPLE CLIP' : item.provider.toUpperCase()}</Text></View><Text style={styles.creator}>{item.creator.display_name ?? item.creator.handle ?? 'Video creator'}</Text>{preferences.captions && <Text style={styles.caption} maxFontSizeMultiplier={1.4} numberOfLines={3}>{item.caption}</Text>}
+        <FeedCaption byline={item.creator.display_name ?? item.creator.handle} caption={preferences.captions ? item.caption : undefined}>
           {(item.source_url || item.creator.attribution_url) && <Pressable accessibilityRole="link" accessibilityLabel="Open original video source" onPress={() => { void Linking.openURL(item.source_url ?? item.creator.attribution_url!).catch(() => setPageError('Unable to open the source link.')); }}><Text style={styles.hint}>View original ↗</Text></Pressable>}
-          <Text style={styles.hint}>Swipe up. Stay curious.</Text>
-          {cardIndex === videos.length - 1 && !nextCursor && <Pressable accessibilityRole="button" onPress={onReload}><Text style={styles.hint}>End of this batch · Reload feed</Text></Pressable>}
-        </View>
+        </FeedCaption>
       </View>} /> : <View style={styles.center}><View style={styles.empty}><Ionicons name="play-circle-outline" size={54} color={theme.colors.accent} /><Text style={styles.errorTitle}>{loading ? 'Your feed is warming up.' : 'You’re all caught up.'}</Text><Text style={styles.errorText}>{pageError ?? 'No new clips are available right now. Check again in a little while.'}</Text>{loading ? <ActivityIndicator color={theme.colors.accent} /> : <Button title={nextCursor ? 'Try next page' : 'Reload feed'} onPress={() => void fetchPage(nextCursor, !nextCursor)} />}</View></View>}
-    <View pointerEvents="box-none" style={[styles.header, { top: insets.top + 12 }]}><Brand size={25} /><View style={styles.feedLabel}><View style={styles.greenDot} /><Text style={styles.headerLabel}>{source.mode === 'fixture' ? 'DEMO' : source.mode === 'saved_instagram' ? 'SAVED REELS' : 'FOR YOU'}</Text></View><Pressable accessibilityRole="button" accessibilityLabel={fillVideo ? 'Fit whole video' : 'Fill screen'} onPress={() => setFillVideo(value => !value)} style={styles.roundButton}><Ionicons name={fillVideo ? 'contract-outline' : 'expand-outline'} size={18} color="white" /></Pressable><Pressable accessibilityRole="button" accessibilityLabel={muted ? 'Unmute video' : 'Mute video'} onPress={() => setMuted(!muted)} style={styles.roundButton}><Ionicons name={muted ? 'volume-mute-outline' : 'volume-high-outline'} size={20} color="white" /></Pressable></View>
-    {__DEV__ && videos.length > 0 && <View pointerEvents="none" style={styles.counter}><Text style={styles.counterText}>{index + 1} / {videos.length}{loading ? '  ·  loading' : ''}</Text><Text style={styles.counterText}>{Math.floor(watchMs / 1000)}s watched</Text></View>}
-    {videos.length > 0 && (index < videos.length - 1 || nextCursor) && <Pressable accessibilityRole="button" accessibilityLabel={index < videos.length - 1 ? 'Next clip' : nextCursor ? 'Load more clips' : 'Reload feed'} testID="next-clip" onPress={skip} style={[styles.roundButton, { position: 'absolute', right: 20, bottom: 58 }]}><Ionicons name={index < videos.length - 1 || nextCursor ? 'chevron-up' : 'refresh'} size={20} color="white" /></Pressable>}
-    {video && <View style={styles.actions}>
-      <Pressable accessibilityRole="button" accessibilityLabel={clickedIds.includes(video.video_id) ? 'Unclick video' : 'This clicks'} accessibilityState={{ selected: clickedIds.includes(video.video_id) }} onPress={() => onClickVideo(video)} style={styles.action}><Ionicons name={clickedIds.includes(video.video_id) ? 'heart' : 'heart-outline'} size={30} color={clickedIds.includes(video.video_id) ? theme.colors.coral : theme.colors.text} /><Text style={styles.actionLabel}>Clicks</Text></Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel={savedIds.includes(video.video_id) ? 'Unsave video' : 'Save video'} accessibilityState={{ selected: savedIds.includes(video.video_id) }} onPress={() => onSaveVideo(video)} style={styles.action}><Ionicons name={savedIds.includes(video.video_id) ? 'bookmark' : 'bookmark-outline'} size={28} color={savedIds.includes(video.video_id) ? theme.colors.accent : theme.colors.text} /><Text style={styles.actionLabel}>Save</Text></Pressable>
-      {video.source_url && <Pressable accessibilityRole="button" accessibilityLabel="Share original video" onPress={() => { void Share.share({ message: video.source_url! }).catch(() => setPageError('Unable to open sharing. Please retry.')); }} style={styles.action}><Ionicons name="arrow-redo-outline" size={28} color={theme.colors.text} /><Text style={styles.actionLabel}>Share</Text></Pressable>}
+    <FeedHeader top={insets.top + 8} muted={muted} fill={fillVideo} onMute={video ? () => setMuted(!muted) : undefined} onFill={video ? () => setFillVideo(value => !value) : undefined} />
+    {video && <View pointerEvents="box-none" style={feedRail}>
+      <FeedIconButton label={liked ? 'Unclick video' : 'This clicks'} icon={liked ? 'heart' : 'heart-outline'} selected={liked} color={liked ? theme.colors.coral : theme.colors.text} onPress={() => onClickVideo(video)} />
+      <FeedIconButton label={saved ? 'Unsave video' : 'Save video'} icon={saved ? 'bookmark' : 'bookmark-outline'} selected={saved} color={saved ? theme.colors.accent : theme.colors.text} onPress={() => onSaveVideo(video)} />
+      {video.source_url && <FeedIconButton label="Share original video" icon="arrow-redo-outline" onPress={() => { void Share.share({ message: video.source_url! }).catch(() => setPageError('Unable to open sharing. Please retry.')); }} />}
+      {index < videos.length - 1 || nextCursor
+        ? <FeedIconButton label={index < videos.length - 1 ? 'Next clip' : 'Load more clips'} icon="chevron-up" testID="next-clip" onPress={skip} />
+        : <FeedIconButton label="Reload feed" icon="refresh" onPress={onReload} />}
     </View>}
     {video && <View pointerEvents="none" style={styles.progress}><View style={{ height: 3, backgroundColor: theme.colors.accent, width: `${Math.min(100, Math.max(0, player.duration ? player.currentTime / player.duration * 100 : 0))}%` }} /></View>}
     {pageError && videos.length > 0 && <Pressable accessibilityRole="button" onPress={() => pageNeedsReset ? onReload() : void fetchPage(nextCursor)} style={styles.pageError}><Text style={styles.counterText}>{pageError} {pageNeedsReset ? 'Tap to reload.' : 'Tap to retry.'}</Text></Pressable>}
   </View>;
 }
 const styles = StyleSheet.create({
-  actions: { position: 'absolute', right: 13, bottom: 125, gap: 18 }, action: { alignItems: 'center', justifyContent: 'center', minWidth: 48, minHeight: 48, gap: 4 }, actionLabel: { color: theme.colors.text, fontSize: 11, fontWeight: '600' }, progress: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, backgroundColor: '#FFFFFF30' }, root: { flex: 1, backgroundColor: theme.colors.background }, touchArea: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' },
-  center: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center', padding: 28 }, empty: { width: '100%', maxWidth: 380, gap: 18, alignItems: 'center' },
-  header: { position: 'absolute', left: 23, right: 22, flexDirection: 'row', alignItems: 'center', gap: 8 }, brand: { color: '#fff', fontSize: 19, letterSpacing: -0.6, fontWeight: '700' },
-  feedLabel: { flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 'auto' }, headerLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, color: '#fff' }, greenDot: { height: 5, width: 5, borderRadius: 3, backgroundColor: theme.colors.accent },
-  roundButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF18', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#FFFFFF25' },
-  description: { position: 'absolute', left: 24, right: 78, gap: 9 }, tag: { flexDirection: 'row', alignItems: 'center', gap: 6 }, tagText: { color: theme.colors.accent, fontSize: 10, letterSpacing: 1.8, fontWeight: '700' },
-  caption: { color: '#fff', fontWeight: '700', fontSize: 18, lineHeight: 25, letterSpacing: -0.8 }, creator: { color: '#E0E5DD', fontSize: 13, fontWeight: '500' }, hint: { color: '#B3BBAF', fontSize: 11, marginTop: 5 },
-  counter: { position: 'absolute', right: 20, bottom: 30, gap: 5, alignItems: 'flex-end' }, counterText: { color: theme.colors.muted, fontSize: 10 }, pauseIcon: { height: 82, width: 82, borderRadius: 42, backgroundColor: '#00000050', alignItems: 'center', justifyContent: 'center' },
-  loadingText: { color: '#D9E5D2', fontSize: 12, marginTop: 16 }, errorCard: { borderRadius: 26, backgroundColor: '#16161BF5', borderColor: theme.colors.border, borderWidth: 1, padding: 24, gap: 15, width: '100%', maxWidth: 350 },
-  errorTitle: { color: theme.colors.text, fontSize: 24, fontWeight: '600', letterSpacing: -0.5 }, errorText: { color: theme.colors.muted, fontSize: 14, lineHeight: 21 }, pageError: { position: 'absolute', top: 110, left: 20, right: 20, padding: 14, borderRadius: 12, backgroundColor: theme.colors.surface },
+  progress: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, backgroundColor: '#FFFFFF30' },
+  root: { flex: 1, backgroundColor: theme.colors.background },
+  touchArea: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
+  center: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', padding: 28 },
+  empty: { width: '100%', maxWidth: 380, gap: 18, alignItems: 'center' },
+  hint: { color: theme.colors.muted, fontFamily: theme.fonts.bold, fontSize: 12, lineHeight: 18 },
+  counterText: { color: theme.colors.muted, fontFamily: theme.fonts.body, fontSize: 13 },
+  pauseIcon: { height: 68, width: 68, borderRadius: 34, backgroundColor: '#09090B70', alignItems: 'center', justifyContent: 'center' },
+  loadingText: { color: theme.colors.text, fontFamily: theme.fonts.body, fontSize: 13, marginTop: 14 },
+  errorCard: { borderRadius: 26, backgroundColor: '#16161BF5', borderColor: theme.colors.border, borderWidth: 1, padding: 24, gap: 15, width: '100%', maxWidth: 350 },
+  errorTitle: { color: theme.colors.text, fontFamily: theme.fonts.display, fontSize: 24, letterSpacing: -0.5 },
+  errorText: { color: theme.colors.muted, fontFamily: theme.fonts.body, fontSize: 14, lineHeight: 21 },
+  pageError: { position: 'absolute', top: 110, left: 20, right: 20, padding: 14, borderRadius: 12, backgroundColor: theme.colors.surface },
 });

@@ -1,6 +1,6 @@
 import { parsePlayback } from '../../contracts/validate';
 import type { PlaybackSource } from '../../contracts/generated';
-export type UnifiedVideo = { item_id: string; kind: 'study_video' | 'entertainment_video'; video: { video_id: string; playback: PlaybackSource; title?: string; caption?: string; creator?: { handle?: string | null } }; course_context?: { title: string }; reason_text?: string };
+export type UnifiedVideo = { item_id: string; kind: 'study_video' | 'entertainment_video'; video: { video_id: string; playback: PlaybackSource; title?: string; caption?: string; source_url?: string | null; creator?: { handle?: string | null; display_name?: string | null } }; course_context?: { title: string }; reason_text?: string };
 export type UnifiedQuiz = { item_id: string; kind: 'quiz'; quiz: { quiz_instance_id: string; prompt: string; options: { option_id: string; text: string }[] } };
 export type UnifiedItem = UnifiedVideo | UnifiedQuiz;
 export interface UnifiedPage { session_id: string; recommendation_revision: number; items: UnifiedItem[]; next_cursor: string | null }

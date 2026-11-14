@@ -1336,3 +1336,37 @@ The synthetic browser test exercises real media elements with mocked auth/API:
 expiry on resume, no playback while resolution is pending, delayed background
 resolution, fresh-source resume, exactly one renewal for persistent missing media,
 and no video playback/renewal when a quiz resumes. No provider/model calls.
+
+## Prototype styling and Instagram demo connection — November 14, 2026
+
+Applied the v2 prototype's near-black surfaces, lavender accents, Syne display
+type, Plus Jakarta Sans body type, and white active navigation pill to the app.
+Both feed screens share the same unobtrusive captions, video controls, and
+transparent action rail. The mixed-feed quiz uses the real prompt/options and
+server grade response, with a scrollable card, labeled radio options, explicit
+retry, and continuation after grading. Courses keeps the course and connection
+management routes. You shows session-local collections and existing settings.
+
+The signed-in Instagram form accepts an owned browser session's cookie value
+and username through the authenticated `POST /v1/instagram/browser-session`
+route. It masks the credential, holds it in component state, clears it after
+successful connection, and avoids displaying response errors that might include
+the secret. Existing status and disconnect routes are retained. Fixture-mode
+Courses does not show the connection form.
+
+Validation: `npm --workspace @hackumass/mobile run typecheck` and
+`npm --workspace @hackumass/mobile test` passed (54 tests). The proxy test needed
+permission to bind loopback. Automatic approval review rejected starting the
+isolated Expo browser layout preview, so these results do not confirm rendered
+390×844 layout or native playback. No live auth, Instagram or model calls were
+made for this UI change.
+
+Combined integration review preserved both UI and recovery histories. It also
+restores the last observed media position once, after a renewed generation's
+first frame. Old-generation callbacks cannot consume this seek. Progress events
+and visible watch credit remain suppressed until the actual position is restored;
+resume/control anchors retain the prior real observation. A failed seek times out
+into recovery without discarding that anchor. Two additional tests cover this
+behavior. Combined TypeScript and 60 mobile tests pass; all three bundled fonts
+have valid static sfnt tables and no variable-font fvar table. Native verification
+follows installation; no new browser preview was started for the combined UI.
