@@ -84,11 +84,10 @@ def test_fact_reuse_requires_two_distinct_matching_nonempty_facts(database, fact
 @pytest.mark.parametrize(
     "owner,options,subject",
     [
-        ("bob", {}, "Computer science"),
-        ("alice", {"level": "advanced"}, "Computer science"),
-        ("alice", {"language": "es"}, "Computer science"),
-        ("alice", {"notation": "alternate"}, "Computer science"),
-        ("alice", {}, "Finance"),
+        ("bob", {}, "accounting"),
+        ("alice", {"level": "advanced"}, "accounting"),
+        ("alice", {"language": "es"}, "accounting"),
+        ("alice", {"notation": "alternate"}, "accounting"),
     ],
 )
 def test_identical_facts_do_not_cross_ownership_or_compatibility(database, owner, options, subject):
@@ -135,6 +134,48 @@ def test_identical_facts_preserve_embedding_model_compatibility(database):
     embeddings = Embeddings()
     embeddings.model = "different-model"
     second, reused = SemanticTopics(database, embeddings).bind(
-        "alice", "b", {**lesson("Cost behavior"), "facts": FACTS}
+        "alice", "b", {**lesson("Cost behavior"), "subject": "accounting", "facts": FACTS}
+    )
+    assert not reused and second["topic_id"] != first["topic_id"]
+
+
+def test_identical_facts_bridge_generated_subject_labels(database):
+    topics = SemanticTopics(database, Embeddings())
+    original = {**lesson("Cost behavior"), "subject": "cost-volume-profit analysis", "facts": FACTS}
+    first, _ = topics.bind("alice", "a", original)
+    second, reused = topics.bind(
+        "alice", "b", {**lesson("different CVP title"), "subject": "accounting", "facts": FACTS}
+    )
+    assert reused and second["topic_id"] == first["topic_id"]
+    assert second["lesson"] == original
+
+
+@pytest.mark.parametrize(
+    "facts", [[], [FACTS[0]], [FACTS[0], "Marginal cost measures incremental output cost."]]
+)
+def test_subject_labels_cannot_be_bridged_by_cosine_similarity_alone(database, facts):
+    topics = SemanticTopics(database, Embeddings())
+    first, _ = topics.bind(
+        "alice", "a", {**lesson("Cost behavior"), "subject": "accounting", "facts": FACTS}
+    )
+    second, reused = topics.bind(
+        "alice", "b", {**lesson("Costs"), "subject": "economics", "facts": facts}
+    )
+    assert not reused and second["topic_id"] != first["topic_id"]
+
+
+def test_identical_facts_preserve_compatibility_version(database):
+    topics = SemanticTopics(database, Embeddings())
+    first, _ = topics.bind("alice", "a", {**lesson("Cost behavior"), "facts": FACTS})
+    database.run(
+        "alice",
+        lambda tx: tx.update(
+            tables.topics,
+            {"user_id": "alice", "topic_id": first["topic_id"]},
+            {"compatibility": {**first["compatibility"], "version": "1"}},
+        ),
+    )
+    second, reused = topics.bind(
+        "alice", "b", {**lesson("different title"), "subject": "accounting", "facts": FACTS}
     )
     assert not reused and second["topic_id"] != first["topic_id"]

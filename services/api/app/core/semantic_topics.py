@@ -76,6 +76,9 @@ class SemanticTopics:
         text = "\n".join([lesson["title"], lesson["learning_goal"], *lesson.get("facts", [])])
         exact = digest({"text": " ".join(text.casefold().split()), **compatibility})
         facts = approved_fact_set(lesson)
+        fact_compatibility = {
+            key: value for key, value in compatibility.items() if key != "subject"
+        }
         existing = self.database.read(
             lambda tx: tx.find_one(tables.topics, {"user_id": owner, "exact_key": exact})
         )
@@ -84,15 +87,21 @@ class SemanticTopics:
         def choose(tx):
             # database.run(owner) serializes concurrent choices for this owner. A
             # transaction retry re-reads candidates before inserting a new topic.
-            candidates = tx.find(
-                tables.topics, {"user_id": owner, "compatibility_key": digest(compatibility)}
-            )
+            candidates = tx.find(tables.topics, {"user_id": owner})
             matches = []
             for row in candidates:
+                other_compatibility = row.get("compatibility", {})
+                if {
+                    key: value for key, value in other_compatibility.items() if key != "subject"
+                } != fact_compatibility:
+                    continue
                 if facts is not None and facts == approved_fact_set(row["lesson"]):
                     # Exact fact agreement wins over a title-driven embedding
-                    # match. Scope/compatibility were enforced by this query.
+                    # match and tolerates generated subject-label variation.
+                    # Owner and every other compatibility field still match.
                     matches.append((2.0, row))
+                    continue
+                if other_compatibility != compatibility:
                     continue
                 other = row["embedding"]
                 if len(other) == len(vector):
