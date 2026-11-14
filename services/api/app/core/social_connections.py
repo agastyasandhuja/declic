@@ -20,7 +20,10 @@ from app.modules.entertainment.instagram_connection import (
     SESSION_FIELDS,
     device_settings,
 )
-from app.modules.entertainment.instagram_login import login_interactively
+from app.modules.entertainment.instagram_login import (
+    login_interactively,
+    login_with_browser_session,
+)
 from app.modules.entertainment.pagination import batch_revision
 from app.modules.entertainment.repository import storage_errors
 from app.modules.entertainment.service import (
@@ -38,6 +41,12 @@ class Login(BaseModel):
     password: SecretStr = Field(min_length=1, max_length=1024)
     verification_code: SecretStr | None = Field(default=None, min_length=6, max_length=6)
     verification_method: Literal["totp"] = "totp"
+
+
+class BrowserSessionLogin(BaseModel):
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+    username: str = Field(min_length=1, max_length=30, pattern=r"^[A-Za-z0-9_.]+$")
+    session_id: SecretStr = Field(min_length=31, max_length=16384)
 
 
 class SocialConnections:
@@ -105,18 +114,25 @@ class SocialConnections:
             return body.verification_code.get_secret_value()
 
         try:
-            verified = login_interactively(
-                client,
-                body.username,
-                body.password.get_secret_value(),
-                {},
-                read_code=read_code,
-                choose_method=lambda _prompt: body.verification_method,
-                expected_username=body.username,
-                allowed_methods={"totp"},
-            )
+            if isinstance(body, BrowserSessionLogin):
+                verified = login_with_browser_session(
+                    client, body.username, body.session_id.get_secret_value(), {}
+                )
+            else:
+                verified = login_interactively(
+                    client,
+                    body.username,
+                    body.password.get_secret_value(),
+                    {},
+                    read_code=read_code,
+                    choose_method=lambda _prompt: body.verification_method,
+                    expected_username=body.username,
+                    allowed_methods={"totp"},
+                )
             session = {key: value for key, value in verified.items() if key in SESSION_FIELDS}
-            sealed = self.vault.seal(owner, "instagram", {"session": session, "cursor": None})
+            sealed = self.vault.seal(
+                owner, "instagram", {"session": session, "cursor": None, "surface": "discover"}
+            )
         except Exception as error:
             code, message = (
                 (error.code, error.message)
@@ -129,17 +145,27 @@ class SocialConnections:
                     ),
                 )
             )
-            device = self.vault.seal(
-                owner, "instagram", {"session": device_settings(client.get_settings())}
+            # A rejected replacement cookie must not discard a working login.
+            # Do not restore the earlier row: a concurrent disconnect/reconnect
+            # may have intentionally changed it while verification was running.
+            keep_previous = (
+                isinstance(body, BrowserSessionLogin)
+                and previous
+                and previous.get("status") == "connected"
+                and previous.get("sealed")
             )
-            self.database.run(
-                owner,
-                lambda tx: tx.update(
-                    tables.connections,
-                    {**query, "attempt_id": attempt_id},
-                    {"status": "reconnect_required", "sealed": device},
-                ),
-            )
+            if not keep_previous:
+                device = self.vault.seal(
+                    owner, "instagram", {"session": device_settings(client.get_settings())}
+                )
+                self.database.run(
+                    owner,
+                    lambda tx: tx.update(
+                        tables.connections,
+                        {**query, "attempt_id": attempt_id},
+                        {"status": "reconnect_required", "sealed": device},
+                    ),
+                )
             raise APIError(409, code, message) from None
         finally:
             provider.close()
@@ -510,6 +536,10 @@ def create_router(social):
 
     @router.post("/connect", status_code=202)
     def connect(user: CurrentUser, body: Login):
+        return social.connect(user.user_id, body)
+
+    @router.post("/browser-session", status_code=202)
+    def browser_session(user: CurrentUser, body: BrowserSessionLogin):
         return social.connect(user.user_id, body)
 
     @router.delete("/connection", status_code=204)

@@ -6,7 +6,7 @@ const { randomUUID } = require('node:crypto');
 const routes = [
   ['GET', /^\/v1\/(me|feed|learning\/progress|preparation|canvas\/connection|instagram\/connection|academics\/profile|entertainment\/feed)$/],
   ['GET', /^\/v1\/(academics\/jobs\/[^/]+|(learning|entertainment)\/videos\/[^/]+(\/playback)?)$/],
-  ['POST', /^\/v1\/(feed\/(sessions|events)|canvas\/(token|sync)|instagram\/connect|preparation\/retry)$/],
+  ['POST', /^\/v1\/(feed\/(sessions|events)|canvas\/(token|sync)|instagram\/(connect|browser-session)|preparation\/retry)$/],
   ['POST', /^\/v1\/(feed\/sessions\/[^/]+\/quiz-gate|quizzes\/[^/]+\/(answers|recover))$/],
   ['DELETE', /^\/v1\/(canvas|instagram)\/connection$/],
 ];
