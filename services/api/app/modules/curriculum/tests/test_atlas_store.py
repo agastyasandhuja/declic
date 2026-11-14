@@ -115,3 +115,17 @@ class LiveAtlasTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_source_free_projection_is_owner_scoped():
+    calls = []
+
+    class Collection:
+        def find_one(self, query, projection=None):
+            calls.append((query, projection))
+            # Embedded ownership must be checked even if the database row is malformed.
+            return {"profile": {"user_id": "other", "revision": 1}}
+
+    atlas = AtlasAcademicStore({"academic_profiles": Collection()})
+    assert atlas.load_profile("alice", include_sources=False) is None
+    assert calls == [({"user_id": "alice"}, {"profile._sources": 0})]

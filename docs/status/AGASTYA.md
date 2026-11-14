@@ -1566,3 +1566,35 @@ or goals differ. Final consolidated API verification after these changes:
 provider calls. The first two accepted live videos reached full rendering after
 content/frame checks; a rejected causal diagram is being replaced with comparison
 visuals. Private storage publication and native quiz verification remain pending.
+
+## Feed inventory and read latency repair — November 14, 2026
+
+- Live owner-scoped read diagnosis found 82 distinct playable Instagram clips,
+  successful background sync, an upstream continuation, and no provider cooldown.
+  Repetition was reproducible in deterministic ranking: the 50-slot mixed study
+  history could make old low-sorted IDs appear unseen before later clips in the
+  100-record snapshot were ever issued.
+- Unified feed now retains a separate, bounded 200-ID least-recently-issued
+  entertainment queue across feed revision/refresh, prioritizing unseen clips and
+  new arrivals before replay. Study fairness/history and quiz semantics are unchanged.
+- `CatalogService.candidate_snapshot(user, limit)` supplies one current owner-scoped
+  atomic read to `FeedEntertainmentReader`; paginated adapters retain their existing
+  fallback. No process cache can retain another account or a disconnected batch.
+- `AcademicService.get_feed_snapshot(user_id)` projects profile/plans from one
+  revision. Profile/feed reads exclude private `_sources` at Atlas query time;
+  source resolution/import/correction paths retain full private reads.
+- Bounded real-cloud observations before/after (not a controlled load benchmark):
+  academic objective projection 195ms → 30ms; entertainment candidate read
+  206ms across five full reads → 39ms with one read. Study URL projection remained
+  1.2–1.5s and is being repaired separately by the storage integration stream.
+- Local API/cloud-Atlas timings with a test-only trusted identity and normal rate
+  limiting: profile 280ms (83.9KB), preparation 215ms, Instagram status 192ms.
+  Intentionally stale event batches accepted zero events: 1/5/10 events required
+  333/589/1001ms. These exclude remote Supabase authentication and the phone tunnel;
+  accepted events perform more writes, and feed signing holds the owner transaction.
+- Validation: focused inventory/runtime/policy/academic tests: 19 passed, 3 skipped,
+  including owner-projection isolation. Broader API/playback/publication-guard,
+  academic eligibility/handoff, entertainment tests: 89 passed, 1 skipped and one
+  pre-existing `api_handoff.py::test_academic_handoff` 404 failure, reproduced on
+  unchanged main. Real MongoDB-only tests skipped without isolated test URI.
+  No provider generation, new Instagram retrieval, or phone playback claimed.

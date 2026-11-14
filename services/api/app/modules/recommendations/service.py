@@ -1,4 +1,3 @@
-from collections import Counter
 from copy import deepcopy
 from datetime import datetime
 
@@ -422,13 +421,26 @@ class FeedService:
                             "teaching_approach": video.teaching_approach,
                         }
                     elif clips:
-                        counts = Counter(h["video_id"] for h in state["history"])
+                        # The study window is only 50 mixed slots. Using its counts
+                        # for a 100-Reel catalog makes early IDs look unseen again
+                        # before later clips are ever reached. Keep a separate,
+                        # bounded least-recently-issued queue across page refreshes.
+                        recent = state.get("entertainment_history")
+                        if recent is None:
+                            recent = list(dict.fromkeys(
+                                h["video_id"] for h in state["history"] if "course_id" not in h
+                            ))
+                        positions = {video_id: index for index, video_id in enumerate(recent)}
                         last_id = state["history"][-1]["video_id"] if state["history"] else None
                         candidates = [c for c in clips if c.video_id != last_id]
                         if not candidates:
                             # Never immediately replay the only available clip.
                             break
-                        clip = min(candidates, key=lambda c: (counts[c.video_id], c.video_id))
+                        clip = min(candidates, key=lambda c: (positions.get(c.video_id, -1), c.video_id))
+                        state["entertainment_history"] = [
+                            *[video_id for video_id in recent if video_id != clip.video_id],
+                            clip.video_id,
+                        ][-200:]
                         item = {
                             "kind": "entertainment_video",
                             "video": clip.model_dump(mode="json"),

@@ -15,14 +15,19 @@ class FeedAcademicReader:
         self.clock = clock
 
     def list_objectives(self, user_id: str) -> list[ObjectiveCandidate]:
-        profile = self.service.get_profile(user_id)
+        snapshot = getattr(self.service, "get_feed_snapshot", None)
+        if snapshot is not None:
+            profile, plans = snapshot(user_id)
+        else:
+            profile = self.service.get_profile(user_id)
+            plans = self.service.get_validated_plans(user_id) if profile else []
         if profile is None:
             return []
         courses = {course["course_id"]: course for course in profile["courses"]}
         assessments = {item["assessment_id"]: item for item in profile["assessments"]}
         candidates = []
         now = self.clock()
-        for plan in self.service.get_validated_plans(user_id):
+        for plan in plans:
             if plan["profile_revision"] != profile["revision"]:
                 continue
             course = courses[plan["course_id"]]

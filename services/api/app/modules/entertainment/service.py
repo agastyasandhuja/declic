@@ -65,6 +65,11 @@ class CatalogService:
     def _items(self, user):
         return self.repository.read_items(user)
 
+    def candidate_snapshot(self, user, limit=100):
+        """One owner-scoped atomic snapshot for the unified feed, without paging reads."""
+        now = self.clock()
+        return [item for item in self._items(user) if playable(item, now)][:max(0, min(limit, 100))]
+
     def list_candidates(self, user, cursor=None, limit=5):
         if type(limit) is not int or not 1 <= limit <= 20:
             raise CatalogFailure(422, 'INVALID_LIMIT', 'Choose a page size from 1 to 20.')

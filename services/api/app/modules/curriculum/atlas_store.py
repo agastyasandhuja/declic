@@ -43,9 +43,10 @@ class AtlasAcademicStore:
     def __init__(self, database) -> None:
         self._db = database
 
-    def load_profile(self, user_id: str) -> dict | None:
+    def load_profile(self, user_id: str, *, include_sources=True) -> dict | None:
         _require(user_id)
-        doc = self._db[PROFILES].find_one({"user_id": user_id})
+        projection = None if include_sources else {"profile._sources": 0}
+        doc = self._db[PROFILES].find_one({"user_id": user_id}, projection=projection)
         if not doc or doc["profile"].get("user_id") != user_id:
             return None
         return doc["profile"]

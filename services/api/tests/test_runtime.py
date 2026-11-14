@@ -101,3 +101,28 @@ def test_identity_migration_conflict_keeps_schema_and_no_marker(database):
         apply_identity_catalog(database)
     assert database.mongo.api_migrations.find_one({'_id': IDENTITY_CATALOG_MIGRATION_ID}) is None
     assert database.mongo.app_profiles.options()['validator'] == {'user_id': {'$type': 'string'}}
+
+
+def test_feed_snapshot_reads_once_and_never_reuses_another_owner_or_revision():
+    valid = next(item for item in FixtureCatalog().items if item['availability'] == 'ready'
+                 and item['playback']['kind'] != 'embed')
+    records = []
+    for i in range(100):
+        record = copy.deepcopy(valid)
+        record.update(video_id=f'video_{i}', provider_video_id=str(i))
+        record['playback']['expires_at'] = None
+        records.append(record)
+
+    class Repository:
+        calls = 0
+        def read_items(self, user):
+            self.calls += 1
+            return records if user['user_id'] == 'owner' else []
+
+    repository = Repository()
+    reader = FeedEntertainmentReader(CatalogService(repository))
+    assert len(reader.list_candidates('owner', 200)) == 100
+    assert repository.calls == 1
+    assert reader.list_candidates('other', 200) == []
+    records.clear()  # A disconnect/replacement cannot leave a process-local stale batch.
+    assert reader.list_candidates('owner', 200) == []
