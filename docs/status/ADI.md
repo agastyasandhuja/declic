@@ -170,6 +170,32 @@ feed parity and ongoing personalization updates remain pending checks.
 
 ## Delivered
 
+### Physical-phone connection preparation — November 14, 2026
+
+- Started a separate ordinary Expo Go server with
+  `HACKUMASS_INSTAGRAM_PREVIEW=0 npx expo start --go --lan --port 8082`.
+  The private Instagram simulator server remains on localhost:8081. This phone
+  preview contains public fixture clips, not the saved personal Instagram batch.
+- User confirmed connecting the Mac to their iPhone hotspot. Refreshed Expo after
+  the address change and generated a local QR PNG using Expo CLI's installed
+  QR encoder. No hotspot password or provider/session credential was requested.
+- `npx expo whoami` returned ritzditz. Local phone-server checks returned HTTP 200
+  for the Expo manifest (SDK 58.0.0) and its iOS development bundle. Scanned that
+  bundle for the actual Instagram IDs, creator handles and media URLs: no matches.
+- Xcode device discovery showed the simulator only, which does not prevent Expo
+  Go network use. Metro's phone-server debug target list was empty when checked.
+  The user reported that the hotspot LAN connection stalled/could not connect.
+- Stopped the phone's LAN server and started
+  `HACKUMASS_INSTAGRAM_PREVIEW=0 npx expo start --go --tunnel --port 8082`.
+  Expo supplied an HTTPS on.expo.app tunnel without an additional installation.
+  Verified its iOS manifest externally: HTTP 200, SDK 58.0.0, launch asset present.
+  Generated and displayed a replacement QR for that active tunnel. The private
+  simulator server was not tunneled or changed. Phone launch/playback confirmation
+  remains pending; do not infer it from the server/QR being ready. The three A1
+  acceptance gaps remain open.
+
+### Mobile prototype implementation
+
 - Read root/nested instructions, Adi's task guide, project/integration documents,
   and identity, entertainment, academics, learning and feed contracts.
 - Root npm workspace and lockfile, Node 24 declaration, Expo SDK 58 + React Native

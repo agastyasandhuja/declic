@@ -33,6 +33,41 @@ Shared fixtures and schemas are included in Metro's watch folders.
 
 ## Try the prototype
 
+### Physical iPhone connection
+
+The ordinary phone preview uses public fixture clips. It can run alongside the
+private simulator preview on another port. From apps/mobile:
+
+```sh
+HACKUMASS_INSTAGRAM_PREVIEW=0 npx expo start --go --lan --port 8082
+```
+
+Connect the Mac and phone to the same reachable Wi-Fi, or enable Personal Hotspot
+on the phone and connect the Mac to it. After changing networks, restart this
+server to get a QR code using the new Mac address. On the iPhone, sign in to Expo
+Go with the same Expo account as the CLI, scan the QR using Camera, open Expo Go,
+and allow local-network access if prompted. Choose Explore the demo → Your feed.
+Keep the Expo server running while testing. An SDK mismatch requires a compatible
+Expo Go version; record the actual error rather than assuming phone playback works.
+
+If the phone cannot reach the Mac on Wi-Fi/hotspot, stop only the phone server
+and use Expo's tunnel, then scan its replacement QR code:
+
+```sh
+HACKUMASS_INSTAGRAM_PREVIEW=0 npx expo start --go --tunnel --port 8082
+```
+
+The tunnel is for the public fixture preview. Its URL changes when the server
+restarts; use the currently displayed QR. Both Expo Go and the CLI must use the
+same Expo account. The tunnel requires an internet connection on both devices.
+
+The saved Instagram mode remains localhost-only and is not included in this phone
+bundle. Do not start it through a LAN or public tunnel. A private per-user feed on
+the phone needs its own protected integration; this initial connection test does
+not complete A1 authorization or validate Instagram playback on a physical device.
+
+### Fixture walkthrough
+
 1. Choose **Explore the demo** on the sign-in screen. This entry exists only in
    development (`__DEV__` plus EXPO_PUBLIC_ENABLE_PREVIEW, default true).
 2. Swipe the full-height **Your feed** cards. Tap to pause; use the speaker control
