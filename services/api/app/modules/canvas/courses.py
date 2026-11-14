@@ -59,6 +59,16 @@ def _course_params() -> list[tuple[str, str]]:
     ]
 
 
+def fetch_course_syllabi(client: CanvasClient):
+    """Yield (external_course_id, course_name, full_syllabus_text|None) for the
+    student's current courses. Full text (not a preview) for Gemini extraction."""
+    for raw in client.paginate("/api/v1/courses", _course_params()):
+        if not isinstance(raw, dict) or raw.get("id") is None:
+            continue
+        text = _plain_text(raw.get("syllabus_body")) or None
+        yield str(raw["id"]), str(raw.get("name") or ""), text
+
+
 def summarize_current_courses(client: CanvasClient) -> list[CourseAccess]:
     """Return a preview of every current course this student can access.
 

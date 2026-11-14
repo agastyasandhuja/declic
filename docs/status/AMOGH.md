@@ -24,6 +24,38 @@ Live access confirmed with Amogh's own access token in `developer_token` mode.
 - `--demo` mode and synthetic demo data so the output shape is viewable with
   no token (clearly labelled "not a live sync").
 
+## M3 — Gemini course profile extraction (2026-11-14, done + live-verified)
+
+- Real Google Gemini integration under `services/api/app/modules/curriculum/`,
+  standard library only (REST generateContent, structured JSON output).
+- Pipeline: resolve a user's uploaded sources -> send excerpts + source IDs to
+  Gemini -> parse -> validate in backend -> assemble a versioned AcademicProfile.
+- Gemini returns course units/objectives, assessments with dates + scope,
+  textbooks, all citing source IDs. Prompt treats course text as untrusted data.
+- Backend validation: drops invented source IDs, coerces bad enums, never
+  manufactures an exam time, leaves unknowns null, warns on conflicting dates.
+- GEMINI_API_KEY / GEMINI_MODEL / GEMINI_TIMEOUT are server-side only
+  (services/api/.env.gemini.local, gitignored). Key is wrapped; never logged.
+- Model is configurable; `list_models` CLI discovers Flash ids. Demo verified
+  live with `gemini-3.8-flash` (666 prompt + 844 candidate tokens).
+- PRIMARY path is live Canvas, not upload: `CanvasSourceResolver` pulls the
+  signed-in student's current courses + syllabi via the M1 token and feeds each
+  to Gemini. Upload is only the fallback (`run_demo --source upload`).
+- Verified LIVE end-to-end on real UMass Canvas (2026-11-14):
+  `python3 -m app.modules.curriculum.run_demo` pulled 7 real courses, Gemini
+  extracted 4 with syllabi (CICS-210, COMPSCI-250, MATH-233, Intro to C), 3
+  without a syllabus marked needs_review. Also verified on the synthetic syllabus
+  (Final-exam date left blank for TBA; optional topic flagged not exam scope).
+- Model note: `gemini-3.8-flash` was slow (high thinking, minutes/call) and hit
+  503 overload. Switched to `gemini-flash-lite-latest` (~1-2s/course); thinking
+  level configurable (GEMINI_THINKING_LEVEL, default low). Client retries
+  timeouts and 429/503.
+- `python3 -m unittest app.modules.curriculum.tests.test_curriculum` -> 16 pass.
+- Not done here: M4 lesson planning (next, also Gemini); FastAPI routes (core
+  not initialized); Atlas persistence (local JSON stand-in for now); M2 depth
+  (modules/files/assignments — most real syllabus bodies are thin); PDF/pptx
+  text extraction (upload fallback uses .txt/.md).
+
 ## Research findings (2026-11-13, UMass Amherst)
 
 - Canvas base URL is `https://umamherst.instructure.com`. Checked with

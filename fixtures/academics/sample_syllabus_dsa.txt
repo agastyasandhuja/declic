@@ -1,0 +1,24 @@
+SYNTHETIC COURSE SYLLABUS — for demo use only (not real course data)
+
+Course: Introduction to Data Structures (DEMO 187)
+Term: Fall 2026
+Course time zone: America/New_York
+
+Weekly units:
+  Unit 1. Arrays and complexity — Big-O notation, array traversal.
+  Unit 2. Linked lists — nodes and pointers, singly vs doubly linked,
+          inserting and deleting nodes, iterative reversal of a singly linked list.
+  Unit 3. Stacks and queues — LIFO/FIFO, array- and list-backed implementations.
+  Unit 4. Trees — binary trees, traversals, binary search trees.
+
+Assessments:
+  Midterm 1 — Wednesday, October 14, 2026. Covers Units 1 and 2 (arrays and
+    linked lists), including linked-list reversal. In-class.
+  Final exam — cumulative. Date to be announced by the registrar.
+  Weekly quizzes — most Fridays.
+
+Textbook: "Introduction to Algorithms" by Cormen, Leiserson, Rivest, Stein,
+  4th edition. Chapters assigned per unit.
+
+Note: fast/slow pointer cycle detection is mentioned as optional enrichment and
+is not required for any exam.

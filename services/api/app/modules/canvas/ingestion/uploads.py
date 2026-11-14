@@ -67,6 +67,42 @@ def validate_upload(filename: str, data: bytes) -> str:
     return ext
 
 
+def _user_dir(storage_dir: Path, user_id: str) -> Path:
+    return storage_dir / "uploads" / _digest(user_id)
+
+
+def load_sources(user_id: str, storage_dir: Path) -> list[dict]:
+    """Return the SourceDocument records this user has uploaded (may be empty)."""
+    manifest = _user_dir(storage_dir, user_id) / "sources.json"
+    if not manifest.exists():
+        return []
+    return json.loads(manifest.read_text(encoding="utf-8"))
+
+
+def read_text(record: dict, storage_dir: Path) -> str | None:
+    """Return decoded text for a text/markdown upload, else None.
+
+    Binary formats (pdf/pptx/docx) need an extraction dependency that is not
+    installed yet; those return None until M2 adds real extraction.
+    """
+    ref = record.get("storage_ref", "")
+    prefix = "local-private://uploads/"
+    if not ref.startswith(prefix):
+        return None
+    rel = ref[len(prefix):]
+    user_folder, _, blob = rel.partition("/")
+    path = (storage_dir / "uploads" / user_folder / blob).resolve()
+    # Stay strictly inside the upload store (defence against a tampered ref).
+    if (storage_dir / "uploads").resolve() not in path.parents or not path.is_file():
+        return None
+    if path.suffix.lower() not in (".txt", ".md"):
+        return None
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
 def store_upload(
     *,
     user_id: str,
