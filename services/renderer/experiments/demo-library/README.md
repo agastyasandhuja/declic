@@ -52,3 +52,19 @@ actors and props rather than an arbitrary action generator. 3D figures face thei
 nearby task; scenes that require lifting, tool use or realistic contact need
 specific geometry/motion work and inspection. Parent-authored scene data still
 requires factual and visual review for each new topic.
+
+For a sustained batch, `batch_render.py run --work /path/work --vendor /path/three.module.js`
+keeps two renderer slots and exports pending stills/contact sheets first. It waits
+for explicit per-lesson approval, retaining completed outputs across restarts.
+After actually inspecting the frames, record the finding with:
+
+```sh
+python services/renderer/experiments/demo-library/batch_render.py approve --work /path/work --id demo_example --reviewer codex-parent --notes 'Observed frame findings; full motion/audio review still pending'
+```
+
+Approval binds every reviewed frame and exact lesson/pack/renderer hashes. It only
+allows the full video render; it is **not** publication approval. A singleton
+workspace lock prevents a second batch coordinator from doubling concurrency.
+Logs stay under `work/logs`. Final audio is normalized to −16 LUFS/−1 dBTP by an
+audio-only encode before the unchanged technical media validation. No new voice
+request is needed for that delivery adjustment.

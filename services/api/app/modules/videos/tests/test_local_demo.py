@@ -56,3 +56,16 @@ def test_batch_identity_and_matrix_dimensions():
     assert scene.matrix_a[0] == [1, 2]
     with pytest.raises(ValidationError):
         Scene(kind="matrix", matrix_a=[[1, 2]], matrix_b=[[1, 2], [3, 4]])
+
+
+def test_committed_demo_has_six_lessons_per_course_and_48_questions():
+    from collections import Counter
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[6] / "fixtures/learning/demo-library/lessons.json"
+    batch = Batch.model_validate_json(path.read_text())
+    assert len(batch.lessons) == 24
+    assert Counter(lesson.course_id for lesson in batch.lessons) == {
+        "demo_cs210": 6, "demo_acc233": 6, "demo_his110": 6, "demo_math235": 6,
+    }
+    assert sum(len(lesson.quizzes) for lesson in batch.lessons) == 48

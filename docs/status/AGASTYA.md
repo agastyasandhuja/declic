@@ -1712,3 +1712,16 @@ tests rather than claimed as a completed live submission.
   placement. Synthetic smoke used generated tone audio, not real narration and not
   a publishable lesson. Course content, full audio/motion reviews and actual demo
   video renders remain pending. No production catalog writes or paid model calls.
+
+Local demo follow-up: all 24 reviewed scripts now have real cached ElevenLabs
+narration (38.2–50.6 seconds), with Roger/Charlie/Callum/Liam course leads and
+configured Peter/Stewie dialogue. The first two full 1080p MP4s passed existing
+media checks after audio-only normalization: rank 38.3s / 1,254,788 bytes and matrix
+multiplication 40.6s / 1,409,865 bytes. Initial unnormalized audio correctly failed
+loudness checks; speech and rendered pictures were reused. Remaining movies and
+full continuous audio/motion review are still in progress, not publication-ready.
+A persistent two-slot render coordinator exports stills first, waits on explicit
+frame/pack/source-bound approvals, normalizes final audio and retains completed
+artifacts across restart. Generic reviewed inputs, 48 quiz questions, source links
+and deterministic scene rules are saved under fixtures/learning/demo-library;
+raw Claude Code responses, provider secrets and media remain ignored locally.

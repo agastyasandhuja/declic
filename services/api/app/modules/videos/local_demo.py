@@ -268,6 +268,7 @@ def main():
         parser.error("prepare requires --assets-root for explicitly configured cache/assets")
     if args.env_file:
         load_dotenv(args.env_file, override=False)
+        load_dotenv(args.assets_root / "services/api/.env", override=False)
     wanted = (
         set(args.only.split(",")) if args.only else {lesson.lesson_id for lesson in batch.lessons}
     )

@@ -54,7 +54,7 @@ const Movie=({lesson}:{lesson:any})=>{
  const t=useCurrentFrame()/30;const segment=lesson.segments.find((s:any)=>s.start<=t&&t<s.end)||lesson.segments.filter((s:any)=>s.start<=t).at(-1)||lesson.segments[0];
  const u=Math.max(0,Math.min(1,(t-segment.start)/(segment.end-segment.start)));const dialogue=lesson.format_style==='dialogue';
  return <AbsoluteFill style={{background:lesson.format_style==='cartoon'?'#253447':'#101c2d',fontFamily:'DejaVu Sans,sans-serif'}}>
- {lesson.format_style==='three_d'?<Three scene={segment.scene} u={u} t={t}/>:<div style={{position:'absolute',inset:0,transform:dialogue?'translateY(-95px) scale(.8)':'none',transformOrigin:'center 500px'}}><Diagram scene={segment.scene} style={lesson.format_style} u={u}/></div>}
+ {lesson.format_style==='three_d'?<Three scene={segment.scene} u={u} t={t}/>:<div style={{position:'absolute',inset:0,transform:dialogue?'translateY(-215px) scale(.8)':'none',transformOrigin:'center 500px'}}><Diagram scene={segment.scene} style={lesson.format_style} u={u}/></div>}
  {dialogue&&Object.entries(lesson.characters).map(([role,name])=>{const speaking=segment.speaker_role===role&&t<segment.end;const amp=speaking?segment.envelope[Math.floor((t-segment.start)*30)]||0:0;return <Img key={role} src={staticFile(`${lesson.id}/assets/${name}`)} style={{position:'absolute',left:role==='peter'?60:570,top:1000,width:420,height:520,objectFit:'contain',opacity:speaking?1:.77,transform:`translateY(${-Math.min(8,amp*15)}px)`}}/>})}
  <PopCaptions words={lesson.words} now={t} top={dialogue?1530:1470}/>
  {lesson.segments.map((s:any,i:number)=><Sequence key={i} from={Math.round(s.start*30)} durationInFrames={Math.ceil(s.duration*30)}><Audio src={staticFile(`${lesson.id}/assets/${s.audio}`)}/></Sequence>)}
