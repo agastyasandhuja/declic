@@ -1683,3 +1683,13 @@ only timing/cache-hit booleans and a timestamp so a subsequent phone check can
 distinguish a selected cached starter from merely having bytes on disk. Actual
 startup latency and selected-cache-hit verification await the combined phone build;
 unit tests are not presented as physical performance measurements.
+
+Startup follow-up review identified the same-URL asset-replacement edge: revoking
+an alias alone could still allow a generic URL cache hit. Fresh identity mismatch
+now blocks local resolution and invalidates the old file before a future download
+can be labeled with the new asset. Failed invalidation keeps that URL blocked
+and skips warmup; direct network playback remains available. A completed new
+download or newly verified matching file can restore local reuse. Regression
+coverage includes unchanged URLs and cleanup failure. **116 mobile tests and
+TypeScript pass**. The additive bootstrap protocol is indexed in the contracts
+README. Phone build remains pending the reviewed combined main revision.

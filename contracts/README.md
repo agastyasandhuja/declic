@@ -116,3 +116,11 @@ opt-in learning settings, four generic courses, 24 reviewed videos/48 quizzes,
 atomic ungraded mode switches, and explicit agent-reviewed publication. Feed adds
 `playback_seeked` for zero-credit seeks. Entertainment adds bounded owner-connected
 read-only Reel comments; no Instagram write operation is exposed.
+
+### Fresh feed bootstrap
+
+`POST /v1/feed/bootstrap` is additive and returns the existing `FeedResponse`.
+Mobile uses `limit: 5` and at most six `preferred_video_ids`; hints are
+non-authoritative. The server freshly authenticates the owner and preserves
+quiz gates, study scheduling and occurrence identities before selecting any
+cached starter. Existing wire fields are unchanged. See [feed.md](feed.md).

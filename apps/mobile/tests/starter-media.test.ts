@@ -57,11 +57,12 @@ test('retained bytes outlive signed URLs but require a fresh matching asset befo
   await f.starters.record('provider-stable-video', 'stable-asset', oldUrl); f.advance();
   assert.equal(await f.cache.resolve(oldUrl), oldUrl); // Original signed lease expired.
   assert.deepEqual(await f.starters.preferred('api:alice'), ['provider-stable-video']);
+  await f.starters.authorize('api:alice', [f.card()]);
+  assert.match(await f.cache.resolveKey(f.starters.keyFor(freshUrl)!) ?? '', /^file:/);
   const changed = f.card() as any; changed.video.playback.asset_id = 'replaced-asset';
   await f.starters.authorize('api:alice', [changed]); assert.equal(f.starters.keyFor(freshUrl), undefined);
   await f.starters.authorize('api:alice', []); assert.equal(f.starters.keyFor(freshUrl), undefined); // Revoked/omitted card.
-  await f.starters.authorize('api:alice', [f.card()]);
-  assert.match(await f.cache.resolveKey(f.starters.keyFor(freshUrl)!) ?? '', /^file:/);
+  assert.equal(f.starters.keyFor(freshUrl), undefined);
 });
 
 test('fresh changed asset or quiz-only page revokes an existing same-URL cached alias', async () => {
@@ -70,6 +71,7 @@ test('fresh changed asset or quiz-only page revokes an existing same-URL cached 
   await f.starters.authorize('api:alice', [f.card()]); assert.ok(f.starters.keyFor(freshUrl));
   const replaced = f.card() as any; replaced.video.playback.asset_id = 'replacement';
   await f.starters.authorize('api:alice', [replaced]); assert.equal(f.starters.keyFor(freshUrl), undefined);
+  await f.cache.warm(oldUrl, null, new AbortController().signal); await f.starters.record('provider-stable-video', 'stable-asset', oldUrl);
   await f.starters.authorize('api:alice', [f.card()]); assert.ok(f.starters.keyFor(freshUrl));
   await f.starters.authorize('api:alice', []); assert.equal(f.starters.keyFor(freshUrl), undefined);
 });
@@ -81,4 +83,37 @@ test('late same-owner authorization cannot restore an alias revoked by a newer r
   const old = f.starters.authorize('api:alice', [f.card()]); await new Promise(resolve => setImmediate(resolve));
   await f.starters.authorize('api:alice', []); release(); await old;
   assert.equal(f.starters.keyFor(freshUrl), undefined);
+});
+test('same URL asset replacement blocks generic URL cache and only a completed new download restores reuse', async () => {
+  const f = fixture(); await f.cache.open(); await f.starters.open('api:alice');
+  await f.cache.warm(freshUrl, null, new AbortController().signal); await f.starters.record('provider-stable-video', 'stable-asset', freshUrl);
+  await f.starters.authorize('api:alice', [f.card()]); assert.ok(f.starters.keyFor(freshUrl));
+  const replacement = f.card() as any; replacement.video.playback.asset_id = 'replacement';
+  await f.starters.authorize('api:alice', [replacement]);
+  assert.equal(f.starters.keyFor(freshUrl), undefined); assert.equal(f.starters.allowsDirect(freshUrl), false);
+  assert.equal(await f.cache.resolve(freshUrl), freshUrl); // Generic URL cache cannot resurrect old bytes.
+  assert.equal(await f.starters.prepareWarm('provider-stable-video', 'replacement', freshUrl), true);
+  await f.cache.warm(freshUrl, null, new AbortController().signal); await f.starters.record('provider-stable-video', 'replacement', freshUrl);
+  assert.equal(f.starters.allowsDirect(freshUrl), true); assert.match(await f.cache.resolve(freshUrl), /^file:/);
+});
+test('failed old-byte invalidation stays blocked and prevents warmup relabeling', async () => {
+  const f = fixture(); await f.cache.open(); await f.starters.open('api:alice');
+  await f.cache.warm(freshUrl, null, new AbortController().signal); await f.starters.record('provider-stable-video', 'stable-asset', freshUrl);
+  f.cache.discardKey = async () => { throw new Error('file busy'); };
+  const replacement = f.card() as any; replacement.video.playback.asset_id = 'replacement';
+  await f.starters.authorize('api:alice', [replacement]);
+  assert.equal(f.starters.allowsDirect(freshUrl), false);
+  assert.equal(await f.starters.prepareWarm('provider-stable-video', 'replacement', freshUrl), false);
+  assert.ok(f.raw()!.includes('stable-asset')); assert.ok(!f.raw()!.includes('replacement'));
+});
+test('old mismatch cleanup cannot mutate a new owner while iterating remaining cards', async () => {
+  const f = fixture(); await f.cache.open(); await f.starters.open('api:alice');
+  await f.cache.warm(freshUrl, null, new AbortController().signal); await f.starters.record('provider-stable-video', 'stable-asset', freshUrl);
+  let finish!: () => void, discards = 0; f.cache.discardKey = () => ++discards === 1 ? new Promise(resolve => { finish = resolve; }) : Promise.resolve();
+  const first = f.card() as any; first.video.playback.asset_id = 'replacement';
+  const second = f.card() as any; second.video.playback.asset_id = 'replacement'; second.video.playback.url = 'https://cdn.example/second';
+  const stale = f.starters.authorize('api:alice', [first, second]); await new Promise(resolve => setImmediate(resolve));
+  await f.storage.write(JSON.stringify({ ...JSON.parse(f.raw()!), scope: 'api:bob' }));
+  await f.starters.open('api:bob'); finish(); await stale; assert.equal(discards, 1);
+  assert.equal(f.starters.allowsDirect(second.video.playback.url), true); assert.equal(f.starters.keyFor(freshUrl), undefined);
 });

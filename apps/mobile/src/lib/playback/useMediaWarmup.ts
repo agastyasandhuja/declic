@@ -12,6 +12,8 @@ export function useMediaWarmup(assets: WarmAsset[], enabled: boolean) {
   const queue = useMemo(() => new MediaWarmup({
     warm: async (url, signal) => {
       const asset = latest.current.find(item => item.url === url), epoch = nativeMediaFiles.generation;
+      if (asset?.video_id && asset.asset_id && !await starterMedia.prepareWarm(asset.video_id, asset.asset_id, url)) return;
+      if (signal.aborted || epoch !== nativeMediaFiles.generation) return;
       await nativeMediaFiles.warm(url, asset?.expires_at ?? null, signal);
       if (!signal.aborted && epoch === nativeMediaFiles.generation && asset?.video_id && asset.asset_id) await starterMedia.record(asset.video_id, asset.asset_id, url).catch(() => undefined);
     },
