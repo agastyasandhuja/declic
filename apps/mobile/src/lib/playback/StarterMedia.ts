@@ -7,11 +7,12 @@ interface Storage { read(): Promise<string | null>; write(value: string | null):
 export class StarterMedia {
   private scope: string | null = null;
   private epoch = 0;
+  private authorization = 0;
   private hints: Hint[] = [];
   private aliases = new Map<string, Hint>();
   private queue: Promise<unknown> = Promise.resolve();
   constructor(private cache: HttpMediaCache, private storage: Storage, private now = Date.now) {}
-  deactivate() { this.epoch++; this.scope = null; this.hints = []; this.aliases.clear(); }
+  deactivate() { this.epoch++; this.authorization++; this.scope = null; this.hints = []; this.aliases.clear(); }
   async open(scope: string | null) {
     this.deactivate(); this.scope = scope; const epoch = this.epoch;
     const task = this.queue.catch(() => undefined).then(async () => {
@@ -43,14 +44,15 @@ export class StarterMedia {
     return epoch === this.epoch ? [...new Set(available.filter((id): id is string => !!id))].slice(0, 6) : [];
   }
   async authorize(scope: string, items: UnifiedItem[]) {
-    const epoch = this.epoch;
+    const epoch = this.epoch, authorization = ++this.authorization;
     if (scope !== this.scope) return;
+    this.aliases.clear(); // A fresh response replaces prior authorization, including changed assets/quiz-only pages.
     for (const item of items) {
       if (item.kind !== 'entertainment_video') continue;
       const hint = this.hints.find(h => h.video_id === item.video.video_id && h.asset_id === item.video.playback.asset_id);
       const expiry = item.video.playback.expires_at ? Date.parse(item.video.playback.expires_at) : Infinity;
       if (!hint || hint.expires <= this.now() || expiry <= this.now() || !await this.cache.describeKey(hint.key)) continue;
-      if (epoch !== this.epoch) return;
+      if (epoch !== this.epoch || authorization !== this.authorization) return;
       this.aliases.set(item.video.playback.url, { ...hint, expires: Math.min(hint.expires, expiry) });
     }
     while (this.aliases.size > 80) this.aliases.delete(this.aliases.keys().next().value!);

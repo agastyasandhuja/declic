@@ -5,6 +5,7 @@ interface Dependencies {
   preferred(scope: string): Promise<string[]>;
   authorize(scope: string, page: UnifiedPage): Promise<void>;
   requestId(): string;
+  started?(): void; received?(page: UnifiedPage): void; cancelled?(): void;
 }
 /** One eager fresh server response, shared with the first mounted feed. Nothing
  * is replayed from disk: occurrence IDs, quiz gates and order remain server-owned. */
@@ -12,10 +13,10 @@ export class FeedBootstrap {
   private entry: { scope: string; api: ApiClient; promise: Promise<UnifiedPage>; abort: AbortController; claimed: boolean } | null = null;
   private generation = 0;
   constructor(private deps: Dependencies) {}
-  cancel() { this.generation++; this.entry?.abort.abort(); this.entry = null; }
+  cancel() { this.deps.cancelled?.(); this.generation++; this.entry?.abort.abort(); this.entry = null; }
   begin(scope: string, api: ApiClient) {
     if (this.entry?.scope === scope && this.entry.api === api && !this.entry.claimed) return;
-    this.cancel(); const generation = this.generation, abort = new AbortController();
+    this.cancel(); this.deps.started?.(); const generation = this.generation, abort = new AbortController();
     const promise = (async () => {
       const ids = await this.deps.preferred(scope).catch(() => []);
       if (generation !== this.generation) throw new Error('Feed startup changed.');
@@ -33,6 +34,7 @@ export class FeedBootstrap {
       if (generation !== this.generation) throw new Error('Feed startup changed.');
       await this.deps.authorize(scope, page).catch(() => undefined);
       if (generation !== this.generation) throw new Error('Feed startup changed.');
+      this.deps.received?.(page);
       return page;
     })();
     this.entry = { scope, api, promise, abort, claimed: false };

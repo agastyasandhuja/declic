@@ -63,3 +63,22 @@ test('retained bytes outlive signed URLs but require a fresh matching asset befo
   await f.starters.authorize('api:alice', [f.card()]);
   assert.match(await f.cache.resolveKey(f.starters.keyFor(freshUrl)!) ?? '', /^file:/);
 });
+
+test('fresh changed asset or quiz-only page revokes an existing same-URL cached alias', async () => {
+  const f = fixture(); await f.cache.open(); await f.starters.open('api:alice');
+  await f.cache.warm(oldUrl, null, new AbortController().signal); await f.starters.record('provider-stable-video', 'stable-asset', oldUrl);
+  await f.starters.authorize('api:alice', [f.card()]); assert.ok(f.starters.keyFor(freshUrl));
+  const replaced = f.card() as any; replaced.video.playback.asset_id = 'replacement';
+  await f.starters.authorize('api:alice', [replaced]); assert.equal(f.starters.keyFor(freshUrl), undefined);
+  await f.starters.authorize('api:alice', [f.card()]); assert.ok(f.starters.keyFor(freshUrl));
+  await f.starters.authorize('api:alice', []); assert.equal(f.starters.keyFor(freshUrl), undefined);
+});
+test('late same-owner authorization cannot restore an alias revoked by a newer response', async () => {
+  const f = fixture(); await f.cache.open(); await f.starters.open('api:alice');
+  await f.cache.warm(oldUrl, null, new AbortController().signal); await f.starters.record('provider-stable-video', 'stable-asset', oldUrl);
+  const describe = f.cache.describeKey.bind(f.cache); let release!: () => void;
+  f.cache.describeKey = async key => { await new Promise<void>(resolve => { release = resolve; }); return describe(key); };
+  const old = f.starters.authorize('api:alice', [f.card()]); await new Promise(resolve => setImmediate(resolve));
+  await f.starters.authorize('api:alice', []); release(); await old;
+  assert.equal(f.starters.keyFor(freshUrl), undefined);
+});

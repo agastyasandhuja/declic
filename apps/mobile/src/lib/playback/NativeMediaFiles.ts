@@ -49,3 +49,8 @@ export const nativeMediaFiles = new HttpMediaCache(store);
 export function clearNativeMediaFiles() {
   return clearMediaCacheFiles(() => nativeMediaFiles.clear(), FS.cacheDirectory, FS.deleteAsync);
 }
+
+export async function saveStartupDiagnostics(value: import('./StartupTrace').StartupSnapshot) {
+  if (!FS.cacheDirectory) return;
+  await FS.writeAsStringAsync(`${directory}startup-diagnostics.json`, JSON.stringify(value));
+}

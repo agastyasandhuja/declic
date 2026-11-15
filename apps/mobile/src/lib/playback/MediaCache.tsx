@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { theme } from '../../theme';
+import { startupTrace } from './startupMetrics';
 import { StarterMedia } from './StarterMedia';
 import { MediaCachePolicy } from './MediaCachePolicy';
 import { clearNativeMediaFiles, nativeMediaFiles } from './NativeMediaFiles';
@@ -26,6 +27,7 @@ export async function cachedVideoSource(uri: string | null) {
   const key = caching ? starterMedia.keyFor(uri) : undefined;
   const resolved = caching ? await (key ? nativeMediaFiles.resolveKey(key, epoch).then(value => value ?? uri) : nativeMediaFiles.resolve(uri)).catch(() => uri) : uri;
   const source = { uri: resolved, useCaching: false };
+  if (epoch === nativeMediaFiles.generation) startupTrace.source(resolved.startsWith('file:'), !!key && resolved.startsWith('file:'));
   if (resolved.startsWith('file:')) releases.set(source, () => key ? nativeMediaFiles.releaseKey(key, epoch) : nativeMediaFiles.release(uri, epoch));
   return source;
 }
