@@ -151,7 +151,7 @@ def render(
         subprocess.run(["docker", "rm", "-f", name], capture_output=True, timeout=30)
 
 
-def validate_output(output, preview=False, *, minimum_duration=30):
+def validate_output(output, preview=False, *, minimum_duration=30, expected_size=None):
     video = output / "lesson.mp4"
     if video.is_symlink() or not video.is_file() or not 1000 < video.stat().st_size < 500_000_000:
         raise ValueError("Invalid output file")
@@ -193,7 +193,7 @@ def validate_output(output, preview=False, *, minimum_duration=30):
         v = next(s for s in data["streams"] if s["codec_type"] == "video")
         a = next(s for s in data["streams"] if s["codec_type"] == "audio")
     duration = float(data["format"]["duration"])
-    expected = (540, 960) if preview else (1080, 1920)
+    expected = expected_size or ((540, 960) if preview else (1080, 1920))
     if (
         (v["width"], v["height"]) != expected
         or v["codec_name"] != "h264"

@@ -115,8 +115,17 @@ export class BufferedPlayerController {
     this.failed = true; clearTimeout(this.timer); this.silenceAll();
     this.emit(false, timedOut ? 'The video picture is taking too long. Retry this clip or keep scrolling.' : 'This clip could not load. Retry it or keep scrolling.', timedOut);
   }
-  preload(uri?: string) {
-    if (!this.disposed && !this.failed && this.slots[this.active].ready && uri && uri !== this.slots[this.active].uri) void this.load((1 - this.active) as 0 | 1, uri);
+  async preload(uri: string): Promise<'ready' | 'failed' | 'superseded'> {
+    if (this.disposed || this.failed || !this.slots[this.active].ready) return 'superseded';
+    if (uri === this.slots[this.active].uri) return 'ready';
+    const index = (1 - this.active) as 0 | 1;
+    const slot = this.slots[index];
+    const pending = this.load(index, uri);
+    const version = slot.version;
+    const selection = this.version;
+    await pending;
+    if (this.disposed || this.failed || selection !== this.version || version !== slot.version) return 'superseded';
+    return slot.ready ? 'ready' : 'failed';
   }
   dispose() { if (this.disposed) return; this.disposed = true; this.version++; clearTimeout(this.timer); this.slots.forEach(slot => slot.version++); this.silenceAll(true); this.drivers.forEach(driver => driver.dispose?.()); }
 }

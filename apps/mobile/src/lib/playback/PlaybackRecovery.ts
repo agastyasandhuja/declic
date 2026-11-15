@@ -1,8 +1,10 @@
+export const PLAYBACK_REFRESH_MARGIN_MS = 10000;
+
 /** Treat a URL near expiry as stale before granting playback after app resume. */
 export function needsPlaybackRefresh(expiresAt: string | null | undefined, now = Date.now()) {
   if (!expiresAt) return false;
   const expiry = Date.parse(expiresAt);
-  return !Number.isFinite(expiry) || expiry <= now + 10000;
+  return !Number.isFinite(expiry) || expiry <= now + PLAYBACK_REFRESH_MARGIN_MS;
 }
 
 /** One automatic owned-URL resolution per selected foreground visit, never a loop. */

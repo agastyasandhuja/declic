@@ -4,6 +4,11 @@
       "title": "Active View Seconds",
       "type": "number"
     },
+    "demo_mode": {
+      "default": false,
+      "title": "Demo Mode",
+      "type": "boolean"
+    },
     "last_active_at": {
       "format": "date-time",
       "title": "Last Active At",

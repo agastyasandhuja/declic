@@ -1,3 +1,7 @@
+// Holds all four reviewed demo MP4s with room for one in-flight download.
+export const MEDIA_CACHE_BUDGET = 192 * 1024 * 1024;
+export const MEDIA_CACHE_MAX_FILE = 50 * 1024 * 1024;
+
 export interface MediaFileEntry { key: string; bytes: number; expires: number; used: number; url_expires?: number }
 export interface MediaFileStore {
   key(url: string): Promise<string>; load(): Promise<MediaFileEntry[]>; save(entries: MediaFileEntry[]): Promise<void>;
@@ -14,7 +18,7 @@ export class HttpMediaCache {
   private ready = false;
   private task: AbortController | null = null;
   private queue: Promise<unknown> = Promise.resolve();
-  constructor(private store: MediaFileStore, private now = Date.now, private budget = 128 * 1024 * 1024, private maxFile = 20 * 1024 * 1024) {}
+  constructor(private store: MediaFileStore, private now = Date.now, private budget = MEDIA_CACHE_BUDGET, private maxFile = MEDIA_CACHE_MAX_FILE) {}
   get generation() { return this.epoch; }
   deactivate() { this.epoch++; this.ready = false; this.entries.clear(); this.pinned.clear(); this.task?.abort(); }
   async clear() {

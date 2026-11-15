@@ -125,6 +125,20 @@
           "title": "Caption",
           "type": "string"
         },
+        "comment_count": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comment Count"
+        },
         "creator": {
           "$ref": "#/$defs/Creator"
         },
@@ -141,6 +155,20 @@
           ],
           "default": null,
           "title": "Duration Seconds"
+        },
+        "like_count": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Like Count"
         },
         "playback": {
           "$ref": "#/$defs/Playback"
@@ -604,6 +632,18 @@
         }
       ],
       "default": null
+    },
+    "demo_mode": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Demo Mode"
     },
     "items": {
       "items": {

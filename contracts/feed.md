@@ -6,7 +6,7 @@ Owner: Agastya. UI consumer: Adi.
 
 POST /v1/feed/sessions with optional resume_session_id returns:
 schema_version, session_id, started_at, last_active_at, active_view_seconds,
-study_ratio_target, recommendation_revision, pending_quiz_instance_id.
+study_ratio_target, recommendation_revision, pending_quiz_instance_id, and an optional demo_mode flag.
 
 Server verifies session ownership. A session resumes within the configured idle
 window, rather than resetting the ramp on every refresh.
@@ -32,8 +32,11 @@ sessions/users. Course context is authorized per user even for a shared video.
 Ordering rules:
 
 - Only ready, authorized, playable assets are returned.
-- A pending quiz is returned before further consumable items. Server does not
-  issue post-quiz pages until answer/recovery.
+- A pending quiz is returned before further consumable items. If the client
+  misses an issued quiz, a request without a cursor or an attempt to advance
+  past the gate replays the same question with no next cursor. Replay alone
+  does not activate an issued quiz. The server does not issue post-quiz pages
+  until answer/recovery.
 - A quiz planned in a future page becomes pending when the user reaches it;
   do not lock the current video just because the next quiz was prefetched.
 - Client activates the quiz using POST /v1/feed/sessions/{session_id}/quiz-gate
@@ -143,3 +146,10 @@ requested page size; subsequent mixed cursor reads use that same size. Clients m
 a freshly authorized clip to a completed local cache file scoped to the same
 account/API and still within its cache lifetime; hints themselves grant no
 playback authorization or learning credit.
+
+The client may resolve an upcoming expired or failed playback URL using the
+authenticated playback endpoint for that video kind. A definitive
+`404 VIDEO_NOT_FOUND`, `404 CATALOG_NOT_FOUND`, or
+`410 PLAYBACK_UNAVAILABLE` removes the unseen video from the client queue.
+Temporary errors leave it available for retry. The client continues at the
+same feed cursor and honors any quiz boundary.

@@ -9,6 +9,8 @@ from app.core.time import iso, parse_time, utc_now
 from app.modules.recommendations import repository as repo
 from app.modules.recommendations.schemas import PlaybackEvent
 
+DEMO_STUDY_EXPOSURE_MS = 5_000
+
 
 class PlaybackEvents:
     def __init__(self, database: Database, clock=utc_now):
@@ -47,7 +49,9 @@ class PlaybackEvents:
         data = deepcopy(row["data"])
         item = data["item"]
         if data.get("curriculum_revision", 0) != state.get("curriculum_revision", 0):
-            raise APIError(409, "CURRICULUM_CHANGED", "Playback belongs to the previous learning mode")
+            raise APIError(
+                409, "CURRICULUM_CHANGED", "Playback belongs to the previous learning mode"
+            )
         if data.get("withdrawn"):
             raise APIError(409, "ITEM_UNAVAILABLE", "This feed item is no longer available")
         if item["kind"] == "quiz":
@@ -72,12 +76,19 @@ class PlaybackEvents:
         duration = item["video"].get("duration_seconds")
         if not control_event and duration and payload.position_ms > duration * 1000 + 1000:
             raise APIError(422, "INVALID_PROGRESS", "Position exceeds video duration")
-        looped = bool(duration and data["position_ms"] >= duration * 1000 - 4000
-                      and payload.position_ms <= 4000
-                      and payload.visible_watch_ms >= data["reported_watch_ms"])
+        looped = bool(
+            duration
+            and data["position_ms"] >= duration * 1000 - 4000
+            and payload.position_ms <= 4000
+            and payload.visible_watch_ms >= data["reported_watch_ms"]
+        )
         if not control_event and (
             payload.visible_watch_ms < data["reported_watch_ms"]
-            or (payload.position_ms < data["position_ms"] and not looped and kind != "playback_seeked")
+            or (
+                payload.position_ms < data["position_ms"]
+                and not looped
+                and kind != "playback_seeked"
+            )
         ):
             raise APIError(422, "NON_MONOTONIC_PROGRESS", "Playback progress must be monotonic")
         if kind == "app_foregrounded":
@@ -87,13 +98,21 @@ class PlaybackEvents:
             state["foreground"] = False
             state["current_item_id"] = None
         elif kind == "playback_seeked":
-            if (not state["foreground"] or state["current_item_id"] != event.item_id
-                    or not data["started"] or data["terminal"]):
+            if (
+                not state["foreground"]
+                or state["current_item_id"] != event.item_id
+                or not data["started"]
+                or data["terminal"]
+            ):
                 raise APIError(409, "PLAYBACK_INACTIVE", "Seek requires active foreground playback")
             if payload.visible_watch_ms != data["reported_watch_ms"]:
                 raise APIError(422, "INVALID_PROGRESS", "Seeking cannot add watch time")
-            data.update(anchor_client=iso(at), anchor_server=iso(now),
-                        anchor_reported=payload.visible_watch_ms, anchor_credited=data["watch_ms"])
+            data.update(
+                anchor_client=iso(at),
+                anchor_server=iso(now),
+                anchor_reported=payload.visible_watch_ms,
+                anchor_credited=data["watch_ms"],
+            )
         elif kind == "playback_started":
             if not state["foreground"] or data["terminal"]:
                 raise APIError(409, "PLAYBACK_INACTIVE", "Playback cannot start in this state")
@@ -138,6 +157,15 @@ class PlaybackEvents:
                 data["terminal"] = True
                 state["current_item_id"] = None
             threshold = min(self.database.settings.exposure_seconds, (duration or 20) / 2) * 1000
+            if (
+                not data["exposed"]
+                and item["kind"] == "study_video"
+                and min(DEMO_STUDY_EXPOSURE_MS, threshold)
+                <= data["watch_ms"]
+                < max(DEMO_STUDY_EXPOSURE_MS, threshold)
+                and repo.demo_enabled(conn, user_id)
+            ):
+                threshold = DEMO_STUDY_EXPOSURE_MS
             if not data["exposed"] and data["watch_ms"] >= threshold:
                 data["exposed"] = True
                 if item["kind"] == "study_video":

@@ -1,12 +1,12 @@
 import catalog from '../../../../../fixtures/entertainment/feed.json';
 import { parseFeedPage, parsePlayback } from '../../contracts/validate';
 import type { EntertainmentFeedPage, EntertainmentVideo, PlaybackSource } from '../../contracts/generated';
-import type { ApiClient } from '../../lib/api/client';
+import { ApiError, type ApiClient } from '../../lib/api/client';
 
 export interface FeedSource {
   mode: 'fixture' | 'api' | 'saved_instagram';
   getPage(cursor?: string | null, signal?: AbortSignal): Promise<EntertainmentFeedPage>;
-  resolvePlayback(videoId: string): Promise<PlaybackSource>;
+  resolvePlayback(videoId: string, signal?: AbortSignal): Promise<PlaybackSource>;
 }
 export function eligibleVideos(videos: EntertainmentVideo[], now = Date.now()) {
   const seen = new Set<string>();
@@ -52,7 +52,7 @@ export function createFixtureSource(): FeedSource {
     },
     async resolvePlayback(videoId) {
       const item = items.find(video => video.video_id === videoId);
-      if (!item) throw new Error('This demo clip is unavailable.');
+      if (!item) throw new ApiError('This demo clip is unavailable.', 404, 'VIDEO_NOT_FOUND', false);
       return item.playback;
     },
   };
@@ -68,7 +68,7 @@ export function createSavedInstagramSource(value: unknown): FeedSource {
     },
     async resolvePlayback(videoId) {
       const item = items.find(video => video.video_id === videoId);
-      if (!item || (item.playback.expires_at && Date.parse(item.playback.expires_at) <= Date.now())) throw new Error('This saved link is unavailable. Retrieve a fresh catalog on the Mac.');
+      if (!item || (item.playback.expires_at && Date.parse(item.playback.expires_at) <= Date.now())) throw new ApiError('This saved link is unavailable. Retrieve a fresh catalog on the Mac.', 410, 'PLAYBACK_UNAVAILABLE', false);
       // Retry the same saved URL after a transient network failure; never imply renewal.
       return item.playback;
     },
@@ -82,8 +82,8 @@ export function createApiFeedSource(api: ApiClient): FeedSource {
       if (cursor) query.set('cursor', cursor);
       return parseFeedPage(await api.request(`/v1/entertainment/feed?${query}`, { signal }));
     },
-    async resolvePlayback(videoId) {
-      return parsePlayback(await api.request(`/v1/entertainment/videos/${encodeURIComponent(videoId)}/playback`));
+    async resolvePlayback(videoId, signal) {
+      return parsePlayback(await api.request(`/v1/entertainment/videos/${encodeURIComponent(videoId)}/playback`, { signal }));
     },
   };
 }

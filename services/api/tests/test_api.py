@@ -34,9 +34,17 @@ def test_retrying_page_and_session_does_not_advance_ramp_or_reservations(client,
     assert resumed["active_view_seconds"] == 0
 
 
-def test_quiz_prefetch_activation_wrong_answer_and_stale_cursor(client, clock, database):
+def test_quiz_prefetch_activation_wrong_answer_and_stale_cursor(
+    client, clock, database, monkeypatch
+):
+    monkeypatch.setattr(
+        "app.modules.quizzes.schemas.SystemRandom.shuffle", lambda _, options: options.reverse()
+    )
     sid, quiz, page = reached_quiz(client, clock)
     qid = quiz["quiz"]["quiz_instance_id"]
+    with database.transaction() as conn:
+        definition = conn.value(tables.quiz_instances, "data", {"instance_id": qid})["definition"]
+    assert quiz["quiz"]["options"] == definition["options"][::-1]
     assert page["pending_quiz_instance_id"] is None
     serialized = json.dumps(page)
     for forbidden in [
@@ -47,17 +55,15 @@ def test_quiz_prefetch_activation_wrong_answer_and_stale_cursor(client, clock, d
         "owner_user_id",
     ]:
         assert forbidden not in serialized
-    assert (
-        client.get(
-            "/v1/feed",
-            params={
-                "session_id": sid,
-                "cursor": page["next_cursor"],
-                "limit": 20,
-            },
-        ).status_code
-        == 409
-    )
+    for query in (
+        {"session_id": sid, "limit": 20},
+        {"session_id": sid, "cursor": page["next_cursor"], "limit": 20},
+    ):
+        replay = client.get("/v1/feed", params=query)
+        assert replay.is_success, replay.text
+        assert replay.json()["items"] == [quiz]
+        assert replay.json()["next_cursor"] is None
+        assert replay.json()["pending_quiz_instance_id"] is None
     answer_url = f"/v1/quizzes/{qid}/answers"
     body = {"session_id": sid, "selected_option_id": "b"}
     headers = {"Idempotency-Key": "answer-one"}
@@ -71,7 +77,7 @@ def test_quiz_prefetch_activation_wrong_answer_and_stale_cursor(client, clock, d
     ).json()
     assert activation["scroll_locked"]
     pending = client.get("/v1/feed", params={"session_id": sid, "limit": 20}).json()
-    assert [i["kind"] for i in pending["items"]] == ["quiz"]
+    assert pending["items"] == [quiz]
     answer = client.post(answer_url, json=body, headers=headers)
     assert answer.status_code == 200, answer.text
     result = answer.json()
@@ -193,11 +199,11 @@ def test_progress_is_neutral_until_graded(client, clock):
 
 
 def test_fresh_unseen_page_preserves_active_session_and_pending_quiz(client, clock):
-    session = client.post('/v1/feed/sessions', json={}).json()
-    first = client.get('/v1/feed', params={'session_id': session['session_id']}).json()
-    video = first['items'][0]
-    watch(client, clock, session['session_id'], video, seconds=10)
-    refreshed = client.post('/v1/feed/sessions', json={'refresh_unseen': True}).json()
-    assert refreshed['session_id'] == session['session_id']
-    assert refreshed['active_view_seconds'] == 10
-    assert refreshed['recommendation_revision'] > first['recommendation_revision']
+    session = client.post("/v1/feed/sessions", json={}).json()
+    first = client.get("/v1/feed", params={"session_id": session["session_id"]}).json()
+    video = first["items"][0]
+    watch(client, clock, session["session_id"], video, seconds=10)
+    refreshed = client.post("/v1/feed/sessions", json={"refresh_unseen": True}).json()
+    assert refreshed["session_id"] == session["session_id"]
+    assert refreshed["active_view_seconds"] == 10
+    assert refreshed["recommendation_revision"] > first["recommendation_revision"]

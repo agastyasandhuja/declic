@@ -72,3 +72,4 @@ class FeedResponse(BaseModel):
     next_cursor: str | None
     pending_quiz_instance_id: str | None
     availability: Availability | None = None
+    demo_mode: bool | None = None

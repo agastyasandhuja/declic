@@ -8,9 +8,9 @@ from app.core.config import Settings
 from app.core.connections import Connections
 from app.core.connections import create_router as canvas_router
 from app.core.credential_vault import CredentialVault
-from app.core.demo_catalog import DemoCatalog, LearningSettings, ModeReader
-from app.core.demo_catalog import create_router as learning_settings_router
 from app.core.database import Database
+from app.core.demo_catalog import PRESENTATION_OBJECTIVES, DemoCatalog, LearningSettings, ModeReader
+from app.core.demo_catalog import create_router as learning_settings_router
 from app.core.environment import ROOT, load_environment
 from app.core.errors import APIError, error_response
 from app.core.integration import FeedEntertainmentReader, SupabaseIdentity
@@ -81,7 +81,7 @@ def create_app():
         else None,
     )
     learning_settings = LearningSettings(database)
-    demo = DemoCatalog(database, videos)
+    demo = DemoCatalog(database, videos, objective_ids=PRESENTATION_OBJECTIVES)
     app = core_app(
         settings=settings,
         database=database,
@@ -100,7 +100,7 @@ def create_app():
             create_entertainment_router(verified_record, catalog),
             canvas_router(connections),
             academic_router(academics, AcademicJobs(database)),
-            video_router(videos),
+            video_router(videos, demo=demo, learning_settings=learning_settings),
             social_router(pipeline.social),
             preparation_router(database),
             learning_settings_router(learning_settings, demo),

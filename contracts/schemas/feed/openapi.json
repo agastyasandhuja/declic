@@ -101,6 +101,31 @@
         "title": "Availability",
         "type": "object"
       },
+      "BootstrapRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "default": 5,
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "preferred_video_ids": {
+            "items": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.:-]+$",
+              "type": "string"
+            },
+            "maxItems": 6,
+            "title": "Preferred Video Ids",
+            "type": "array"
+          }
+        },
+        "title": "BootstrapRequest",
+        "type": "object"
+      },
       "CourseContext": {
         "properties": {
           "course_id": {
@@ -197,6 +222,19 @@
             "title": "Caption",
             "type": "string"
           },
+          "comment_count": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment Count"
+          },
           "creator": {
             "$ref": "#/components/schemas/Creator"
           },
@@ -212,6 +250,19 @@
               }
             ],
             "title": "Duration Seconds"
+          },
+          "like_count": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Like Count"
           },
           "playback": {
             "$ref": "#/components/schemas/Playback"
@@ -382,6 +433,17 @@
                 "type": "null"
               }
             ]
+          },
+          "demo_mode": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Demo Mode"
           },
           "items": {
             "items": {
@@ -609,6 +671,7 @@
           "event_type": {
             "enum": [
               "playback_started",
+              "playback_seeked",
               "playback_progress",
               "playback_completed",
               "video_skipped",
@@ -880,6 +943,11 @@
           "active_view_seconds": {
             "title": "Active View Seconds",
             "type": "number"
+          },
+          "demo_mode": {
+            "default": false,
+            "title": "Demo Mode",
+            "type": "boolean"
           },
           "last_active_at": {
             "format": "date-time",
@@ -1249,6 +1317,65 @@
           }
         ],
         "summary": "Feed",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/v1/feed/bootstrap": {
+      "post": {
+        "operationId": "bootstrap_v1_feed_bootstrap_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BootstrapRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Bootstrap",
         "tags": [
           "feed"
         ]

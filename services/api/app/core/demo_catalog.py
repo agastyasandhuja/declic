@@ -18,6 +18,19 @@ from app.modules.videos.adapters import FeedVideoReader
 CATALOG_ID = "shared_demo_v1"
 CATALOG_OWNER = "system_shared_demo"
 COURSES = {"demo_cs210", "demo_acc233", "demo_his110", "demo_math235"}
+SUPPLEMENTAL_COURSE = "demo_cs220"
+PRESENTATION_OBJECTIVES = frozenset(
+    {
+        "demo_cs210_stack_undo",
+        "demo_cs220_promise_states",
+        "demo_acc233_perpetual",
+        "demo_his110_wright_1903",
+    }
+)
+
+
+def minimum_demo_duration(format_id):
+    return 20 if format_id == "math_explainer" else 30
 
 
 class DemoModel(BaseModel):
@@ -45,34 +58,41 @@ class DemoQuiz(QuizDefinition):
 class DemoLesson(DemoModel):
     objective_id: Identifier
     video_id: Identifier
-    quizzes: list[DemoQuiz] = Field(min_length=2, max_length=2)
+    quizzes: list[DemoQuiz] = Field(min_length=2, max_length=4)
 
 
 class DemoManifest(DemoModel):
     schema_version: Literal["1"] = "1"
     catalog_id: Literal["shared_demo_v1"] = CATALOG_ID
     revision: int = Field(strict=True, ge=1)
-    courses: list[DemoCourse] = Field(min_length=4, max_length=4)
-    objectives: list[DemoObjective] = Field(min_length=4, max_length=24)
-    lessons: list[DemoLesson] = Field(min_length=24, max_length=24)
+    courses: list[DemoCourse] = Field(min_length=4, max_length=5)
+    objectives: list[DemoObjective] = Field(min_length=4, max_length=25)
+    lessons: list[DemoLesson] = Field(min_length=24, max_length=25)
 
     @model_validator(mode="after")
     def generic_only(self):
-        if {c.course_id for c in self.courses} != COURSES:
-            raise ValueError("Use the four approved generic demo course IDs")
+        course_ids = {c.course_id for c in self.courses}
+        if len(course_ids) != len(self.courses) or not COURSES <= course_ids <= (
+            COURSES | {SUPPLEMENTAL_COURSE}
+        ):
+            raise ValueError("Use the four core demo courses and optional CS 220")
         objectives = {o.objective_id: o for o in self.objectives}
         if len(objectives) != len(self.objectives):
             raise ValueError("Duplicate objective")
         if any(
-            not o.objective_id.startswith("demo_") or o.course_id not in COURSES
+            not o.objective_id.startswith("demo_") or o.course_id not in course_ids
             for o in self.objectives
         ):
             raise ValueError("Demo objectives must use a separate generic namespace")
-        if len({v.video_id for v in self.lessons}) != 24:
-            raise ValueError("Publish 24 distinct reviewed videos")
-        if len({q.quiz_id for v in self.lessons for q in v.quizzes}) != 48:
-            raise ValueError("Every demo lesson needs two distinct quizzes")
-        counts = dict.fromkeys(COURSES, 0)
+        if len({v.video_id for v in self.lessons}) != len(self.lessons):
+            raise ValueError("Publish distinct reviewed videos")
+        quiz_ids = [quiz.quiz_id for lesson in self.lessons for quiz in lesson.quizzes]
+        if len(set(quiz_ids)) != len(quiz_ids):
+            raise ValueError("Demo quiz IDs must be unique")
+        expected_counts = dict.fromkeys(COURSES, 6)
+        if SUPPLEMENTAL_COURSE in course_ids:
+            expected_counts[SUPPLEMENTAL_COURSE] = 1
+        counts = dict.fromkeys(course_ids, 0)
         for lesson in self.lessons:
             if lesson.objective_id not in objectives:
                 raise ValueError("Lesson must bind a declared objective")
@@ -87,13 +107,14 @@ class DemoManifest(DemoModel):
                 ):
                     raise ValueError("Private quizzes and source references cannot enter the demo")
             counts[objectives[lesson.objective_id].course_id] += 1
-        if set(counts.values()) != {6}:
-            raise ValueError("Publish exactly six lessons for each demo course")
+        if counts != expected_counts:
+            raise ValueError("Publish six lessons per core course and one for optional CS 220")
         return self
 
 
 class DemoCatalog:
-    def __init__(self, database, video_service):
+    def __init__(self, database, video_service, *, objective_ids=None):
+        self.objective_ids = objective_ids
         self.database = database
         self.video_service = video_service
         self.video_reader = FeedVideoReader(video_service)
@@ -107,7 +128,25 @@ class DemoCatalog:
                 tables.demo_catalogs, {"catalog_id": CATALOG_ID, "user_id": CATALOG_OWNER}
             )
         )
-        return DemoManifest.model_validate(row["data"]) if row else None
+        if not row:
+            return None
+        manifest = DemoManifest.model_validate(row["data"])
+        if self.objective_ids is None:
+            return manifest
+        lessons = [
+            lesson for lesson in manifest.lessons if lesson.objective_id in self.objective_ids
+        ]
+        active_ids = {lesson.objective_id for lesson in lessons}
+        objectives = [o for o in manifest.objectives if o.objective_id in active_ids]
+        course_ids = {o.course_id for o in objectives}
+        # Project the reviewed registry; the archived library stays intact.
+        return manifest.model_copy(
+            update={
+                "lessons": lessons,
+                "objectives": objectives,
+                "courses": [c for c in manifest.courses if c.course_id in course_ids],
+            }
+        )
 
     def publish(self, manifest):
         """Operator-only registration after trusted generic asset publication."""
@@ -125,7 +164,9 @@ class DemoCatalog:
                 or video.get("objective_id") != lesson.objective_id
                 or (video.get("level"), video.get("language"), video.get("notation"))
                 != (objective.level, objective.language, objective.notation)
-                or not 30 <= video.get("duration_seconds", 0) <= 60
+                or not minimum_demo_duration(video.get("format_id"))
+                <= video.get("duration_seconds", 0)
+                <= 60
             ):
                 raise ValueError("Demo requires ready generic assets with matching objectives")
             quality = video.get("quality_checks", {})
@@ -212,6 +253,7 @@ class DemoCatalog:
             if v["video_id"] in allowed
             and v.get("scope") == "shared_generic"
             and v.get("owner_user_id") is None
+            and v.get("status") == "ready"
         ]
         signed = self.video_reader._sign_owned(videos) if videos else {}
         return [self.video_reader._project(user_id, v, signed) for v in videos]
@@ -225,13 +267,7 @@ class DemoCatalog:
         )
         return (
             next(
-                (
-                    v
-                    for v in self.list_variants(
-                        user_id, [o.objective_id for o in manifest.objectives]
-                    )
-                    if v.video_id == video_id
-                ),
+                (v for v in self.list_variants(user_id, [objective]) if v.video_id == video_id),
                 None,
             )
             if objective
@@ -283,51 +319,16 @@ class LearningSettings:
             tx.update(tables.users, {"user_id": user_id}, {"demo_mode": enabled})
             # Generation fence rejects even previously-started cards without
             # rewriting the entire historical occurrence collection.
-            states = feed_repo.invalidate_user_feeds(tx, user_id)
-            for state in states.values():
-                for instance in tx.find(
-                    tables.quiz_instances,
-                    {
-                        "user_id": user_id,
-                        "session_id": state["session_id"],
-                        "state": {"$in": ["issued", "pending"]},
-                    },
-                ):
-                    response = {
-                        "schema_version": "1",
-                        "accepted": True,
-                        "graded": False,
-                        "scroll_unlocked": True,
-                        "recommendation_revision": state["recommendation_revision"],
-                    }
-                    tx.update(
-                        tables.quiz_instances,
-                        {"user_id": user_id, "instance_id": instance["instance_id"]},
-                        {
-                            "state": "recovered",
-                            "data": {
-                                **instance["data"],
-                                "recovery_response": response,
-                                "recovery_reason": "curriculum_mode_changed",
-                            },
-                        },
-                    )
-                state["curriculum_revision"] = state.get("curriculum_revision", 0) + 1
-                state.update(
-                    history=[],
-                    quiz_exposures=[],
-                    pending_quiz_instance_id=None,
-                    required_quiz_instance_id=None,
-                    current_item_id=None,
-                    study_debt=0,
-                    last_client_event_at=None,
-                )
-                feed_repo.save_session(tx, user_id, state)
+            states = [row["data"] for row in tx.find(tables.sessions, {"user_id": user_id})]
+            for state in states:
+                if enabled:
+                    state["demo_feed_policy"] = feed_repo.DEMO_FEED_POLICY
+                feed_repo.reset_curriculum(tx, user_id, state, "curriculum_mode_changed")
             return {
                 "schema_version": "1",
                 "demo_mode": enabled,
                 "recommendation_revision": max(
-                    (s["recommendation_revision"] for s in states.values()), default=None
+                    (s["recommendation_revision"] for s in states), default=None
                 ),
             }
 

@@ -5,6 +5,8 @@ from app.core.database import UnitOfWork
 from app.core.errors import APIError
 from app.core.time import iso, new_id
 
+DEMO_FEED_POLICY = 1
+
 
 def get_session(conn: UnitOfWork, user_id: str, session_id: str) -> dict:
     row = conn.value(
@@ -51,6 +53,56 @@ def create_session(conn: UnitOfWork, user_id: str, now: datetime) -> dict:
         },
     )
     return state
+
+
+def demo_enabled(conn: UnitOfWork, user_id: str) -> bool:
+    return conn.find_one(tables.users, {"user_id": user_id, "demo_mode": True}) is not None
+
+
+def reset_curriculum(conn: UnitOfWork, user_id: str, state: dict, reason: str) -> None:
+    """Fence old playback and clear gates without grading them."""
+    state["recommendation_revision"] += 1
+    for instance in conn.find(
+        tables.quiz_instances,
+        {
+            "user_id": user_id,
+            "session_id": state["session_id"],
+            "state": {"$in": ["issued", "pending"]},
+        },
+    ):
+        response = {
+            "schema_version": "1",
+            "accepted": True,
+            "graded": False,
+            "scroll_unlocked": True,
+            "recommendation_revision": state["recommendation_revision"],
+        }
+        conn.update(
+            tables.quiz_instances,
+            {"user_id": user_id, "instance_id": instance["instance_id"]},
+            {
+                "state": "recovered",
+                "data": {
+                    **instance["data"],
+                    "recovery_response": response,
+                    "recovery_reason": reason,
+                },
+            },
+        )
+    state["curriculum_revision"] = state.get("curriculum_revision", 0) + 1
+    state.update(
+        history=[],
+        quiz_exposures=[],
+        pending_quiz_instance_id=None,
+        required_quiz_instance_id=None,
+        current_item_id=None,
+        study_debt=0,
+        root_page_id=None,
+        last_client_event_at=None,
+        foreground=True,
+        quiz_definition_history=[],
+    )
+    save_session(conn, user_id, state)
 
 
 def learning_states(

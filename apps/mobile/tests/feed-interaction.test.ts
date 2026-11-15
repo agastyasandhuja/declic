@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { FeedInteraction, scrubTarget } from '../src/lib/playback/FeedInteraction';
 import { VisibleWatchTracker } from '../src/lib/playback/VisibleWatchTracker';
-import { seekFeedVideo } from '../src/features/feed/FeedSeek';
+import { seekFeedVideo, waitForNativeSeek } from '../src/features/feed/FeedSeek';
 import { parseCommentsPage } from '../src/features/feed/commentsData';
 
 test('edge hold temporarily doubles speed and hides chrome; every exit restores normal playback', () => {
@@ -49,7 +49,7 @@ test('a native seek waits for queued progress and an accepted zero-credit anchor
     api: { request: async (_path, options) => { sent = options!.body; return await new Promise(resolve => { accept = resolve; }); } },
     events: { flush: () => new Promise<void>(resolve => { finishFlush = resolve; }) },
     sessionId: 'session', itemId: 'item', eventId: 'seek', positionMs: 2000, visibleWatchMs: 5000,
-    isActive: () => true, isCurrent: () => current, onSeek: () => seeks++,
+    isActive: () => true, isCurrent: () => current, onSeek: () => { seeks++; },
   });
   assert.equal(sent, undefined); finishFlush(); await Promise.resolve(); await Promise.resolve();
   assert.equal((sent as any)[0].event_type, 'playback_seeked'); assert.deepEqual((sent as any)[0].payload, { position_ms: 2000, visible_watch_ms: 5000 });
@@ -67,4 +67,15 @@ test('comments accept real bounded fields and reject malformed/duplicated provid
   assert.throws(() => parseCommentsPage({ ...page, items: [...page.items, ...page.items] }));
   assert.throws(() => parseCommentsPage({ ...page, items: [{ ...page.items[0], like_count: -1 }] }));
   assert.equal(parseCommentsPage({ ...page, availability: 'unavailable', items: [] }).availability, 'unavailable');
+});
+
+
+test('native seek waits across old frames and stops polling after a swipe', async () => {
+  let position = 31, polls = 0;
+  const wait = async () => { if (++polls === 3) position = 5.07; };
+  assert.equal(await waitForNativeSeek(5, () => position, () => true, wait), true);
+  assert.equal(polls, 3);
+  const afterSwipe = await waitForNativeSeek(20, () => position, () => polls < 4, wait);
+  assert.equal(afterSwipe, false);
+  assert.equal(polls, 4);
 });

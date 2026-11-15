@@ -1,89 +1,59 @@
-# HackUMass XIV — Study in your feed
+# déclic
 
-An iPhone-first React Native app that mixes short-form entertainment with
-30–60 second lessons generated from a student's Canvas courses. Course schedules,
-upcoming exams, and quiz answers guide the study recommendations.
+**A short-video feed that slips a study break into your scroll.** Built at **HackUMass 14**.
 
-**Current status:** an Expo mobile prototype with a fixture feed, Supabase Auth
-integration and teammate component slots; shared backend/Atlas persistence remain
-pending. See [mobile setup and verification boundaries](apps/mobile/README.md). Technology
-choices below include the adopted MongoDB Atlas database decision; remaining
-defaults and user-confirmed product requirements are identified in the project
-document.
+Students already spend time swiping through short videos. We built déclic around a simple question: could the next swipe help you understand something from class? déclic combines entertainment with short, captioned lessons and quick quizzes in an iPhone-first feed.
 
-## Start here
+## What it does
 
-1. Read [AGENTS.md](AGENTS.md) for ownership and collaboration rules.
-2. Read [the project and architecture document](docs/PROJECT.md).
-3. Read [the shared integration contracts](contracts/README.md).
-4. Follow your assignment:
-   - [Adi — mobile app, authentication, entertainment](docs/tasks/ADI.md)
-   - [Amogh — Canvas and Gemini curriculum preprocessing](docs/tasks/AMOGH.md)
-   - [Agastya — video generation, quizzes, recommendations](docs/tasks/AGASTYA.md)
-5. Use [integration milestones](docs/INTEGRATION.md) for handoffs and demo checks.
+- **Mixes Reels and lessons.** The personal feed starts with entertainment and introduces study clips as you watch. It balances courses, prioritizes upcoming assessments where available, and uses what you watched and answered to choose what to show next.
+- **Turns Canvas material into micro-lessons.** A read-only Canvas connection imports accessible courses and materials. Background workers extract relevant concepts and create short visual explanations or narrated stories. The feed picks from ready clips, so swiping doesn't wait for a render.
+- **Uses quizzes to pick a better explanation.** Submit an answer to continue, even if you get it wrong. A missed concept can come back with a different explanation when another clip is ready. Retries don't count twice.
+- **Offers an optional demo library.** With an authenticated backend and a published demo catalog, you can try generic lessons without connecting Canvas. Our curated lineup used a tax bill to explain undo stacks, visualized JavaScript promise states, staged an inventory accounting problem in a shop, and told the story of the Wright brothers.
 
-## Stack
+Getting video playback, signed media URLs, and quiz checkpoints to cooperate was a big part of the hack. The app buffers upcoming clips and keeps an issued quiz recoverable across a refresh. Our next steps are to quantify learning outcomes, improve course coverage, and make provider connections easier. The recommendation policy is rule-based; it hasn't been validated in a learning study.
 
-| Layer | Default |
-|---|---|
-| iPhone UI | React Native + Expo + TypeScript |
-| App identity | Supabase Auth |
-| Application database | MongoDB Atlas |
-| Documents and media files | Supabase Storage |
-| HTTP API and domain logic | Python + FastAPI, one modular backend |
-| Entertainment adapters | TikTok-Api first experiment; instagrapi alternative |
-| Course extraction and lesson planning | Gemini, with validated structured output |
-| Video writing and scene generation | Claude |
-| Narration and alignment | ElevenLabs |
-| Compositing | Remotion + React/SVG + FFmpeg |
-| Background work | Persistent Atlas jobs collection + separate workers initially |
+## Try it without accounts or API keys
 
-Atlas replaces the proposed Postgres application tables for profiles, courses,
-lesson plans, video metadata, jobs, quizzes and feed state. Supabase continues to
-handle accounts and file storage. The phone accesses Atlas-backed data through
-the authenticated FastAPI API. See the [accepted decision](docs/decisions/001-proposed-atlas-application-data.md)
-and [database ownership/setup plan](database/README.md). No Atlas cluster or
-database connection has been provisioned or tested by this scaffold.
+Use Node **24** (see [`.nvmrc`](.nvmrc)) and npm:
 
-## Repository map
+```sh
+git clone https://github.com/agastyasandhuja/declic.git
+cd declic
+npm ci
+cp apps/mobile/.env.example apps/mobile/.env
+npm run web
+```
 
-| Directory | Purpose | Owner |
-|---|---|---|
-| apps/mobile | App shell, navigation, auth, playback, feed UI | Adi |
-| services/api/app/modules/auth | App identity adapter | Adi |
-| services/api/app/modules/entertainment | Entertainment catalog and provider adapters | Adi |
-| services/api/app/modules/canvas | Canvas connection and ingestion | Amogh |
-| services/api/app/modules/curriculum | Gemini profiles and lesson plans | Amogh |
-| services/api/app/modules/{videos,recommendations,quizzes} | Learning runtime | Agastya |
-| services/api/app/core | API assembly, auth dependency, configuration, job primitives | Agastya |
-| services/renderer | Isolated Node/Remotion render worker | Agastya |
-| packages/mobile-academics | Course connection/profile feature components | Amogh |
-| packages/mobile-learning | Quiz/progress feature components | Agastya |
-| contracts | Domain interface definitions; see ownership inside | Split by file |
-| database | Domain collection/index drafts and ordered database changes | Split / Agastya integrates |
-| fixtures | Synthetic, nonprivate integration samples | Split by subfolder |
-| docs | Product architecture, integration, references, task guides | Split by document |
+Choose **Explore the demo** on the sign-in screen. This local development preview uses synthetic course data and publicly hosted test clips. It doesn't require a backend, and the clips need internet access. Use `npm run ios` for the iOS Simulator or follow the [mobile setup guide](apps/mobile/README.md) for Expo on iPhone.
 
-Implementation directories still containing .gitkeep files are placeholders;
-the mobile app now has its own executable workspace. Other owners replace their
-domain placeholders as implementation begins.
+For real sign-in, Canvas import, Instagram playback, generation, or the published demo library, follow [Run the integrated demo](docs/RUN_DEMO.md). Bring your own provider accounts and credentials. The hackathon's hosted catalog, private course files, provider sessions, and original video masters aren't part of this clone.
 
-## First deliverable
+## How we built it
 
-Adi's first milestone is **signup → login → scroll entertainment on a real iPhone**.
-It has no Canvas dependency and does not require completed AI video generation.
-Other streams work against the contracts and their own fixtures.
+| Layer | What it does |
+| --- | --- |
+| **Expo · React Native · TypeScript** | Vertical feed, video playback, course setup, and quizzes |
+| **FastAPI · Python · MongoDB Atlas** | Authenticated feed and quiz API, account-scoped application data, and durable job queues |
+| **Supabase** | App authentication and private object storage for lesson media |
+| **Canvas · Instagram** | Read-only course materials and an optional, account-connected entertainment catalog |
+| **Gemini · Claude · ElevenLabs** | Course analysis and lesson planning, script and scene generation, and narration and timing |
+| **Remotion · FFmpeg · Docker** | Isolated portrait video rendering and media checks |
 
-## Running the project
+Workers prepare lessons ahead of time. The API checks ownership before signing playable media URLs. Course-derived lessons are private by default; the shared demo uses a separate generic catalog. Generated scene code runs in a container without provider credentials or network access.
 
-For the integrated cloud-backed API, background workers, saved provider connections,
-and phone setup, follow [Run the demo](docs/RUN_DEMO.md).
+## Configuration and development
 
+Start with the [root environment guide](.env.example). Copy the [mobile template](apps/mobile/.env.example) into `apps/mobile/.env` and the [API template](services/api/.env.example) into `services/api/.env` as needed. Keep server keys and Canvas or Instagram credentials out of `EXPO_PUBLIC_*` and Git. Use your own authorized Canvas and Instagram connections. Live provider access depends on institutional permissions, account checkpoints, and provider availability.
 
-Use Node 24 LTS, run `npm ci`, and follow [the mobile README](apps/mobile/README.md)
-to configure the local .env. `npm start` starts Expo; `npm run ios` opens the iOS
-Simulator; `npm run web` opens the browser preview. **Explore the demo** uses
-fixtures without Atlas or FastAPI. Real auth requires Supabase public app config.
+```sh
+npm run typecheck
+npm test
+npm run contracts:check
+(cd services/api && uv sync --locked && uv run --locked pytest -q)
+npm --prefix services/renderer test
+```
 
-Shared services are still initialized by their owners. Do not commit real keys,
-tokens, Canvas files, downloaded media, or generated MP4s.
+See the [API guide](services/api/README.md), [renderer guide](services/renderer/README.md), [data contracts](contracts/README.md), and [architecture notes](docs/PROJECT.md) for more detail. To set up the shared catalog with your own reviewed media, see the [publication workflow](contracts/demo-catalog.md).
+
+Built by Adi (mobile, accounts, entertainment), Amogh (Canvas and curriculum), and Agastya (video generation, recommendations, quizzes, and integration).

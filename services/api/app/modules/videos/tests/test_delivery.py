@@ -83,7 +83,9 @@ def test_routes_never_sign_another_users_video():
     app.dependency_overrides[get_current_user] = lambda: Principal("bob")
     with TestClient(app) as client:
         assert client.get("/v1/learning/videos/alice-video").status_code == 404
-        assert client.get("/v1/learning/videos/alice-video/playback").status_code == 404
+        playback = client.get("/v1/learning/videos/alice-video/playback")
+        assert playback.status_code == 404
+        assert playback.json()["error"]["code"] == "VIDEO_NOT_FOUND"
 
 
 def test_worker_uses_frozen_recipe_and_stops_for_review(monkeypatch, tmp_path):

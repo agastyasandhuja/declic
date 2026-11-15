@@ -14,7 +14,7 @@ from uuid import uuid4
 
 from pymongo.errors import DuplicateKeyError
 
-from app.core.demo_catalog import CATALOG_OWNER
+from app.core.demo_catalog import CATALOG_OWNER, minimum_demo_duration
 from app.modules.videos.media import contained, sha256
 from app.modules.videos.models import digest
 from app.modules.videos.repository import new_job
@@ -107,7 +107,9 @@ def validate_review(lesson, work, review, expected_renderer):
     if (
         quality.get("media_checks") != "passed"
         or quality.get("sha256") != hashes["video"]
-        or not 30 <= quality.get("duration_seconds", 0) <= 60
+        or not minimum_demo_duration(FORMAT[lesson.format_style])
+        <= quality.get("duration_seconds", 0)
+        <= 60
         or assets["video"].stat().st_size > 45 * 1024 * 1024
     ):
         raise ValueError("Final video has not passed the demo delivery checks")
@@ -145,7 +147,14 @@ def validate_review(lesson, work, review, expected_renderer):
 
 
 def publish_lesson(repository, storage, lesson, work, review, expected_renderer):
-    data, files, quality, hashes = validate_review(lesson, work, review, expected_renderer)
+    def verify():
+        return validate_review(lesson, work, review, expected_renderer)
+
+    return _publish_reviewed_lesson(repository, storage, lesson, review, expected_renderer, verify)
+
+
+def _publish_reviewed_lesson(repository, storage, lesson, review, expected_renderer, verify):
+    data, files, quality, hashes = verify()
     recipe = {
         "pipeline": "authored_generic_demo_v1",
         "renderer_source": expected_renderer,
@@ -186,7 +195,9 @@ def publish_lesson(repository, storage, lesson, work, review, expected_renderer)
             assets[name] = storage.put(object_key, path)
         # Revalidate files immediately before visibility. A prior approved review
         # is never approval for changed files or newly generated output.
-        validate_review(lesson, work, review, expected_renderer)
+        _, _, _, current_hashes = verify()
+        if current_hashes != hashes:
+            raise ValueError("Reviewed artifacts changed during upload")
         now = datetime.now(UTC).isoformat()
         variant = {
             "schema_version": "1",
@@ -233,6 +244,30 @@ def publish_lesson(repository, storage, lesson, work, review, expected_renderer)
         raise
 
 
+def catalog_entry(lesson, video_id):
+    return {
+        "objective_id": lesson.objective_id,
+        "video_id": video_id,
+        "quizzes": [
+            {
+                "quiz_id": f"{lesson.objective_id}_{lesson.lesson_id}_quiz_{i + 1}",
+                "revision": 1,
+                "objective_ids": [lesson.objective_id],
+                "prompt": quiz.prompt,
+                "options": [
+                    {"option_id": str(j), "text": value} for j, value in enumerate(quiz.options)
+                ],
+                "correct_option_id": str(quiz.correct_index),
+                "explanation": quiz.explanation,
+                "scope": "shared_generic",
+                "owner_user_id": None,
+                "source_refs": [],
+            }
+            for i, quiz in enumerate(lesson.quizzes)
+        ],
+    }
+
+
 def main():
     from app.full_runtime import components
     from app.modules.videos.local_demo import Batch
@@ -266,30 +301,7 @@ def main():
                 reviews[lesson.lesson_id],
                 expected_renderer,
             )
-            quizzes = [
-                {
-                    "quiz_id": f"{lesson.objective_id}_{lesson.lesson_id}_quiz_{i + 1}",
-                    "revision": 1,
-                    "objective_ids": [lesson.objective_id],
-                    "prompt": quiz.prompt,
-                    "options": [
-                        {"option_id": str(j), "text": value} for j, value in enumerate(quiz.options)
-                    ],
-                    "correct_option_id": str(quiz.correct_index),
-                    "explanation": quiz.explanation,
-                    "scope": "shared_generic",
-                    "owner_user_id": None,
-                    "source_refs": [],
-                }
-                for i, quiz in enumerate(lesson.quizzes)
-            ]
-            entries.append(
-                {
-                    "objective_id": lesson.objective_id,
-                    "video_id": variant["video_id"],
-                    "quizzes": quizzes,
-                }
-            )
+            entries.append(catalog_entry(lesson, variant["video_id"]))
             print(json.dumps({"lesson_id": lesson.lesson_id, "published": True}), flush=True)
         manifest = {
             "schema_version": "1",

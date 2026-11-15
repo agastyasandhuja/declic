@@ -1,4 +1,5 @@
 from copy import deepcopy
+from dataclasses import replace
 from datetime import datetime
 
 from app.core import collections as tables
@@ -37,8 +38,9 @@ class FeedService:
         self.quizzes = quizzes
         self.clock = clock
         self.policy = policy
+        self.demo_policy = replace(policy, ramp=((0, 2 / 3),))
 
-    def session_response(self, state: dict) -> dict:
+    def session_response(self, state: dict, demo_mode: bool = False) -> dict:
         return {
             "schema_version": "1",
             **{
@@ -52,11 +54,49 @@ class FeedService:
                 )
             },
             "active_view_seconds": state["active_view_ms"] / 1000,
-            "study_ratio_target": study_ratio(state["active_view_ms"] / 1000, self.policy),
+            "demo_mode": demo_mode,
+            "study_ratio_target": study_ratio(
+                state["active_view_ms"] / 1000, self.demo_policy if demo_mode else self.policy
+            ),
         }
 
-    def start_session(self, user_id: str, resume_session_id: str | None = None,
-                      *, refresh_unseen=False, _connection=None) -> dict:
+    def _prepare_demo_session(self, conn, user_id, state):
+        if state.get("demo_feed_policy") == repo.DEMO_FEED_POLICY:
+            return False
+        state["demo_feed_policy"] = repo.DEMO_FEED_POLICY
+        if state["sequence"]:
+            repo.reset_curriculum(conn, user_id, state, "demo_lineup_changed")
+        else:
+            repo.save_session(conn, user_id, state)
+        return True
+
+    def _required_quiz_page(self, conn, user_id, state):
+        gate = conn.value(
+            tables.quiz_instances,
+            "data",
+            {
+                "user_id": user_id,
+                "session_id": state["session_id"],
+                "instance_id": state["required_quiz_instance_id"],
+            },
+        )
+        return {
+            "schema_version": "1",
+            "session_id": state["session_id"],
+            "recommendation_revision": state["recommendation_revision"],
+            "items": [gate["item"]],
+            "next_cursor": None,
+            "pending_quiz_instance_id": state["pending_quiz_instance_id"],
+        }
+
+    def start_session(
+        self,
+        user_id: str,
+        resume_session_id: str | None = None,
+        *,
+        refresh_unseen=False,
+        _connection=None,
+    ) -> dict:
         now = self.clock()
 
         def operation(conn):
@@ -81,7 +121,10 @@ class FeedService:
                     repo.save_session(conn, user_id, state)
             else:
                 state = repo.create_session(conn, user_id, now)
-            return self.session_response(state)
+            demo_mode = repo.demo_enabled(conn, user_id)
+            if demo_mode:
+                self._prepare_demo_session(conn, user_id, state)
+            return self.session_response(state, demo_mode)
 
         if _connection is not None:
             return operation(_connection)
@@ -93,37 +136,45 @@ class FeedService:
 
         def startup_page(conn, session_id):
             state = repo.get_session(conn, user_id, session_id)
-            required = state["required_quiz_instance_id"]
-            if required:
-                gate = conn.value(tables.quiz_instances, "data", {
-                    "user_id": user_id, "instance_id": required,
-                })
-                return {
-                    "schema_version": "1", "session_id": session_id,
-                    "recommendation_revision": state["recommendation_revision"],
-                    "items": [gate["item"]], "next_cursor": None,
-                    "pending_quiz_instance_id": state["pending_quiz_instance_id"],
-                }
-            return self.get_feed(
-                user_id, session_id, None, limit,
-                preferred_video_ids=preferred_video_ids, startup_entertainment=True,
-                _connection=conn,
+            page = (
+                self._required_quiz_page(conn, user_id, state)
+                if state["required_quiz_instance_id"]
+                else self.get_feed(
+                    user_id,
+                    session_id,
+                    None,
+                    limit,
+                    preferred_video_ids=preferred_video_ids,
+                    startup_entertainment=not repo.demo_enabled(conn, user_id),
+                    _connection=conn,
+                )
             )
+            return {**page, "demo_mode": repo.demo_enabled(conn, user_id)}
 
         def operation(conn):
             prior = idempotency.lookup(conn, user_id, "feed/bootstrap", key, body)
             if prior:
                 state = repo.get_session(conn, user_id, prior["session_id"])
-                if state["recommendation_revision"] != prior["recommendation_revision"]:
+                if state["recommendation_revision"] != prior["recommendation_revision"] or (
+                    repo.demo_enabled(conn, user_id)
+                    and state.get("demo_feed_policy") != repo.DEMO_FEED_POLICY
+                ):
                     raise APIError(409, "STALE_BOOTSTRAP", "Start a fresh feed request")
                 # Refresh signed links and honor any gate activated since the retry.
                 return startup_page(conn, state["session_id"])
             state = self.start_session(user_id, refresh_unseen=True, _connection=conn)
             page = startup_page(conn, state["session_id"])
-            idempotency.remember(conn, user_id, "feed/bootstrap", key, body, {
-                "session_id": page["session_id"],
-                "recommendation_revision": page["recommendation_revision"],
-            })
+            idempotency.remember(
+                conn,
+                user_id,
+                "feed/bootstrap",
+                key,
+                body,
+                {
+                    "session_id": page["session_id"],
+                    "recommendation_revision": page["recommendation_revision"],
+                },
+            )
             return page
 
         return self.database.run(user_id, operation)
@@ -165,9 +216,11 @@ class FeedService:
             state["history"] = [*state["history"], history][-50:]
         return item
 
-    def _maybe_quiz(self, conn, user_id: str, state: dict, now: datetime) -> dict | None:
+    def _maybe_quiz(
+        self, conn, user_id: str, state: dict, now: datetime, demo_mode: bool
+    ) -> dict | None:
         exposures = state["quiz_exposures"]
-        if len(exposures) < self.database.settings.quiz_after_study_exposures:
+        if len(exposures) < (1 if demo_mode else self.database.settings.quiz_after_study_exposures):
             return None
         exposed_objectives = {e["objective_id"] for e in exposures}
         authorized = {
@@ -249,12 +302,13 @@ class FeedService:
             if exc.status != 503:
                 raise
             objectives = []
-        try:
-            clips = {c.video_id: c for c in self.entertainment.list_candidates(user_id, 200)}
-        except APIError as exc:
-            if exc.status != 503:
-                raise
-            clips = {}
+        clips = {}
+        if any(item["kind"] == "entertainment_video" for item in response["items"]):
+            try:
+                clips = {c.video_id: c for c in self.entertainment.list_candidates(user_id, 200)}
+            except APIError as exc:
+                if exc.status != 503:
+                    raise
         for item in response["items"]:
             if item["kind"] == "quiz":
                 valid.append(item)
@@ -268,10 +322,15 @@ class FeedService:
             else:
                 try:
                     bound_lookup = getattr(self.videos, "get_variant_for_objective", None)
-                    video = (bound_lookup(user_id, item["video"]["video_id"],
-                                          item["course_context"]["objective_id"])
-                             if bound_lookup else
-                             self.videos.get_variant(user_id, item["video"]["video_id"]))
+                    video = (
+                        bound_lookup(
+                            user_id,
+                            item["video"]["video_id"],
+                            item["course_context"]["objective_id"],
+                        )
+                        if bound_lookup
+                        else self.videos.get_variant(user_id, item["video"]["video_id"])
+                    )
                     if video and video.playback and not video.playback.playable(now):
                         playback = self.videos.resolve_playback(user_id, video.video_id)
                         video = video.model_copy(update={"playback": playback})
@@ -311,9 +370,17 @@ class FeedService:
         )
         return response
 
-    def get_feed(self, user_id: str, session_id: str, cursor: str | None, limit: int,
-                 *, preferred_video_ids: list[str] | None = None, startup_entertainment=False,
-                 _connection=None) -> dict:
+    def get_feed(
+        self,
+        user_id: str,
+        session_id: str,
+        cursor: str | None,
+        limit: int,
+        *,
+        preferred_video_ids: list[str] | None = None,
+        startup_entertainment: bool = False,
+        _connection=None,
+    ) -> dict:
 
         if not 1 <= limit <= self.database.settings.max_page_size:
             raise APIError(422, "INVALID_LIMIT", "Feed limit outside allowed range")
@@ -321,7 +388,9 @@ class FeedService:
 
         def operation(conn):
             state = repo.get_session(conn, user_id, session_id)
-            page_id = cursor or state["root_page_id"]
+            demo_mode = repo.demo_enabled(conn, user_id)
+            changed = demo_mode and self._prepare_demo_session(conn, user_id, state)
+            page_id = cursor or (None if changed else state["root_page_id"])
             page = None
             if page_id:
                 page = conn.find_one(
@@ -342,25 +411,10 @@ class FeedService:
                     raise APIError(
                         409, "CURSOR_QUERY_MISMATCH", "Keep the same page size for this cursor"
                     )
-            if state["pending_quiz_instance_id"]:
-                gate = conn.value(
-                    tables.quiz_instances,
-                    "data",
-                    {
-                        "$and": [
-                            {"user_id": user_id},
-                            {"instance_id": state["pending_quiz_instance_id"]},
-                        ]
-                    },
-                )
-                return {
-                    "schema_version": "1",
-                    "session_id": session_id,
-                    "recommendation_revision": state["recommendation_revision"],
-                    "items": [gate["item"]],
-                    "next_cursor": None,
-                    "pending_quiz_instance_id": state["pending_quiz_instance_id"],
-                }
+            if state["pending_quiz_instance_id"] or (
+                not cursor and state["required_quiz_instance_id"]
+            ):
+                return self._required_quiz_page(conn, user_id, state)
             if page is not None and page["data"] is not None and page["data"]["items"]:
                 refreshed = self._refresh_page(conn, user_id, state, page, now)
                 if startup_entertainment and not refreshed["items"]:
@@ -369,15 +423,16 @@ class FeedService:
                                    retryable=True)
                 return refreshed
             if state["required_quiz_instance_id"]:
-                raise APIError(
-                    409, "QUIZ_REQUIRED", "Resolve the issued quiz before requesting more items"
-                )
+                # A restart, dropped page, or refresh can lose the issued card.
+                # Replay it without activating the gate or issuing past it.
+                return self._required_quiz_page(conn, user_id, state)
             if not page_id:
                 page_id = self._page(conn, user_id, state, limit)
                 state["root_page_id"] = page_id
             try:
-                quiz = (None if startup_entertainment
-                        else self._maybe_quiz(conn, user_id, state, now))
+                quiz = (
+                    None if startup_entertainment else self._maybe_quiz(conn, user_id, state, now, demo_mode)
+                )
             except APIError as exc:
                 if exc.status != 503:
                     raise
@@ -416,7 +471,13 @@ class FeedService:
                         if c.availability == "ready" and c.playback.playable(now)
                     }.values()
                 )
-                states = {} if startup_entertainment else repo.learning_states(conn, user_id)
+                states = (
+                    {}
+                    if startup_entertainment
+                    else repo.learning_states(
+                        conn, user_id, [o.objective_id for o in objectives] if demo_mode else None
+                    )
+                )
                 if not any(v.eligible(user_id, o, now) for o in objectives for v in variants):
                     availability["study"] = "unavailable"
                 buffered = conn.count(
@@ -436,21 +497,25 @@ class FeedService:
                 startup_preference = (
                     list(dict.fromkeys(preferred_video_ids or [])) if cursor is None else []
                 )
+                issued_ids = set()
+                policy = self.demo_policy if demo_mode else self.policy
                 for _ in range(min(1 if startup_entertainment else limit, remaining)):
                     selection = None if startup_entertainment else select_study(
                         user_id=user_id,
                         objectives=objectives,
-                        variants=variants,
+                        variants=[v for v in variants if v.video_id not in issued_ids]
+                        if demo_mode
+                        else variants,
                         learning=states,
                         history=state["history"],
                         now=now,
-                        policy=self.policy,
+                        policy=policy,
                     )
                     study, debt = (False, state["study_debt"]) if startup_entertainment else slot(
                         state["study_debt"],
                         state["active_view_ms"] / 1000,
                         selection is not None,
-                        self.policy,
+                        policy,
                     )
                     if not clips:
                         availability["entertainment"] = "unavailable"
@@ -476,7 +541,9 @@ class FeedService:
                             "reason_codes": selection.reasons,
                             "constraint_relaxations": selection.relaxations,
                         }
-                        if not clips:
+                        if demo_mode:
+                            issued_ids.add(video.video_id)
+                        elif not clips:
                             item["reason_codes"] = [*item["reason_codes"], "inventory_fallback"]
                         history = {
                             "course_id": objective.course_id,
@@ -492,17 +559,26 @@ class FeedService:
                         # bounded least-recently-issued queue across page refreshes.
                         recent = state.get("entertainment_history")
                         if recent is None:
-                            recent = list(dict.fromkeys(
-                                h["video_id"] for h in state["history"] if "course_id" not in h
-                            ))
+                            recent = list(
+                                dict.fromkeys(
+                                    h["video_id"] for h in state["history"] if "course_id" not in h
+                                )
+                            )
                         positions = {video_id: index for index, video_id in enumerate(recent)}
                         last_id = state["history"][-1]["video_id"] if state["history"] else None
                         candidates = [c for c in clips if c.video_id != last_id]
                         if not candidates:
                             # Never immediately replay the only available clip.
                             break
-                        cached = next((c for video_id in startup_preference
-                                       for c in candidates if c.video_id == video_id), None)
+                        cached = next(
+                            (
+                                c
+                                for video_id in startup_preference
+                                for c in candidates
+                                if c.video_id == video_id
+                            ),
+                            None,
+                        )
                         clip = cached or min(
                             candidates, key=lambda c: (positions.get(c.video_id, -1), c.video_id)
                         )

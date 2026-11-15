@@ -5,7 +5,7 @@ import type { FeedEventBuffer } from './FeedEventBuffer';
 export async function seekFeedVideo(input: {
   api: ApiClient; events: Pick<FeedEventBuffer, 'flush'>;
   sessionId: string; itemId: string; eventId: string; positionMs: number; visibleWatchMs: number;
-  isActive(): boolean; isCurrent(): boolean; onSeek(): void;
+  isActive(): boolean; isCurrent(): boolean; onSeek(): void | Promise<void>;
 }) {
   await input.events.flush();
   if (!input.isActive()) return false;
@@ -18,5 +18,19 @@ export async function seekFeedVideo(input: {
   });
   if (!result.accepted_event_ids.includes(input.eventId)) throw new Error('Unable to seek yet. Resume playback and try again.');
   if (!input.isCurrent()) return false;
-  input.onSeek(); return true;
+  await input.onSeek(); return true;
+}
+
+
+/** Expo updates currentTime asynchronously. Leave progress paused until it lands. */
+export async function waitForNativeSeek(
+  target: number, getPosition: () => number, isCurrent: () => boolean,
+  wait = () => new Promise<void>(resolve => setTimeout(resolve, 50)),
+) {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    if (!isCurrent()) return false;
+    if (Math.abs(getPosition() - target) <= 0.1) return true;
+    await wait();
+  }
+  return false;
 }

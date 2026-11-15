@@ -17,7 +17,7 @@ cd ../..
 
 Copy `services/api/.env.example` to `services/api/.env` and
 `services/api/.env.gemini.example` to `services/api/.env.gemini.local`.
-Existing root `.env` values are also loaded. Set server-only values:
+Optional root `.env` values take precedence over these files. Set server-only values:
 
 - `MONGODB_URI`, `MONGODB_DATABASE`: the application Atlas database.
 - `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
@@ -28,10 +28,11 @@ Existing root `.env` values are also loaded. Set server-only values:
 - `GEMINI_API_KEY` in `.env.gemini.local`; the example selects `gemini-3.5-flash-lite`.
   This is a [stable structured-output model](https://aistudio.google.com/docs/models/gemini-3.5-flash-lite).
   Embeddings use `gemini-embedding-001`.
-- `ANTHROPIC_API_KEY`, `VIDEO_CLAUDE_MODEL` (default `claude-sonnet-4-5`),
-  `ELEVENLABS_API_KEY`, and the narrator/Peter/Stewie voice IDs.
+- For optional lesson generation, add settings from `services/api/.env.video.example`
+  to the API env. Set your own `ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY`, model, and
+  voice IDs that you are authorized to use.
 - `VIDEO_RENDER_IMAGE`: the image built using the renderer's documented Docker
-  instructions. Existing local image: `hackumass-renderer:reference-v10-dialogue`.
+  instructions. Keep this value in sync with the Docker image tag you build.
 
 Place the local licensed/demo assets in `.local/video-assets` as described in the
 video README. They are intentionally excluded from Git. Run Docker before workers.
@@ -44,7 +45,8 @@ python3 scripts/run-demo.py check
 
 `init` applies ordered Atlas definitions/indexes. It does not create a Supabase
 project or make a bucket public. `check` prints configuration presence, never secrets.
-The existing cloud project and private bucket were reachable during integration.
+Create a private `lesson-videos` bucket in your own Supabase project, or configure
+`VIDEO_STORAGE_BUCKET` to match your private bucket.
 
 ## Start on the Mac
 
@@ -57,8 +59,8 @@ python3 scripts/run-demo.py workers
 
 Set `VIDEO_GENERATION_ENABLED=false` to pause paid video jobs while keeping the
 API, feed and cached videos available. Set it to `true` and restart workers when ready.
-The user subsequently authorized five videos for the live phone test; use the
-persisted job allowlist below to prevent processing the rest of the course queue.
+Use the job allowlist below to run a limited batch without processing the rest
+of the course queue. The API example disables generation by default.
 `VIDEO_MAX_CLAUDE_CALLS=6` caps generation/review attempts per narrated demo video, including
 repairs and restarts; failed checks never publish. Model override is explicit. The separate legacy math CLI retains its own call cap;
 the automated course pipeline does not queue math jobs.

@@ -87,3 +87,18 @@ test('late URL hashing cannot resolve or discard bytes belonging to a new owner 
   release(await originalKey(url('a'))); await discard; f.store.key = originalKey;
   assert.match(await cache.resolve(url('a')), /^file:/);
 });
+
+test('the native cache can hold all four authored demo clips together', async () => {
+  const f = fixture(), cache = new HttpMediaCache(f.store, f.now);
+  const sizes = [41, 37, 30, 11];
+  await cache.open();
+  for (const [index, size] of sizes.entries()) {
+    const work = cache.warm(url(String(index)), null, new AbortController().signal);
+    await tick();
+    f.requests[index].finish(size * 1024 * 1024);
+    await work;
+  }
+  cache.deactivate();
+  await cache.open();
+  for (const index of sizes.keys()) assert.match(await cache.resolve(url(String(index))), /^file:/);
+});

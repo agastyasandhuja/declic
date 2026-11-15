@@ -38,7 +38,7 @@ export function FeedIconButton({ label, icon, onPress, selected, color = theme.c
       onPress={press}
       style={({ pressed }) => [styles.action, round && styles.round, (pressed || disabled) && styles.dimmed]}
     >
-      <Ionicons name={icon} size={round ? 20 : 23} color={color} style={!round && styles.iconShadow} />
+      <Ionicons name={icon} size={round ? 20 : 28} color={color} style={!round && styles.iconShadow} />
       {compactCount(count) !== null && <Text style={styles.count}>{compactCount(count)}</Text>}
     </Pressable></Animated.View>
   );
@@ -48,12 +48,16 @@ export function FeedScrim() {
   return <LinearGradient pointerEvents="none" colors={['#00000088', '#00000000', '#00000000', '#000000D9']} locations={[0, 0.20, 0.63, 1]} style={StyleSheet.absoluteFill} />;
 }
 
-export function FeedCaption({ byline, title, caption, children }: {
-  byline?: string | null; title?: string; caption?: string;
+export function FeedCaption({ byline, courseTitle, title, caption, children }: {
+  byline?: string | null; courseTitle?: string; title?: string; caption?: string;
   children?: React.ReactNode;
 }) {
   return (
     <View pointerEvents="box-none" style={styles.description}>
+      {!!courseTitle && <View style={styles.courseBadge}>
+        <Ionicons accessible={false} name="book-outline" size={13} color={theme.colors.ink} />
+        <Text numberOfLines={2} style={styles.courseLabel}>{courseTitle}</Text>
+      </View>}
       {!!byline && <Text numberOfLines={1} style={styles.byline}>{byline}</Text>}
       {!!title && <Text numberOfLines={2} style={styles.title}>{title}</Text>}
       {!!caption && <Text numberOfLines={3} maxFontSizeMultiplier={1.4} style={styles.caption}>{caption}</Text>}
@@ -62,18 +66,19 @@ export function FeedCaption({ byline, title, caption, children }: {
   );
 }
 
-/** Frosted action rail from the v2 design; pairs with FeedCaption's bottom edge. */
-export const feedRail = { position: 'absolute', right: 10, bottom: 42, gap: 6, alignItems: 'center', paddingTop: 8, paddingBottom: 4, paddingHorizontal: 2, borderRadius: 30, backgroundColor: '#14141A61', borderWidth: 1, borderColor: '#FFFFFF1F' } as const;
+export const feedRail = { position: 'absolute', right: 13, bottom: 46, gap: 10, alignItems: 'center' } as const;
 
 const styles = StyleSheet.create({
   header: { position: 'absolute', left: 16, right: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 44 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   action: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', gap: 1 },
-  count: { fontFamily: theme.fonts.bold, fontSize: 10, lineHeight: 14, color: theme.colors.text, textShadowColor: '#000000B3', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  count: { fontSize: 12, fontWeight: '600', fontVariant: ['tabular-nums'], lineHeight: 16, color: theme.colors.text, textShadowColor: '#000000B3', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
   round: { borderRadius: 22, backgroundColor: '#09090B55', borderWidth: 1, borderColor: '#FFFFFF35' },
   dimmed: { opacity: 0.65 },
   iconShadow: { textShadowColor: '#000000B3', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 },
   description: { position: 'absolute', left: 16, right: 78, bottom: 42, gap: 7 },
+  courseBadge: { alignSelf: 'flex-start', maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: theme.colors.accent },
+  courseLabel: { flexShrink: 1, fontFamily: theme.fonts.bold, fontSize: 12, lineHeight: 16, color: theme.colors.ink },
   byline: { fontFamily: theme.fonts.bold, fontSize: 15, lineHeight: 20, color: theme.colors.text, textShadowColor: '#000000B3', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
   title: { fontFamily: theme.fonts.bold, fontSize: 17, lineHeight: 22, color: theme.colors.text },
   caption: { fontFamily: theme.fonts.body, fontSize: 14, lineHeight: 20, color: theme.colors.text, textShadowColor: '#000000B3', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },

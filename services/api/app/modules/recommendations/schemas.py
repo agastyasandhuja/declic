@@ -57,6 +57,7 @@ class SessionResponse(BaseModel):
     last_active_at: AwareDatetime
     active_view_seconds: float
     study_ratio_target: float
+    demo_mode: bool = False
     recommendation_revision: int
     pending_quiz_instance_id: str | None
 

@@ -1,7 +1,7 @@
 import { clearMediaCacheFiles } from './MediaCacheCleanup';
 import * as Crypto from 'expo-crypto';
 import * as FS from 'expo-file-system/legacy';
-import { HttpMediaCache, type MediaFileEntry, type MediaFileStore } from './HttpMediaCache';
+import { HttpMediaCache, MEDIA_CACHE_MAX_FILE, type MediaFileEntry, type MediaFileStore } from './HttpMediaCache';
 const directory = `${FS.cacheDirectory ?? ''}declic-feed-files-v1/`;
 const file = (key: string) => `${directory}${key}.mp4`;
 const remove = (uri: string) => FS.deleteAsync(uri, { idempotent: true });
@@ -13,11 +13,11 @@ const store: MediaFileStore = {
     await FS.makeDirectoryAsync(directory, { intermediates: true });
     let entries: MediaFileEntry[] = [];
     try { const parsed: unknown = JSON.parse(await FS.readAsStringAsync(`${directory}index.json`)); if (Array.isArray(parsed)) entries = parsed.filter(value => value && typeof value === 'object' && typeof value.key === 'string'); } catch { /* Cold or evicted cache. */ }
-    entries = entries.filter(entry => /^[a-f0-9]{64}$/.test(entry.key) && Number.isFinite(entry.bytes) && entry.bytes > 0 && entry.bytes <= 20 * 1024 * 1024 && Number.isFinite(entry.expires) && Number.isFinite(entry.used) && (entry.url_expires === undefined || Number.isFinite(entry.url_expires)));
+    entries = entries.filter(entry => /^[a-f0-9]{64}$/.test(entry.key) && Number.isFinite(entry.bytes) && entry.bytes > 0 && entry.bytes <= MEDIA_CACHE_MAX_FILE && Number.isFinite(entry.expires) && Number.isFinite(entry.used) && (entry.url_expires === undefined || Number.isFinite(entry.url_expires)));
     const actual: MediaFileEntry[] = [];
     for (const entry of entries) {
       const info = await FS.getInfoAsync(file(entry.key));
-      if (info.exists && !info.isDirectory && info.size > 0 && info.size <= 20 * 1024 * 1024) actual.push({ ...entry, bytes: info.size });
+      if (info.exists && !info.isDirectory && info.size > 0 && info.size <= MEDIA_CACHE_MAX_FILE) actual.push({ ...entry, bytes: info.size });
       else await remove(file(entry.key));
     }
     entries = actual;
@@ -34,7 +34,7 @@ const store: MediaFileStore = {
     });
     let cancelled = false;
     const cancel = () => { cancelled = true; void task.cancelAsync().catch(() => undefined); };
-    signal.addEventListener('abort', cancel, { once: true }); const deadline = setTimeout(cancel, 20000);
+    signal.addEventListener('abort', cancel, { once: true }); const deadline = setTimeout(cancel, 30000);
     try {
       if (signal.aborted) throw new Error('Cancelled media download');
       const response = await task.downloadAsync(), info = await FS.getInfoAsync(temporary);

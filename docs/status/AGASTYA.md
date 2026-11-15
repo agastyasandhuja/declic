@@ -1904,3 +1904,20 @@ Validation: 33 bootstrap/inventory/API/playback/demo/prepared-feed tests passed
 against isolated MongoDB; Ruff passed. Startup tests prove the opening request
 and retry do not call academic inventory, and a due study follows the opening
 reel rather than being erased. Post-deployment phone timing remains pending.
+
+### Public repository handoff — November 15, 2026
+
+Integrated the curated generic demo feed, clip preloading and recovery, seeking,
+and quiz continuity with the current entertainment-first startup on GitHub
+`main`. The authenticated feed and session responses expose `demo_mode`;
+published demo playback renews only videos from the same reviewed lineup.
+Regenerated and checked the API schemas, OpenAPI document, and mobile types.
+Added a public déclic README (HackUMass 14) and credential-free setup examples.
+
+Verification: mobile type checking and all 122 mobile tests passed; all 85
+renderer tests passed; `python -m pytest -q tests app` in the API passed 580 tests
+and skipped 41 that require a disposable MongoDB instance. A clean `npm ci`
+and Expo web export passed with Node 24. Checked ignored env
+files and scanned reachable local Git history for common credential patterns and
+matches against local server credentials. No live provider or physical iPhone
+acceptance was repeated for this release.

@@ -1,3 +1,4 @@
+from random import SystemRandom
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -40,7 +41,7 @@ class QuizDefinition(BaseModel):
         return self
 
     def card(self, instance_id: str, video_ids: list[str]) -> dict:
-        return self.model_dump(
+        card = self.model_dump(
             mode="json",
             include={
                 "quiz_id",
@@ -49,7 +50,9 @@ class QuizDefinition(BaseModel):
                 "prompt",
                 "options",
             },
-        ) | {"quiz_instance_id": instance_id, "related_video_ids": video_ids}
+        )
+        SystemRandom().shuffle(card["options"])
+        return card | {"quiz_instance_id": instance_id, "related_video_ids": video_ids}
 
 
 class QuizCard(BaseModel):

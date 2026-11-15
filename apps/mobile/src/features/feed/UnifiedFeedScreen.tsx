@@ -20,20 +20,22 @@ import type { EntertainmentVideo } from '../../contracts/generated';
 import { Button } from '../../components/Button';
 import { sharedStyles as shared, theme } from '../../theme';
 import { FeedCaption, FeedHeader, FeedIconButton, FeedScrim, feedRail } from './FeedChrome';
-import { FeedProgress, FeedTouchArea, PlaybackMenu, SpeedIndicator } from './FeedControls';
+import { FeedPlaybackWake, FeedProgress, FeedTouchArea, PlaybackMenu, SpeedIndicator } from './FeedControls';
 import { ReelComments } from './ReelComments';
 import { hasBufferHeadroom } from '../../lib/playback/MediaWarmup';
 import { cachedVideoSource, discardCachedVideo, releaseCachedVideo } from '../../lib/playback/MediaCache';
 import { useMediaWarmup } from '../../lib/playback/useMediaWarmup';
 import { createExpoPlayerDriver } from '../../lib/playback/ExpoPlayerDriver';
 import { useFeedInteraction } from './useFeedInteraction';
+import { useUpcomingPlayback } from './useUpcomingPlayback';
+import { isUnavailablePlayback, updateUpcomingPlayback } from './upcomingPlayback';
 import { FeedQuiz, type QuizFeedback } from './FeedQuiz';
 import type { PlaybackPreferences } from '../settings/ProfileScreen';
 import { FeedEventBuffer } from './FeedEventBuffer';
-import { seekFeedVideo } from './FeedSeek';
+import { seekFeedVideo, waitForNativeSeek } from './FeedSeek';
 import { createPageReader, unifiedFeedQuery } from './paging';
 import { shouldPrefetchPage } from './source';
-import { appendUnified, parseUnifiedPage, type UnifiedItem } from './unified';
+import { appendUnified, parseUnifiedPage, studyCourseLabel, type UnifiedItem, type UnifiedVideo } from './unified';
 
 export function UnifiedFeedScreen({ focused, preferences, setPreferences, clickedIds, savedIds, onClickVideo, onSaveVideo, onImmersiveChange }: { onImmersiveChange?(hidden: boolean): void; focused: boolean; preferences: PlaybackPreferences; setPreferences(value: PlaybackPreferences): void; clickedIds: string[]; savedIds: string[]; onClickVideo(video: EntertainmentVideo): void; onSaveVideo(video: EntertainmentVideo): void }) {
   const { api, user } = useAuth(); const insets = useSafeAreaInsets();
@@ -46,6 +48,7 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
   const [transitioning, setTransitioning] = useState(false);
   const [progress, setProgress] = useState({ position: 0, duration: 0 });
   const [seekBusy, setSeekBusy] = useState(false);
+  const seekAnchor = useRef<{ itemId: string; positionMs: number; settling: boolean } | null>(null);
   const [gateAttempt, setGateAttempt] = useState(0);
   const [gateReady, setGateReady] = useState(false); const [answer, setAnswer] = useState<string | null>(null); const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<QuizFeedback | null>(null);
@@ -56,18 +59,20 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
   const loadAbort = useRef<AbortController | null>(null);
   const requestResetsFeed = useRef(false);
   const resumePage = useRef<boolean | null>(null);
-  const firstPage = useRef<ReturnType<typeof parseUnifiedPage> | null>(null);
+  const presentation = useRef(false);
+  const startupPage = useRef<ReturnType<typeof parseUnifiedPage> | null>(null);
   const session = useRef<string | null>(null); const sessionPromise = useRef<Promise<string> | null>(null);
   const cursor = useRef<string | null>(null); const pending = useRef(false); const mounted = useRef(true);
   const generation = useRef(0); const revision = useRef<number | null>(null);
   const recovery = useRef(new PlaybackRecovery()); const resumeSeek = useRef(new PlaybackSeek());
   const terminal = useRef(new Set<string>()); const retryingVideo = useRef<string | null>(null);
+  const unavailableVideos = useRef(new Set<string>());
   const itemRef = useRef<UnifiedItem | undefined>(undefined); const indexRef = useRef(0); indexRef.current = index;
   const heightRef = useRef(height); heightRef.current = height;
   const list = useRef<FlatList<UnifiedItem>>(null); const values = useRef(items); values.current = items;
   const events = useMemo(() => new FeedEventBuffer(api), [api]);
   const watch = useRef(new VisibleWatchTracker()); const answerKey = useRef(Crypto.randomUUID()); const submittedAnswer = useRef<string | null>(null);
-  const setup = (p: VideoPlayer) => { p.loop = true; p.staysActiveInBackground = false; p.audioMixingMode = 'doNotMix'; p.bufferOptions = { preferredForwardBufferDuration: 5, waitsToMinimizeStalling: false }; };
+  const setup = (p: VideoPlayer) => { p.loop = true; p.staysActiveInBackground = false; p.audioMixingMode = 'doNotMix'; p.bufferOptions = { preferredForwardBufferDuration: 10, waitsToMinimizeStalling: false }; };
   const first = useVideoPlayer(null, setup); const second = useVideoPlayer(null, setup);
   const controller = useMemo(() => new BufferedPlayerController([first, second].map(p => createExpoPlayerDriver(p, cachedVideoSource, discardCachedVideo, releaseCachedVideo)) as [PlayerDriver, PlayerDriver], setPlayback), [first, second]);
   const player = playback.activeSlot === 0 ? first : second;
@@ -79,13 +84,28 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
   const sourceReady = !!video && playback.ready && playback.sourceUri === video.playback.url;
   const frameRendered = renderedSelection === playback.selection;
   const previous = items[index - 1]; const previousUrl = previous && previous.kind !== 'quiz' ? previous.video.playback.url : undefined;
-  const next = items[index + 1]; const nextUrl = next && next.kind !== 'quiz' ? next.video.playback.url : undefined;
+  const following = items[index + 1];
+  const next = following?.kind === 'quiz' ? undefined : following;
+  const nextUrl = next?.video.playback.url;
   const immediateReady = !!nextUrl && !!playback.buffers?.some(buffer => buffer.uri === nextUrl && buffer.ready);
   const standby = playback.activeSlot === 0 ? second : first;
-  const warmAssets = items.slice(index + 2, index + 8).flatMap(item => item.kind === 'quiz' ? [] : [{ ...item.video.playback, ...(item.kind === 'entertainment_video' ? { video_id: item.video.video_id } : {}) }]);
-  useMediaWarmup(warmAssets, hasBufferHeadroom(player.bufferedPosition, player.currentTime, player.duration) && hasBufferHeadroom(standby.bufferedPosition, 0, standby.duration) && sourceReady && frameRendered && immediateReady && focused && foreground && !transitioning && !playbackBlocked);
+  const warmStart = index + (presentation.current ? 1 : 2);
+  const upcoming = items.slice(warmStart, warmStart + 6);
+  const quizBoundary = upcoming.findIndex(item => item.kind === 'quiz');
+  const warmAssets = upcoming.slice(0, quizBoundary < 0 ? undefined : quizBoundary)
+    .flatMap(item => item.kind === 'quiz' ? [] : [{ ...item.video.playback, ...(item.kind === 'entertainment_video' ? { video_id: item.video.video_id } : {}) }]);
+  if (presentation.current && video) warmAssets.push(video.playback);
+  const standbyBuffered = !nextUrl || (immediateReady && hasBufferHeadroom(standby.bufferedPosition, 0, standby.duration));
+  useMediaWarmup(warmAssets, hasBufferHeadroom(player.bufferedPosition, player.currentTime, player.duration) && standbyBuffered && sourceReady && frameRendered && focused && foreground && !transitioning && !playbackBlocked);
   const emit = useCallback((type: string, position = 0, watched = 0, item = itemRef.current) => {
     if (!session.current || !item || item.kind === 'quiz' || terminal.current.has(item.item_id)) return;
+    const anchor = seekAnchor.current;
+    if (anchor?.itemId === item.item_id) {
+      if (type === 'playback_progress' && anchor.settling) return;
+      // AVPlayer can land a few frames behind the requested time.
+      if (anchor.settling || position < anchor.positionMs) position = anchor.positionMs;
+      else seekAnchor.current = null;
+    }
     if (resumeSeek.current.isPending(item.item_id)) {
       if (type === 'playback_progress') return;
       position = resumeSeek.current.anchor(item.item_id, position);
@@ -96,24 +116,29 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
   const flush = useCallback(async () => { try { await events.flush(); } catch { /* Retry the same IDs in chronological order. */ } }, [events]);
   const ensureSession = useCallback(async () => {
     if (session.current) return session.current;
-    if (!sessionPromise.current) sessionPromise.current = feedBootstrap.take(`${config.apiBaseUrl}:${user?.user_id}`, api).then(page => { firstPage.current = page; session.current = page.session_id; return page.session_id; }).finally(() => { sessionPromise.current = null; });
+    if (!sessionPromise.current) sessionPromise.current = feedBootstrap.take(`${config.apiBaseUrl}:${user?.user_id}`, api).then(page => { startupPage.current = page; session.current = page.session_id; return page.session_id; }).finally(() => { sessionPromise.current = null; });
     return sessionPromise.current;
   }, [api, user?.user_id]);
   const load = useCallback(async (reset = false) => {
     if (pending.current && !reset) return; const request = ++generation.current; loadAbort.current?.abort(); const abort = new AbortController(); loadAbort.current = abort; pending.current = true; setLoading(true); setError(null);
     requestResetsFeed.current = reset;
+    if (reset) unavailableVideos.current.clear();
     try {
-      const id = await ensureSession(); await flush();
+      await flush();
       if (generation.current !== request || abort.signal.aborted) return;
-      if (reset && itemRef.current?.kind !== 'quiz' && values.current.length) {
+      const pacedRead = createPageReader(abort.signal);
+      const id = await ensureSession();
+      if (generation.current !== request || abort.signal.aborted) return;
+      const firstPage = startupPage.current;
+      if (!firstPage && reset && itemRef.current?.kind !== 'quiz' && values.current.length) {
         const refreshed = await api.request<{session_id: string}>('/v1/feed/sessions', { method: 'POST', body: { resume_session_id: id, refresh_unseen: true }, headers: { 'Idempotency-Key': Crypto.randomUUID() } });
         if (refreshed.session_id !== id) throw new Error('Your feed session changed. Please reopen the feed.');
       }
       const query = unifiedFeedQuery(id, reset ? null : cursor.current);
-      const pacedRead = createPageReader(abort.signal);
       const read = () => pacedRead(async () => parseUnifiedPage(await api.request(`/v1/feed?${query}`, { signal: abort.signal })));
-      const available = (page: ReturnType<typeof parseUnifiedPage>) => page.items.some(item => reset || !values.current.some(previous => previous.item_id === item.item_id));
-      let page = firstPage.current ?? await read(); firstPage.current = null;
+      const availableItems = (page: ReturnType<typeof parseUnifiedPage>) => page.items.filter(item => item.kind === 'quiz' || !unavailableVideos.current.has(item.video.video_id));
+      const available = (page: ReturnType<typeof parseUnifiedPage>) => availableItems(page).some(item => reset || !values.current.some(previous => previous.item_id === item.item_id));
+      let page = firstPage ?? await read();
       const seen = new Set(query.has('cursor') ? [query.get('cursor')!] : []);
       for (let skipped = 0; !available(page) && page.next_cursor && skipped < 3; skipped++) {
         if (seen.has(page.next_cursor)) throw new Error('The feed repeated a page. Please refresh.');
@@ -130,10 +155,13 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
         cursor.current = null;
         throw new Error('Your feed has updated. Tap Retry to load your next clips.');
       }
+      if (page.demo_mode !== undefined) presentation.current = page.demo_mode;
+      startupPage.current = null;
       revision.current = page.recommendation_revision;
       cursor.current = page.next_cursor;
       if (!available(page) && page.next_cursor) throw new Error('No new videos are ready in this window. Retry shortly.');
-      const merged = reset ? page.items : appendUnified(values.current, page.items);
+      const incoming = availableItems(page);
+      const merged = reset ? incoming : appendUnified(values.current, incoming);
       const remove = reset ? 0 : Math.min(Math.max(0, merged.length - 80), Math.max(0, indexRef.current - 10));
       values.current = merged.slice(remove); setItems(values.current);
       if (remove) { setIndex(indexRef.current - remove); list.current?.scrollToOffset({ offset: (indexRef.current - remove) * heightRef.current, animated: false }); }
@@ -171,20 +199,38 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
   }, [controller, first, second]);
   useEffect(() => { const subscription = AppState.addEventListener('change', state => { const active = state === 'active'; if (!active) interaction.reset(); visibility.current.foreground = active; const selected = itemRef.current; const stale = selected && selected.kind !== 'quiz' && needsPlaybackRefresh(selected.video.playback.expires_at); controller.setGate({ foreground: active, ...(active && stale ? { focused: false } : {}) }); setForeground(active); emit(active ? 'app_foregrounded' : 'app_backgrounded', player.currentTime * 1000, watch.current.totalMs); if (active) emit('playback_started', player.currentTime * 1000, watch.current.totalMs); void flush(); }); return () => subscription.remove(); }, [controller, player, emit, flush]);
   useEffect(() => {
-    resumeSeek.current.clear(); setProgress({ position: 0, duration: 0 });
+    resumeSeek.current.clear(); seekAnchor.current = null; setProgress({ position: 0, duration: 0 });
     watch.current = new VisibleWatchTracker(); stalled.current = new PlaybackStallGuard(); setPaused(false); setAnswer(null); setFeedback(null); setGateReady(false); answerKey.current = Crypto.randomUUID(); submittedAnswer.current = null;
     if (video) emit('playback_started');
   }, [current?.item_id, emit]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (video && !needsPlaybackRefresh(video.playback.expires_at) && retryingVideo.current !== current?.item_id) void controller.setSelection(video.playback.url);
-  }, [current?.item_id, video?.playback.url, controller]);
+  }, [current?.item_id, video?.playback.url, video?.playback.expires_at, controller]);
   useEffect(() => {
     if (video && current && focused && foreground && (needsPlaybackRefresh(video.playback.expires_at) || (playback.error && playback.sourceUri === video.playback.url)) && recovery.current.claim(current.item_id)) void retryVideo();
   }, [current?.item_id, focused, foreground, video?.playback.expires_at, video?.playback.url, playback.error, playback.sourceUri]);
   // React has now attached the selected surface; reapply the existing playback gates.
   useEffect(() => { if (sourceReady) controller.setGate({}); }, [controller, sourceReady, playback.selection]);
-  // Give the visible clip its first frame before competing for bandwidth.
-  useEffect(() => { if (sourceReady && frameRendered && focused && foreground && !transitioning) controller.preload(nextUrl); }, [controller, sourceReady, frameRendered, focused, foreground, transitioning, nextUrl]);
+  async function resolveVideo(item: UnifiedVideo, signal?: AbortSignal) {
+    const route = item.kind === 'study_video' ? 'learning' : 'entertainment';
+    return parsePlayback(await api.request(`/v1/${route}/videos/${encodeURIComponent(item.video.video_id)}/playback`, { signal }));
+  }
+  useUpcomingPlayback<UnifiedItem>(next, next?.video.playback, controller, sourceReady && focused && foreground, transitioning,
+    (item, signal) => {
+      if (item.kind === 'quiz') throw new Error('Quiz cards have no playback source');
+      return resolveVideo(item, signal);
+    },
+    (item, update) => {
+      if (item.kind === 'quiz') return;
+      const queue = values.current;
+      const updated = updateUpcomingPlayback(queue, indexRef.current, item, update, (clip, playback) =>
+        clip.kind === 'quiz' ? clip : { ...clip, video: { ...clip.video, playback } });
+      if (updated === queue) return;
+      if (update.kind === 'remove') unavailableVideos.current.add(item.video.video_id);
+      values.current = updated;
+      setItems(updated);
+    },
+  );
   useEffect(() => {
     if (!video) return;
     let ticks = 0;
@@ -209,7 +255,7 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
     }, 500);
     return () => clearInterval(timer);
   }, [current?.item_id, player, focused, foreground, paused, playbackBlocked, gesture.speed, gesture.comments, sourceReady, playback.selection, frameRendered, emit, flush]);
-  useEffect(() => { if (shouldPrefetchPage({ index, count: items.length, hasNext: !!cursor.current, focused: focused && sourceReady && frameRendered, foreground, loading, hasError: !!error }) && items.at(-1)?.kind !== 'quiz') void load(); }, [index, items, focused, foreground, loading, error, load, sourceReady, frameRendered]);
+  useEffect(() => { if (shouldPrefetchPage({ index, count: items.length, hasNext: !!cursor.current, focused: focused && sourceReady && frameRendered, foreground, loading, hasError: !!error }) && (!presentation.current || items.length - index <= 2) && items.at(-1)?.kind !== 'quiz') void load(); }, [index, items, focused, foreground, loading, error, load, sourceReady, frameRendered]);
   useEffect(() => {
     if (!focused || !foreground || items.length) return;
     const timer = setInterval(() => { if (!pending.current) void load(); }, 10000);
@@ -222,7 +268,11 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
   }, [current?.item_id, focused, foreground, api, load, events, gateAttempt, quizAnswered]);
   const move = useRef((nextIndex: number) => {});
   move.current = nextIndex => { if (nextIndex === indexRef.current || itemRef.current?.kind === 'quiz') return; interaction.reset(); emit('video_skipped', player.currentTime * 1000, watch.current.totalMs); if (itemRef.current) terminal.current.add(itemRef.current.item_id); void flush(); controller.setGate({ focused: false }); indexRef.current = nextIndex; setIndex(nextIndex); };
-  const viewable = useRef(({ viewableItems }: { viewableItems: { index?: number | null }[] }) => { const i = viewableItems[0]?.index; if (i != null) move.current(i); }).current;
+  const viewable = useRef(({ viewableItems }: { viewableItems: { item: UnifiedItem }[] }) => {
+    const visible = viewableItems[0]?.item;
+    const index = visible ? values.current.findIndex(item => item.item_id === visible.item_id) : -1;
+    if (index >= 0) move.current(index);
+  }).current;
   async function submit() {
     if (current?.kind !== 'quiz' || !answer || !gateReady || busy) return;
     setBusy(true); setError(null); submittedAnswer.current ??= answer;
@@ -243,18 +293,32 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
   async function retryVideo() {
     if (!video || !current || current.kind === 'quiz' || retryingVideo.current === current.item_id) return;
     const itemId = current.item_id; retryingVideo.current = itemId; setError(null);
-    resumeSeek.current.capture(itemId, player.currentTime * 1000, playback.selection);
+    const anchor = seekAnchor.current;
+    resumeSeek.current.capture(itemId, anchor?.itemId === itemId ? Math.max(anchor.positionMs, player.currentTime * 1000) : player.currentTime * 1000, playback.selection);
     controller.setGate({ focused: false }); setRenderedSelection(null);
     watch.current.sample(player.currentTime * 1000, Date.now(), false);
     try {
-      const route = current.kind === 'study_video' ? 'learning' : 'entertainment';
-      const fresh = parsePlayback(await api.request(`/v1/${route}/videos/${video.video_id}/playback`));
+      const fresh = await resolveVideo(current);
       if (!mounted.current || itemRef.current?.item_id !== itemId) return;
       if (needsPlaybackRefresh(fresh.expires_at)) throw new Error('The refreshed video link has expired. Retry shortly.');
-      setItems(old => old.map(item => item.item_id === itemId && item.kind !== 'quiz' ? { ...item, video: { ...item.video, playback: fresh } } : item));
+      values.current = values.current.map(item => item.item_id === itemId && item.kind !== 'quiz' ? { ...item, video: { ...item.video, playback: fresh } } : item);
+      setItems(values.current);
       await controller.setSelection(fresh.url, undefined, true);
       if (mounted.current && itemRef.current?.item_id === itemId) controller.setGate({ focused: visibility.current.focused && visibility.current.foreground });
-    } catch (problem) { if (mounted.current && itemRef.current?.item_id === itemId) { controller.reportError(); setError(problem instanceof Error ? problem.message : 'This video is unavailable.'); } }
+    } catch (problem) {
+      if (!mounted.current || itemRef.current?.item_id !== itemId) return;
+      if (isUnavailablePlayback(problem)) {
+        unavailableVideos.current.add(current.video.video_id);
+        const at = indexRef.current;
+        if (values.current[at + 1]) {
+          move.current(at + 1);
+          list.current?.scrollToIndex({ index: at + 1, animated: false });
+          return;
+        }
+      }
+      controller.reportError();
+      setError(isUnavailablePlayback(problem) ? 'This video is unavailable. Swipe or reload to continue.' : 'Could not load this video. Try again.');
+    }
     finally { if (retryingVideo.current === itemId) retryingVideo.current = null; }
   }
   const entertainment = current?.kind === 'entertainment_video' ? current.video : null;
@@ -278,16 +342,35 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
     interaction.scrub(true); controller.setGate({ manuallyPaused: true });
   }
   async function seek(seconds: number) {
-    if (!video || !current || current.kind === 'quiz' || !session.current) return;
-    const itemId = current.item_id; setSeekBusy(true); setError(null);
+    if (!video || !current || current.kind === 'quiz' || !session.current || !Number.isFinite(player.duration) || player.duration <= 0) return;
+    const itemId = current.item_id;
+    const target = Math.max(0, Math.min(seconds, player.duration - 0.25));
+    const isCurrent = () => mounted.current && itemRef.current?.item_id === itemId;
+    setSeekBusy(true);
+    const applySeek = async () => {
+      const anchor = { itemId, positionMs: target * 1000, settling: true };
+      seekAnchor.current = anchor;
+      controller.seekTo(target);
+      const landed = await waitForNativeSeek(target, () => player.currentTime, isCurrent);
+      if (!isCurrent()) return;
+      anchor.settling = false;
+      if (!landed) {
+        controller.reportError(true);
+        throw new Error('Unable to seek. Try again.');
+      }
+      const position = player.currentTime;
+      watch.current.sample(position * 1000, Date.now(), false);
+      setProgress({ position, duration: player.duration });
+    };
     try {
-      await seekFeedVideo({ api, events, sessionId: session.current, itemId, eventId: Crypto.randomUUID(), positionMs: seconds * 1000, visibleWatchMs: watch.current.totalMs,
-        isActive: () => itemRef.current?.item_id === itemId && visibility.current.foreground && visibility.current.focused,
-        isCurrent: () => mounted.current && itemRef.current?.item_id === itemId,
-        onSeek: () => { controller.seekTo(seconds); watch.current.sample(seconds * 1000, Date.now(), false); setProgress({ position: seconds, duration: player.duration }); },
+      // Previously watched rows can replay locally; they no longer earn credit.
+      if (terminal.current.has(itemId)) await applySeek();
+      else await seekFeedVideo({ api, events, sessionId: session.current, itemId, eventId: Crypto.randomUUID(), positionMs: target * 1000, visibleWatchMs: watch.current.totalMs,
+        isActive: () => isCurrent() && visibility.current.foreground && visibility.current.focused,
+        isCurrent,
+        onSeek: applySeek,
       });
-    } catch (problem) { if (itemRef.current?.item_id === itemId) setError(problem instanceof Error ? problem.message : 'Unable to seek. Try again.'); }
-    finally { setSeekBusy(false); }
+    } finally { if (mounted.current) setSeekBusy(false); }
   }
   return (
     <View style={styles.screen} onLayout={event => setHeight(event.nativeEvent.layout.height)}>
@@ -341,9 +424,10 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
                   {!gesture.hidden && <FeedScrim />}
                   {cardIndex === index && <FeedTouchArea interaction={interaction} paused={paused} error={!!playback.error} reducedMotion={preferences.reducedMotion} onToggle={() => setPaused(value => !value)} onDoubleTap={item.kind === 'entertainment_video' ? () => doubleTap.current() : undefined} />}
                   {!gesture.hidden && <FeedCaption
-                    byline={item.kind === 'study_video' ? item.course_context?.title : item.video.creator?.display_name || item.video.creator?.handle}
+                    courseTitle={item.kind === 'study_video' ? studyCourseLabel(item.course_context) : undefined}
+                    byline={item.kind === 'entertainment_video' ? item.video.creator?.display_name || item.video.creator?.handle : undefined}
                     title={item.video.title}
-                    caption={preferences.captions ? item.video.caption || item.reason_text : undefined}
+                    caption={preferences.captions ? item.video.caption || (item.kind === 'entertainment_video' ? item.reason_text : undefined) : undefined}
                   />}
                 </>
               )}
@@ -382,6 +466,9 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
 
       {!gesture.hidden && <FeedHeader top={insets.top + 8} />}
       {video && !gesture.hidden && <FeedProgress key={current?.item_id} position={progress.position} duration={progress.duration} disabled={!focused || !foreground || !sourceReady || !frameRendered || seekBusy || resumeSeek.current.isPending(current!.item_id)} onBegin={beginScrub} onSeek={seek} onEnd={() => { if (itemRef.current?.item_id === current?.item_id) interaction.scrub(false); }} />}
+      {focused && foreground && sourceReady && !paused && !playbackBlocked && (
+        <FeedPlaybackWake key={playback.activeSlot} player={player} />
+      )}
       <SpeedIndicator visible={gesture.speed === 2} />
     <PlaybackMenu open={gesture.menu} onClose={() => interaction.closeOverlay()} muted={preferences.muted} fill={fill} captions={preferences.captions} onMute={() => setPreferences({ ...preferences, muted: !preferences.muted })} onFill={() => setFill(value => !value)} onCaptions={() => setPreferences({ ...preferences, captions: !preferences.captions })} onRefresh={() => void load(true)} />
       <ReelComments owner={user?.user_id ?? null} count={video?.comment_count} warm={focused && foreground && sourceReady && frameRendered && !transitioning && hasBufferHeadroom(player.bufferedPosition, player.currentTime, player.duration) && (!nextUrl || (immediateReady && hasBufferHeadroom(standby.bufferedPosition, 0, standby.duration)))} open={gesture.comments} videoId={entertainment?.video_id ?? null} enabled={!!entertainment} api={api} onClose={() => interaction.closeOverlay()} />

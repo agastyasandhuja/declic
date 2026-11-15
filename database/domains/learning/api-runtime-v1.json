@@ -1,4 +1,39 @@
 {
+  "api_demo_catalogs": {
+    "indexes": [
+      {
+        "keys": [
+          "catalog_id"
+        ],
+        "unique": true
+      }
+    ],
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "properties": {
+          "catalog_id": {
+            "bsonType": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "data": {
+            "bsonType": "object"
+          },
+          "user_id": {
+            "bsonType": "string",
+            "maxLength": 128,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "catalog_id",
+          "data",
+          "user_id"
+        ]
+      }
+    }
+  },
   "api_feed_events": {
     "indexes": [
       {

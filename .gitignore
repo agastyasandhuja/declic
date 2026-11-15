@@ -5,6 +5,9 @@
 !.env.*.example
 *.pem
 *.key
+*.p8
+*.p12
+*.mobileprovision
 *credentials*.json
 *session-cookies*.json
 
@@ -29,6 +32,11 @@ __pycache__/
 private-data/
 downloads/
 render-output/
+*.db
+*.sqlite
+*.sqlite3
+*.har
+*.ipa
 *.mp4
 *.mov
 *.mp3

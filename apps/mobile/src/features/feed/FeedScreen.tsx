@@ -15,13 +15,15 @@ import { appendFeedWindow, shouldPrefetchPage, unseenVideos } from './source';
 import { fetchRefillPage } from './paging';
 import { Button } from '../../components/Button';
 import { FeedCaption, FeedHeader, FeedIconButton, FeedScrim, feedRail } from './FeedChrome';
-import { FeedProgress, FeedTouchArea, PlaybackMenu, SpeedIndicator } from './FeedControls';
+import { FeedPlaybackWake, FeedProgress, FeedTouchArea, PlaybackMenu, SpeedIndicator } from './FeedControls';
 import { ReelComments } from './ReelComments';
 import { hasBufferHeadroom } from '../../lib/playback/MediaWarmup';
 import { cachedVideoSource, discardCachedVideo, releaseCachedVideo } from '../../lib/playback/MediaCache';
 import { useMediaWarmup } from '../../lib/playback/useMediaWarmup';
 import { createExpoPlayerDriver } from '../../lib/playback/ExpoPlayerDriver';
 import { useFeedInteraction } from './useFeedInteraction';
+import { useUpcomingPlayback } from './useUpcomingPlayback';
+import { updateUpcomingPlayback } from './upcomingPlayback';
 import { useAuth } from '../../state/AuthProvider';
 import type { PlaybackPreferences } from '../settings/ProfileScreen';
 import { theme } from '../../theme';
@@ -54,6 +56,7 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
   const selectionRef = useRef(playback.selection); selectionRef.current = playback.selection;
   const [watchMs, setWatchMs] = useState(0); const list = useRef<FlatList<EntertainmentVideo>>(null);
   const videosRef = useRef(videos); videosRef.current = videos;
+  const unavailableVideos = useRef(new Set<string>());
   const pendingScrollIndex = useRef<number | null>(null);
   const pending = useRef(false); const generation = useRef(0); const requestAbort = useRef<AbortController | null>(null);
   const resumePageOnFocus = useRef(false);
@@ -73,7 +76,8 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
   const selectedUri = brokenClip && index === 0 ? 'https://storage.googleapis.com/gtv-videos-bucket/sample/missing-demo-clip.mp4' : video?.playback.url;
   const sourceReady = playback.ready && playback.sourceUri === selectedUri;
   const frameRendered = renderedSelection === playback.selection;
-  const immediateReady = !!playback.buffers?.some(buffer => buffer.uri === videos[index + 1]?.playback.url && buffer.ready);
+  const next = videos[index + 1];
+  const immediateReady = !!playback.buffers?.some(buffer => buffer.uri === next?.playback.url && buffer.ready);
   const standby = playback.activeSlot === 0 ? secondPlayer : firstPlayer;
   useMediaWarmup(videos.slice(index + 2, index + 8).map(item => item.playback), hasBufferHeadroom(player.bufferedPosition, player.currentTime, player.duration) && hasBufferHeadroom(standby.bufferedPosition, 0, standby.duration) && sourceReady && frameRendered && immediateReady && focused && foreground && !transitioning && !gesturePlaybackBlocked);
   const focusGate = useRef(focused && foreground); focusGate.current = focused && foreground;
@@ -82,20 +86,25 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
   const fetchPage = useCallback(async (cursor: string | null = null, reset = false) => {
     if (pending.current && !reset) return;
     const request = reset ? ++generation.current : generation.current;
-    if (reset) { requestAbort.current?.abort(); controllerRef.current.setGate({ focused: false }); videosRef.current = []; selectedIndex.current = 0; pendingScrollIndex.current = 0; setVideos([]); setIndex(0); }
+    if (reset) { requestAbort.current?.abort(); controllerRef.current.setGate({ focused: false }); unavailableVideos.current.clear(); videosRef.current = []; selectedIndex.current = 0; pendingScrollIndex.current = 0; setVideos([]); setIndex(0); }
     const abort = new AbortController(); requestAbort.current = abort;
     pending.current = true; setLoading(true); setPageError(null); setPageNeedsReset(false);
     try {
-      const read = async (cursor: string | null) => { const page = await source.getPage(cursor, abort.signal); return { ...page, items: allowReplay ? page.items : history.unseen(page.items) }; };
+      const read = async (cursor: string | null) => {
+        const page = await source.getPage(cursor, abort.signal);
+        const available = page.items.filter(item => !unavailableVideos.current.has(item.video_id));
+        return { ...page, items: allowReplay ? available : history.unseen(available) };
+      };
       const page = await fetchRefillPage({ ...source, getPage: read }, reset ? [] : videosRef.current, cursor, abort.signal, next => {
         if (request === generation.current && !abort.signal.aborted) { cursor = next; setNextCursor(next); }
       });
       if (request !== generation.current || abort.signal.aborted) return;
-      if (!unseenVideos(reset ? [] : videosRef.current, page.items).length && page.next_cursor) {
+      const available = page.items.filter(item => !unavailableVideos.current.has(item.video_id));
+      if (!unseenVideos(reset ? [] : videosRef.current, available).length && page.next_cursor) {
         setNextCursor(page.next_cursor);
         throw new Error('Instagram is repeating clips. Tap to continue looking for new Reels.');
       }
-      const window = appendFeedWindow(reset ? [] : videosRef.current, page.items, reset ? 0 : selectedIndex.current);
+      const window = appendFeedWindow(reset ? [] : videosRef.current, available, reset ? 0 : selectedIndex.current);
       if (window.removed) { controllerRef.current.setGate({ focused: false }); pendingScrollIndex.current = window.index; }
       videosRef.current = window.items; selectedIndex.current = window.index;
       setVideos(window.items); setIndex(window.index);
@@ -148,9 +157,8 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
     return () => { status.remove(); playing.remove(); };
   }, [player]);
   useEffect(() => { resumeSeek.current.clear(); setProgress({ position: 0, duration: 0 }); watch.current = new VisibleWatchTracker(); stalled.current = new PlaybackStallGuard(); setWatchMs(0); setPaused(false); if (video && !allowReplay) history.remember(video); }, [video?.video_id, history, allowReplay]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!video || needsPlaybackRefresh(video.playback.expires_at) || retryingVideo.current === video.video_id) return;
-    controller.setGate({ focused: focusGate.current && viewableRef.current });
     const uri = brokenClip && index === 0 ? 'https://storage.googleapis.com/gtv-videos-bucket/sample/missing-demo-clip.mp4' : video.playback.url;
     void controller.setSelection(uri);
   }, [controller, video?.video_id, video?.playback.url, video?.playback.expires_at, brokenClip]);
@@ -159,8 +167,17 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
   }, [video?.video_id, focused, foreground, viewable, video?.playback.expires_at, video?.playback.url, playback.error, playback.sourceUri]);
   // React has now attached the selected surface; reapply the existing playback gates.
   useEffect(() => { if (sourceReady) controller.setGate({}); }, [controller, sourceReady, playback.selection]);
-  // Give the visible clip its first frame before competing for bandwidth.
-  useEffect(() => { if (sourceReady && frameRendered && focused && foreground && !transitioning) controller.preload(videos[index + 1]?.playback.url); }, [controller, sourceReady, frameRendered, focused, foreground, transitioning, videos[index + 1]?.playback.url]);
+  useUpcomingPlayback(next, next?.playback, controller, sourceReady && focused && foreground && viewable, transitioning,
+    (item, signal) => source.resolvePlayback(item.video_id, signal),
+    (item, update) => {
+      const queue = videosRef.current;
+      const updated = updateUpcomingPlayback(queue, selectedIndex.current, item, update, (clip, playback) => ({ ...clip, playback }));
+      if (updated === queue) return;
+      if (update.kind === 'remove') unavailableVideos.current.add(item.video_id);
+      videosRef.current = updated;
+      setVideos(updated);
+    },
+  );
   useEffect(() => { if (native.status === 'error' && sourceReady) controller.reportError(); }, [native.status, sourceReady, controller]);
   useEffect(() => {
     const enabled = !!video && sourceReady && focused && foreground && viewable && !paused && !gesturePlaybackBlocked;
@@ -222,7 +239,8 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
       const fresh = await source.resolvePlayback(selected);
       if (request !== generation.current || current.current.video?.video_id !== selected) return;
       if (needsPlaybackRefresh(fresh.expires_at)) throw new Error('Expired playback');
-      setVideos(previous => previous.map(item => item.video_id === selected ? { ...item, playback: fresh } : item));
+      videosRef.current = videosRef.current.map(item => item.video_id === selected ? { ...item, playback: fresh } : item);
+      setVideos(videosRef.current);
       await controller.setSelection(fresh.url, undefined, true);
       if (request === generation.current && current.current.video?.video_id === selected) controller.setGate({ focused: focusGate.current && viewableRef.current });
     } catch { if (request === generation.current && current.current.video?.video_id === selected) controller.reportError(); }
@@ -272,6 +290,9 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
         : <FeedIconButton reducedMotion={preferences.reducedMotion} label="Reload feed" icon="refresh" onPress={onReload} />}
     </View>}
     {video && !gesture.hidden && <FeedProgress key={video.video_id} position={progress.position} duration={progress.duration} disabled={!focused || !foreground || !sourceReady || !frameRendered || resumeSeek.current.isPending(video.video_id)} onBegin={() => { interaction.scrub(true); controller.setGate({ manuallyPaused: true }); watch.current.sample(player.currentTime * 1000, Date.now(), false); }} onSeek={async seconds => { controller.seekTo(seconds); watch.current.sample(seconds * 1000, Date.now(), false); setProgress({ position: seconds, duration: player.duration }); }} onEnd={() => interaction.scrub(false)} />}
+    {video && focused && foreground && viewable && sourceReady && !paused && !gesturePlaybackBlocked && (
+      <FeedPlaybackWake key={playback.activeSlot} player={player} />
+    )}
     <SpeedIndicator visible={gesture.speed === 2} />
     <PlaybackMenu open={gesture.menu} onClose={() => interaction.closeOverlay()} muted={muted} fill={fillVideo} captions={preferences.captions} onMute={() => setMuted(!muted)} onFill={() => setFillVideo(value => !value)} onCaptions={() => setPreferences({ ...preferences, captions: !preferences.captions })} onRefresh={onReload} />
     <ReelComments owner={user?.user_id ?? null} count={video?.comment_count} warm={focused && foreground && sourceReady && frameRendered && !transitioning && hasBufferHeadroom(player.bufferedPosition, player.currentTime, player.duration) && (!videos[index + 1] || (immediateReady && hasBufferHeadroom(standby.bufferedPosition, 0, standby.duration)))} open={gesture.comments} videoId={video?.video_id ?? null} enabled={mode === 'signed_in' && source.mode === 'api'} api={api} onClose={() => interaction.closeOverlay()} />
