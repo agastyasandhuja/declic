@@ -1693,3 +1693,27 @@ download or newly verified matching file can restore local reuse. Regression
 coverage includes unchanged URLs and cleanup failure. **116 mobile tests and
 TypeScript pass**. The additive bootstrap protocol is indexed in the contracts
 README. Phone build remains pending the reviewed combined main revision.
+
+## Version 14 installation checkpoint — November 14, 2026
+
+Release 1.0.0(14) built from exact reviewed main
+`9bbdcc7cb80067acf7546dd63bfedd843cf4df59`, including the cached-starter path,
+latest rail/double-tap controls and preserved version 13 quiz fixes. The Release
+build and strict codesign verification passed. Three configured server secret
+values were checked against the Hermes bundle and were absent; the public app
+configuration remained correct. No native dependency or compatibility-patch
+changes were required.
+
+Hermes bundle SHA256:
+`78580b796beb50e5c8f142ddcff45a3809aab45dfaf0784d56342bbb0ad39955`.
+CoreDevice installation succeeded over the existing app without uninstalling or
+clearing saved login. The initial launch attempt was explicitly denied because
+the device was locked. The user was asked to unlock; foreground launch, selected
+cached-starter proof and timing remain pending at this checkpoint. No quiz answer
+has been submitted by the agent.
+
+The signed app and ignored build/install records are retained under
+`.local/iphone-build/releases/main-9bbdcc7-v14/`. Exact source/build identity and
+native patch details are in `build-info.json`; credentials, cached videos and
+screenshots remain outside version control. Source validation before installation:
+116 mobile tests, TypeScript and diff-check passed.

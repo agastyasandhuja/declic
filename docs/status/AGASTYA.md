@@ -1873,3 +1873,16 @@ work while cold-start integration proceeds.
 
 Validation: 31 combined API, playback, prepared-feed, demo-catalog, bootstrap and
 inventory tests passed against isolated MongoDB; Ruff and diff checks passed.
+
+### Managed API runtime handoff — November 14, 2026
+
+The managed `dev.hackumass.studyfeed.api` launch agent now runs the reviewed API
+snapshot `.local/demo-api/releases/9d1dba32a8e784a4682254f96700365d7d22735b`
+through `.local/demo-api/launch-release.py`, retaining the existing local dotenv
+paths. The previous launch-agent configuration backup remains retained. Local
+health returned 200; local and public unauthenticated bootstrap requests returned
+401, confirming the route and auth guard. The root Expo proxy's bootstrap POST
+allowlist was updated and its process restarted; the existing tunnel was retained.
+Future backend deployment must refresh the snapshot and launcher arguments;
+editing root source alone does not update this managed API. App source main
+`9bbdcc7` includes only mobile changes after that reviewed backend snapshot.
