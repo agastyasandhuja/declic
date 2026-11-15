@@ -1832,3 +1832,19 @@ media gate remains unchanged. A temporary copy of that real completed clip using
 the new target passed at −16.77 LUFS / −0.90 dBTP, and encoded video-stream SHA-256
 matched exactly before/after. The published-candidate clip was not modified by
 this verification. The visual renderer fingerprint remains f4fed794.
+
+### Demo content kept outside version control — November 14, 2026
+
+Per user request, the custom 24-lesson demo library (scripts, quiz answers,
+source references and bespoke visual authoring) is no longer tracked. Local
+copies and their content-specific checks are retained under the ignored
+`.local/demo-only-source/course-library/` directory. Rendered videos remain
+under `.local/demo-library/ready-videos/`; none were tracked in main.
+Reusable generation/publication tooling and synthetic validation tests remain.
+No live account, catalog, Storage object or feed setting was changed.
+The custom library and Jensen draft source paths are now explicitly ignored,
+and media ignore coverage includes WebM, M4V, M4A and AIFF.
+
+Validation: targeted local-demo schema tests and Ruff passed; tracked media
+audit found no video/audio files. This is a current-tree cleanup, not a rewrite
+of historical commits.

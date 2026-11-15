@@ -36,3 +36,12 @@ render-output/
 
 # Existing local agent state
 .claude-flow/
+
+# Custom demo source is local-only, alongside generated media
+/fixtures/learning/demo-library/
+/fixtures/learning/jensen-shop/
+/services/renderer/experiments/jensen-shop/
+*.webm
+*.m4v
+*.m4a
+*.aiff
