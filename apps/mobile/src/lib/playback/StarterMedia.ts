@@ -50,11 +50,13 @@ export class StarterMedia {
     if (scope !== this.scope) return;
     this.aliases.clear(); // A fresh response replaces prior authorization, including changed assets/quiz-only pages.
     for (const item of items) {
+      if (epoch !== this.epoch || authorization !== this.authorization) return;
       if (item.kind !== 'entertainment_video') continue;
       const hint = this.hints.find(h => h.video_id === item.video.video_id);
       if (hint && hint.asset_id !== item.video.playback.asset_id) {
         this.blocked.add(item.video.playback.url);
         await this.prepareWarm(item.video.video_id, item.video.playback.asset_id, item.video.playback.url);
+        if (epoch !== this.epoch || authorization !== this.authorization) return;
         continue;
       }
       const expiry = item.video.playback.expires_at ? Date.parse(item.video.playback.expires_at) : Infinity;

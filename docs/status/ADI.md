@@ -1690,6 +1690,6 @@ now blocks local resolution and invalidates the old file before a future downloa
 can be labeled with the new asset. Failed invalidation keeps that URL blocked
 and skips warmup; direct network playback remains available. A completed new
 download or newly verified matching file can restore local reuse. Regression
-coverage includes unchanged URLs and cleanup failure. **115 mobile tests and
+coverage includes unchanged URLs and cleanup failure. **116 mobile tests and
 TypeScript pass**. The additive bootstrap protocol is indexed in the contracts
 README. Phone build remains pending the reviewed combined main revision.
