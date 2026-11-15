@@ -100,7 +100,8 @@ def main():
         from app.modules.videos.rendering import validate_output
 
         # Normalize only delivered audio; do not synthesize voices again or
-        # re-encode the rendered picture. Review binds the resulting MP4 hash.
+        # re-encode the rendered picture. Leave true-peak headroom for AAC's
+        # reconstructed waveform; review binds the resulting MP4 hash.
         normalized = output / "audio-normalized.mp4"
         subprocess.run(
             [
@@ -113,7 +114,7 @@ def main():
                 "-c:v",
                 "copy",
                 "-af",
-                "loudnorm=I=-16:TP=-1:LRA=11",
+                "loudnorm=I=-16:TP=-2:LRA=11",
                 "-c:a",
                 "aac",
                 "-ar",
@@ -127,7 +128,7 @@ def main():
         )
         normalized.replace(output / "lesson.mp4")
         report = validate_output(output)
-        report["audio_processing"] = "loudnorm_I-16_TP-1_LRA11"
+        report["audio_processing"] = "loudnorm_I-16_TP-2_LRA11"
         if (output / "lesson.mp4").stat().st_size > 45 * 1024 * 1024:
             raise ValueError(
                 "Video exceeds 45 MiB delivery budget; re-encode before publication"
