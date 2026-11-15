@@ -1592,3 +1592,50 @@ legacy folder, permit cold opening, remove previous-owner bytes and preserve
 unrelated cache files. A separate failure test checks owner/logout fail-closed
 behavior. No paid providers were called. A version12 build and exact on-device
 cache-index verification remain pending at this source checkpoint.
+
+## Installed version 12 and on-device prefetch proof — November 14, 2026
+
+Release **1.0.0(12)** was built from reviewed main
+`d801b2fac75eddc6bc25a35186be40c83750cb0b` (PR26), installed over the existing
+app without uninstalling, and launched successfully on the connected iPhone.
+Xcode Devices reports version12. Saved login restored; a real study-video frame,
+progress scrubber and feed navigation were observed in the physical screenshot.
+The app retains the current public API origin configured locally. No credentials
+were entered by the agent.
+
+Hermes bundle SHA256:
+`620a4dc0c330a708543dea6e3b2d95813d3704ff7c8dfcabf8cdc3c83d87442f`.
+The Release build succeeded and `codesign --verify --deep --strict` passed.
+Native dependency versions and the previously recorded isolated Xcode26
+compatibility patch are unchanged from version11. Source snapshot uses
+`git archive` with mobile, packages, fixtures, contracts and workspace manifests;
+the ignored Info.plist records build12 and the exact source revision.
+
+**Actual phone download evidence:** read-only CoreDevice retrieval of only
+`Library/Caches/declic-feed-files-v1/index.json` succeeded. The first index
+contained **six completed files, 25,990,515 bytes (24.8 MiB)**. A later metadata
+listing of that exact folder contained ten completed MP4s totaling42,203,853
+bytes and no partial files as the rolling feed progressed. All six initial
+index entries matched actual file sizes. This confirms full-file prefetch on
+the phone, beyond the two native playback buffers. Six is the lookahead window,
+not the lifetime file count; the cache retains valid completed files within its
+128 MiB budget. The index stores only hashed keys, sizes and cache timestamps.
+No other app-container data or authentication files were accessed.
+
+Ignored evidence and the signed app are archived under
+`.local/iphone-build/releases/main-d801b2f-v12/`: `build-info.json`, exact
+install/launch results, `phone-main-d801b2f-v12.png`, cache-index and folder
+metadata results, and the native compatibility patch. The cache proof does not
+claim measured zero-delay swipes or a comparative network benchmark. Version11's
+10–15-swipe playback/control acceptance remains the user's physical report;
+version12 changes only cache initialization, with98 mobile tests and TypeScript
+passing before its build.
+
+This record consolidates and supersedes the version10 installation-only draft
+(PR22). Version10 source was `42a033689e7256422ec414bb305cfcccd28aebaa`, bundle
+SHA256 `fd23784248d82b6d54c5bf1d51766e9ec77b244e9c7f5994b3fda0e96bad3913`.
+It installed/launched with saved auth, and the user confirmed single-audio2×
+hold and haptics before reporting the later rapid-swipe glitch. Version11 fixed
+that lifecycle behavior and passed the user's sustained swipe test; version12
+then fixed and physically verified the previously inactive HTTP preload cache.
+Earlier signed artifacts remain retained under their versioned ignored folders.
