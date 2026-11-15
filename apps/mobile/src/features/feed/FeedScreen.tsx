@@ -18,8 +18,9 @@ import { FeedCaption, FeedHeader, FeedIconButton, FeedScrim, feedRail } from './
 import { FeedProgress, FeedTouchArea, PlaybackMenu, SpeedIndicator } from './FeedControls';
 import { ReelComments } from './ReelComments';
 import { hasBufferHeadroom } from '../../lib/playback/MediaWarmup';
-import { cachedVideoSource } from '../../lib/playback/MediaCache';
+import { cachedVideoSource, discardCachedVideo, releaseCachedVideo } from '../../lib/playback/MediaCache';
 import { useMediaWarmup } from '../../lib/playback/useMediaWarmup';
+import { createExpoPlayerDriver } from '../../lib/playback/ExpoPlayerDriver';
 import { useFeedInteraction } from './useFeedInteraction';
 import { useAuth } from '../../state/AuthProvider';
 import type { PlaybackPreferences } from '../settings/ProfileScreen';
@@ -60,7 +61,7 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
   const watch = useRef(new VisibleWatchTracker()); const selectedIndex = useRef(index); selectedIndex.current = index;
   const firstPlayer = useVideoPlayer(null, setupPlayer); const secondPlayer = useVideoPlayer(null, setupPlayer);
   const controller = useMemo(() => {
-    const driver = (instance: VideoPlayer): PlayerDriver => ({ play: () => instance.play(), pause: () => instance.pause(), setRate: rate => { if (instance.playbackRate !== rate) instance.playbackRate = rate; }, setMuted: muted => { instance.muted = muted; }, seekTo: seconds => { instance.currentTime = seconds; }, replaceAsync: uri => instance.replaceAsync(cachedVideoSource(uri)) });
+    const driver = (instance: VideoPlayer): PlayerDriver => createExpoPlayerDriver(instance, cachedVideoSource, discardCachedVideo, releaseCachedVideo);
     return new BufferedPlayerController([driver(firstPlayer), driver(secondPlayer)], setPlayback);
   }, [firstPlayer, secondPlayer]);
   const controllerRef = useRef(controller); controllerRef.current = controller;
@@ -133,8 +134,8 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
   useLayoutEffect(() => () => controller.dispose(), [controller]);
   useLayoutEffect(() => {
     recovery.current.observe(video?.video_id ?? null, focused && foreground && viewable);
-    controller.setGate({ focused: focused && viewable && !!video && !needsPlaybackRefresh(video.playback.expires_at) && retryingVideo.current !== video.video_id, foreground, manuallyPaused: paused || gesturePlaybackBlocked });
-  }, [controller, focused, foreground, viewable, paused, gesturePlaybackBlocked, video?.video_id, video?.playback.expires_at]);
+    controller.setGate({ focused: focused && viewable && !!video && sourceReady && !needsPlaybackRefresh(video.playback.expires_at) && retryingVideo.current !== video.video_id, foreground, manuallyPaused: paused || gesturePlaybackBlocked });
+  }, [controller, focused, foreground, viewable, paused, gesturePlaybackBlocked, video?.video_id, video?.playback.expires_at, sourceReady]);
   useLayoutEffect(() => { controller.setMuted(muted); }, [controller, muted]);
   useEffect(() => {
     const listeners = [firstPlayer, secondPlayer].map((p, slot) => p.addListener('playingChange', event => { if (event.isPlaying) controller.enforcePlaybackOwner(slot as 0 | 1); }));
@@ -259,10 +260,10 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
       </View>} /> : <View style={styles.center}><View style={styles.empty}><Ionicons name="play-circle-outline" size={54} color={theme.colors.accent} /><Text style={styles.errorTitle}>{loading ? 'Your feed is warming up.' : 'You’re all caught up.'}</Text><Text style={styles.errorText}>{pageError ?? 'No new clips are available right now. Check again in a little while.'}</Text>{loading ? <ActivityIndicator color={theme.colors.accent} /> : <Button title={nextCursor ? 'Try next page' : 'Reload feed'} onPress={() => void fetchPage(nextCursor, !nextCursor)} />}</View></View>}
     {!gesture.hidden && <FeedHeader top={insets.top + 8} />}
     {video && !gesture.hidden && <View pointerEvents="box-none" style={feedRail}>
-      <FeedIconButton reducedMotion={preferences.reducedMotion} count={video.like_count} label={liked ? 'Unclick video' : 'This clicks'} icon={liked ? 'heart' : 'heart-outline'} selected={liked} color={liked ? theme.colors.coral : theme.colors.text} onPress={() => onClickVideo(video)} />
-      <FeedIconButton reducedMotion={preferences.reducedMotion} count={video.comment_count} label="Comments" icon="chatbubble-ellipses-outline" onPress={() => interaction.openComments()} />
-      <FeedIconButton reducedMotion={preferences.reducedMotion} label={saved ? 'Unsave video' : 'Save video'} icon={saved ? 'bookmark' : 'bookmark-outline'} selected={saved} color={saved ? theme.colors.accent : theme.colors.text} onPress={() => onSaveVideo(video)} />
-      {video.source_url && <FeedIconButton reducedMotion={preferences.reducedMotion} label="Share original video" icon="arrow-redo-outline" onPress={() => { void Share.share({ message: video.source_url! }).catch(() => setPageError('Unable to open sharing. Please retry.')); }} />}
+      <FeedIconButton reducedMotion={preferences.reducedMotion} count={video.like_count} label={liked ? 'Unclick video' : 'This clicks'} icon="heart" selected={liked} color={liked ? theme.colors.coral : theme.colors.text} onPress={() => onClickVideo(video)} />
+      <FeedIconButton reducedMotion={preferences.reducedMotion} count={video.comment_count} label="Comments" icon="chatbubble" onPress={() => interaction.openComments()} />
+      <FeedIconButton reducedMotion={preferences.reducedMotion} label={saved ? 'Unsave video' : 'Save video'} icon="bookmark" selected={saved} color={saved ? theme.colors.accent : theme.colors.text} onPress={() => onSaveVideo(video)} />
+      {video.source_url && <FeedIconButton reducedMotion={preferences.reducedMotion} label="Share original video" icon="arrow-redo" onPress={() => { void Share.share({ message: video.source_url! }).catch(() => setPageError('Unable to open sharing. Please retry.')); }} />}
       {index < videos.length - 1 || nextCursor
         ? <FeedIconButton reducedMotion={preferences.reducedMotion} label={index < videos.length - 1 ? 'Next clip' : 'Load more clips'} icon="chevron-up" testID="next-clip" onPress={skip} />
         : <FeedIconButton reducedMotion={preferences.reducedMotion} label="Reload feed" icon="refresh" onPress={onReload} />}

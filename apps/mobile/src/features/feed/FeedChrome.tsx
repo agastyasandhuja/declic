@@ -56,7 +56,7 @@ export function FeedCaption({ byline, title, caption, children }: {
   );
 }
 
-export const feedRail = { position: 'absolute', right: 10, bottom: '22%', gap: 16 } as const;
+export const feedRail = { position: 'absolute', right: 10, bottom: '17%', gap: 16 } as const;
 
 const styles = StyleSheet.create({
   header: { position: 'absolute', left: 16, right: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 44 },
