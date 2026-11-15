@@ -1,25 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
-import { clearVideoCacheAsync, setVideoCacheSizeAsync } from 'expo-video';
 import * as SecureStore from 'expo-secure-store';
 import { theme } from '../../theme';
 import { MediaCachePolicy } from './MediaCachePolicy';
-import { nativeMediaFiles } from './NativeMediaFiles';
+import { clearNativeMediaFiles, nativeMediaFiles } from './NativeMediaFiles';
 
 let caching = false;
 const ownerKey = 'declic.media-cache-owner.v2';
 const policy = new MediaCachePolicy({
-  configure: bytes => setVideoCacheSizeAsync(bytes),
   readOwner: () => SecureStore.getItemAsync(ownerKey),
   writeOwner: owner => owner ? SecureStore.setItemAsync(ownerKey, owner) : SecureStore.deleteItemAsync(ownerKey),
-  async clear() {
-    await nativeMediaFiles.clear();
-    // Expo releases the previous screen's players during effect cleanup.
-    for (let attempt = 0; ; attempt++) {
-      try { await clearVideoCacheAsync(); return; }
-      catch (error) { if (attempt >= 3) throw error; await new Promise(resolve => setTimeout(resolve, 75)); }
-    }
-  },
+  clear: clearNativeMediaFiles,
 });
 export function isMediaCacheEnabled() { return caching; }
 const releases = new WeakMap<object, () => Promise<void>>();
