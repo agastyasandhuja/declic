@@ -120,3 +120,22 @@ Account-level demo mode and its ungraded old-gate recovery are specified in
 [the shared demo contract](demo-catalog.md). Mode changes reject late playback
 from the previous curriculum, including started cards. Old quiz answers cannot
 create a new grade after the gate was recovered.
+
+## Cold-start bootstrap (November 14)
+
+`POST /v1/feed/bootstrap` accepts `{limit: 5, preferred_video_ids: []}` and an
+`Idempotency-Key`; it returns the existing Feed response shape directly. The
+optional hint list has at most six entertainment video IDs, never URLs or user
+IDs. Session resume/refresh and first-page issuance share one owner-scoped
+transaction. A retry with the same key/body revalidates the same page; a changed
+request conflicts, and an obsolete recommendation revision returns
+`409 STALE_BOOTSTRAP` so the client can start again with a new key.
+
+Hints only prefer the first otherwise-due entertainment slot among currently
+authorized, ready, nonexpired candidates, excluding the immediately previous
+clip. Study scheduling and all remaining slots keep normal ranking. Scheduled
+or active quizzes survive reopening and take precedence over hinted playback.
+Subsequent cursor reads use the same page size as bootstrap. Clients may resolve
+a freshly authorized clip to a completed local cache file scoped to the same
+account/API and still within its cache lifetime; hints themselves grant no
+playback authorization or learning credit.
