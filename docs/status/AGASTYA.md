@@ -1861,3 +1861,15 @@ obsolete revisions. No private URLs or client-supplied owner IDs are accepted.
 Validation: targeted bootstrap/inventory tests passed against fixture SQLite
 and isolated local MongoDB; Ruff passed. No provider/model calls or generated
 media changes. Mobile integration and phone cold-start timing remain pending.
+
+### Preserve installed quiz backend during startup integration — November 14
+
+Integrated the two already-live quiz backend changes from the root checkout
+without altering that checkout's active work. Quiz grading fetches only the
+relevant objectives and avoids redundant learning-state writes; feed invalidation
+accepts the just-unlocked session to save it once. Atomic grading/unlock and
+request idempotency remain intact. This accompanies the existing v13 quiz UI
+work while cold-start integration proceeds.
+
+Validation: 31 combined API, playback, prepared-feed, demo-catalog, bootstrap and
+inventory tests passed against isolated MongoDB; Ruff and diff checks passed.
