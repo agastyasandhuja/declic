@@ -1,3 +1,4 @@
+import { feedBootstrap } from './features/feed/startup';
 import { MediaCacheBoundary } from './lib/playback/MediaCache';
 import { UnifiedFeedScreen } from './features/feed/UnifiedFeedScreen';
 import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
@@ -50,12 +51,15 @@ function SignedInShell() {
     <View pointerEvents={immersive ? "none" : "auto"} accessibilityElementsHidden={immersive} importantForAccessibility={immersive ? "no-hide-descendants" : "auto"} style={[styles.tabs, { opacity: immersive ? 0 : 1, paddingBottom: Math.max(insets.bottom, 12) }]}><View style={styles.tabTrack}>{([{ key: 'feed', label: 'Feed', icon: 'play-circle', inactive: 'play-circle-outline' }, { key: 'courses', label: 'Courses', icon: 'school', inactive: 'school-outline' }, { key: 'profile', label: 'You', icon: 'person-circle', inactive: 'person-circle-outline' }] as const).map(tab => <Pressable key={tab.key} accessibilityRole="tab" accessibilityLabel={tab.label} accessibilityState={{ selected: route === tab.key && !feature }} testID={`tab-${tab.key}`} onPress={() => { setFeature(null); setRoute(tab.key); if (tab.key === 'feed') setReplay(null); }} style={[styles.tab, route === tab.key && !feature && styles.activeIcon]}><Ionicons name={route === tab.key && !feature ? tab.icon : tab.inactive} size={20} color={route === tab.key && !feature ? theme.colors.ink : theme.colors.muted} /><Text style={[styles.tabLabel, route === tab.key && !feature && { color: theme.colors.ink }]}>{tab.label}</Text></Pressable>)}</View></View>
   </View>;
 }
-function SessionGate() {
-  const { mode, user } = useAuth();
+function SessionGate({ fontsReady }: { fontsReady: boolean }) {
+  const { mode, user, api } = useAuth();
+  const owner = mode === 'signed_in' ? `${config.apiBaseUrl}:${user?.user_id}` : mode === 'preview' ? 'preview' : null;
+  const prepareFeed = useCallback(() => { if (mode === 'signed_in' && owner && config.feedSource === 'api') feedBootstrap.begin(owner, api); }, [mode, owner, api]);
+  useEffect(() => () => feedBootstrap.cancel(), [owner, api]);
   if (mode === 'loading') return <View style={[s.screen, { alignItems: 'center', justifyContent: 'center', gap: 20 }]}><ActivityIndicator color={theme.colors.accent} /><Text style={s.subtitle}>Picking up where you left off…</Text></View>;
-  return <MediaCacheBoundary owner={mode === 'signed_in' ? `${config.apiBaseUrl}:${user?.user_id}` : mode === 'preview' ? 'preview' : null}>{mode === 'signed_out' ? <AuthScreen /> : <SignedInShell key={`${mode}:${user?.user_id}`} />}</MediaCacheBoundary>;
+  return <MediaCacheBoundary owner={owner} onPrepared={prepareFeed}>{!fontsReady ? <View style={s.screen}><ActivityIndicator color={theme.colors.accent} /></View> : mode === 'signed_out' ? <AuthScreen /> : <SignedInShell key={`${mode}:${user?.user_id}`} />}</MediaCacheBoundary>;
 }
-export default function AppShell() { const [loaded, error] = useFonts({ [theme.fonts.display]: require('../assets/fonts/Syne-ExtraBold.ttf'), [theme.fonts.body]: require('../assets/fonts/PlusJakartaSans-Regular.ttf'), [theme.fonts.bold]: require('../assets/fonts/PlusJakartaSans-Bold.ttf') }); return <SafeAreaProvider><AuthProvider><StatusBar style="light" />{!loaded && !error ? <View style={s.screen}><ActivityIndicator color={theme.colors.accent} /></View> : <SessionGate />}</AuthProvider></SafeAreaProvider>; }
+export default function AppShell() { const [loaded, error] = useFonts({ [theme.fonts.display]: require('../assets/fonts/Syne-ExtraBold.ttf'), [theme.fonts.body]: require('../assets/fonts/PlusJakartaSans-Regular.ttf'), [theme.fonts.bold]: require('../assets/fonts/PlusJakartaSans-Bold.ttf') }); return <SafeAreaProvider><AuthProvider><StatusBar style="light" /><SessionGate fontsReady={loaded || !!error} /></AuthProvider></SafeAreaProvider>; }
 const styles = StyleSheet.create({
   screen: { flex: 1 }, hidden: { display: 'none' }, tabs: { backgroundColor: theme.colors.background, paddingTop: 6, paddingHorizontal: 16 }, tabTrack: { flexDirection: 'row', backgroundColor: theme.colors.surface, padding: 4, borderRadius: 999, borderWidth: 1, borderColor: theme.colors.elevated }, tab: { flex: 1, minHeight: 44, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, borderRadius: 999 }, activeIcon: { backgroundColor: theme.colors.text }, tabLabel: { color: theme.colors.muted, fontSize: 13, fontFamily: theme.fonts.bold }, placeholder: { padding: 26, gap: 22, flex: 1 },
 });

@@ -75,3 +75,15 @@ test('old same-URL file release cannot unpin its newly downloaded replacement', 
   const next = cache.warm(url('b'), null, new AbortController().signal); await tick(); f.requests[2].finish(); await next;
   assert.equal(await cache.resolve(url('a')), url('a'));
 });
+
+test('late URL hashing cannot resolve or discard bytes belonging to a new owner epoch', async () => {
+  const f = fixture(), cache = new HttpMediaCache(f.store, f.now, 24, 8); await cache.open();
+  const work = cache.warm(url('a'), null, new AbortController().signal); await tick(); f.requests[0].finish(); await work;
+  const originalKey = f.store.key; let release!: (key: string) => void;
+  f.store.key = () => new Promise(resolve => { release = resolve; });
+  const pending = cache.resolve(url('a')); await tick(); cache.deactivate(); await cache.open();
+  release(await originalKey(url('a'))); assert.equal(await pending, url('a'));
+  const discard = cache.discard(url('a')); await tick(); cache.deactivate(); await cache.open();
+  release(await originalKey(url('a'))); await discard; f.store.key = originalKey;
+  assert.match(await cache.resolve(url('a')), /^file:/);
+});

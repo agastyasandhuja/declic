@@ -1,4 +1,4 @@
-export interface WarmAsset { url: string; kind: string; expires_at: string | null }
+export interface WarmAsset { url: string; kind: string; expires_at: string | null; video_id?: string; asset_id?: string }
 export interface WarmDriver { warm(url: string, signal: AbortSignal): Promise<void>; stop(): void }
 
 /** One serial, silent worker, separate from the active and immediate-next players.

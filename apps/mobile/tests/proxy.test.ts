@@ -35,6 +35,8 @@ test('preview transport forwards only app auth to loopback and rejects cookies, 
     assert.equal((await fetch(`${origin}/v1/learning/settings`, { method: 'PATCH', headers, body: '{"demo_mode":true}' })).status, 200);
     assert.equal((await fetch(`${origin}/v1/learning/demo-catalog`, { method: 'PATCH', headers, body: '{}' })).status, 405);
     assert.equal((await fetch(`${origin}/v1/entertainment/videos/demo/comments`, { method: 'POST', headers, body: '{}' })).status, 405);
-    assert.equal(calls, 8);
+    assert.equal((await fetch(`${origin}/v1/feed/bootstrap`, { method: 'POST', headers, body: '{"limit":5,"preferred_video_ids":[]}' })).status, 200);
+    assert.equal((await fetch(`${origin}/v1/feed/bootstrap`, { method: 'POST', body: '{}' })).status, 401);
+    assert.equal(calls, 9);
   } finally { await Promise.all([new Promise<void>(resolve => proxy.close(() => resolve())), new Promise<void>(resolve => upstream.close(() => resolve()))]); }
 });
