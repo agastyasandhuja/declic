@@ -62,3 +62,16 @@ test('downloads serialize and LRU eviction preserves retained player files until
   const final = cache.warm(url('e'), null, new AbortController().signal); await tick(); f.requests[4].finish(); await final;
   assert.equal(await cache.resolve(url('a')), url('a')); assert.match(await cache.resolve(url('b')), /^file:/);
 });
+
+test('old same-URL file release cannot unpin its newly downloaded replacement', async () => {
+  const f = fixture(), cache = new HttpMediaCache(f.store, f.now, 8, 8); await cache.open();
+  const first = cache.warm(url('a'), null, new AbortController().signal); await tick(); f.requests[0].finish(); await first;
+  await cache.resolve(url('a')); await cache.discard(url('a'));
+  const retry = cache.warm(url('a'), null, new AbortController().signal); await tick(); f.requests[1].finish(); await retry;
+  await cache.resolve(url('a')); await cache.release(url('a'));
+  await assert.rejects(cache.warm(url('b'), null, new AbortController().signal), /budget/);
+  assert.equal(f.files.size, 1); assert.equal(f.requests.length, 2);
+  await cache.release(url('a'));
+  const next = cache.warm(url('b'), null, new AbortController().signal); await tick(); f.requests[2].finish(); await next;
+  assert.equal(await cache.resolve(url('a')), url('a'));
+});

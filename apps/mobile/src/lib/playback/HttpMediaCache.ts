@@ -57,7 +57,9 @@ export class HttpMediaCache {
     const run = this.queue.catch(() => undefined).then(async () => {
       const key = await this.store.key(url);
       if (epoch !== this.epoch) return;
-      this.entries.delete(key); this.pinned.delete(key);
+      // Existing leases must survive invalidation: a late release of the failed
+      // file must not consume a new lease when the same URL is downloaded again.
+      this.entries.delete(key);
       await this.store.remove(key); await this.store.save([...this.entries.values()]);
     });
     this.queue = run; await run;

@@ -1543,7 +1543,7 @@ The rail moves down modestly from22% to17% of feed height, with solid white
 heart/comment/share/bookmark icons and the existing Save action. The unified
 share action now opens the native share sheet, matching the standalone feed.
 
-Validation: Node 24 TypeScript passes and **95 mobile tests pass**. New regressions
+Validation: Node 24 TypeScript passes and **96 mobile tests pass**. New regressions
 cover deferred native readiness, zero extra active-player commands after100
 repeated gates and standby completion, stable decoded-frame promotion, stale
 frame rejection, local-file fallback, current/pending lease cleanup on disposal,
