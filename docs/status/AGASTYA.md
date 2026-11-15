@@ -1813,3 +1813,27 @@ limits. The first completed 3D job previously took 250 seconds; the first 2D job
 162 seconds. These are baselines, not a claimed speedup. Visual renderer source
 f4fed794 and all approved frame inputs remain unchanged. No new narration or
 model call is needed for this resource adjustment.
+
+### Jensen GPU-shop story draft — November 14, 2026
+
+The user found the 24-video batch dull and asked to return to the fishing story
+and funny Peter/Stewie clips after prioritizing the phone app. The Jensen draft
+was paused while the app work took priority. Its synthetic accounting fixture
+follows a $100 GPU sale from shelf to customer, keeps the proceeds in the drawer,
+and uses the empty shelf and a physical ledger to explain the separate $60 cost
+entry and $40 gross profit. The renderer reuses the articulated voxel model kit
+and white word captions. An operator can select its allowlisted `jensen_shop`
+renderer profile and local work directory per lesson; publication still verifies
+the selected renderer and exact review artifacts before any upload.
+
+- `node --test services/renderer/experiments/jensen-shop/test_story.mjs` passed
+  3 tests covering prop custody, fixed-length arms, and the customer's exit path.
+- `pytest services/api/tests/test_demo_publication.py -q` passed all 4 tests
+  against disposable MongoDB on local port 27030 with `directConnection=true`.
+  Ruff lint and format checks passed for both changed publication files.
+- The private prep directory contains 49.6 seconds of narration and 24 revised
+  stills. The full Jensen video, continuous audio/motion review, creative review,
+  and live publication are pending. This draft push used the existing evidence
+  without rendering or calling a model or voice provider.
+- The next creative pass should use the fishing clip's physical cause and effect
+  and the earlier Peter/Stewie dialogue's setup, escalation, and payoff as references.

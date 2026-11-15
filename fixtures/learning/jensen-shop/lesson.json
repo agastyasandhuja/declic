@@ -1,0 +1,265 @@
+{
+  "schema_version": "1",
+  "lessons": [
+    {
+      "lesson_id": "demo_acc233_perpetual",
+      "course_id": "demo_acc233",
+      "objective_id": "demo_acc233_perpetual",
+      "title": "Jensen's hundred-dollar mistake",
+      "learning_goal": "Record a perpetual-system cash sale with a revenue entry at selling price and a cost entry at inventory cost.",
+      "format_style": "three_d",
+      "approved_facts": [
+        {
+          "fact_id": "f0",
+          "statement": "A perpetual inventory system updates inventory records at the time of each sale and purchase."
+        },
+        {
+          "fact_id": "f1",
+          "statement": "In a hypothetical $100 cash sale, the revenue entry debits Cash $100 and credits Sales Revenue $100."
+        },
+        {
+          "fact_id": "f2",
+          "statement": "If the goods cost $60, the cost entry debits Cost of Goods Sold $60 and credits Inventory $60."
+        },
+        {
+          "fact_id": "f3",
+          "statement": "The $100 selling price minus the $60 cost leaves $40 of gross profit on that sale."
+        },
+        {
+          "fact_id": "f4",
+          "statement": "Each journal entry has equal debits and credits."
+        },
+        {
+          "fact_id": "f5",
+          "statement": "Gross profit is sales revenue less cost of goods sold, before operating expenses such as rent. The Jensen shop is explicitly fictional."
+        }
+      ],
+      "segments": [
+        {
+          "speaker_role": "narrator",
+          "spoken_text": "Imagine Jensen opening a tiny shop for used graphics cards.",
+          "fact_ids": [
+            "f0"
+          ]
+        },
+        {
+          "speaker_role": "narrator",
+          "spoken_text": "This one cost him sixty dollars. Until somebody buys it, that sixty sits on the shelf as inventory.",
+          "fact_ids": [
+            "f2"
+          ]
+        },
+        {
+          "speaker_role": "narrator",
+          "spoken_text": "A customer pays a hundred. Jensen hands over the card and grins. A hundred dollars of profit!",
+          "fact_ids": [
+            "f1",
+            "f2"
+          ]
+        },
+        {
+          "speaker_role": "narrator",
+          "spoken_text": "His bookkeeper points at the empty shelf. Cute. Where did the sixty-dollar card go?",
+          "fact_ids": [
+            "f2"
+          ]
+        },
+        {
+          "speaker_role": "narrator",
+          "spoken_text": "She opens the ledger. Cash gets a hundred-dollar debit. Sales revenue gets a matching credit.",
+          "fact_ids": [
+            "f1",
+            "f4"
+          ]
+        },
+        {
+          "speaker_role": "narrator",
+          "spoken_text": "Then she moves sixty from inventory into cost of goods sold. Debit the cost. Credit inventory. Two entries for one sale.",
+          "fact_ids": [
+            "f0",
+            "f2",
+            "f4"
+          ]
+        },
+        {
+          "speaker_role": "narrator",
+          "spoken_text": "Now the hundred-dollar sale has a sixty-dollar cost beside it. Forty dollars of gross profit. Before rent.",
+          "fact_ids": [
+            "f3",
+            "f5"
+          ]
+        },
+        {
+          "speaker_role": "narrator",
+          "spoken_text": "Jensen lowers his victory pose. Next time, he'll celebrate the margin, not everything in the cash drawer.",
+          "fact_ids": [
+            "f3",
+            "f5"
+          ]
+        }
+      ],
+      "quizzes": [
+        {
+          "prompt": "In a perpetual system, goods costing $80 are sold on account for $130. Which entry records the cost side of the sale?",
+          "options": [
+            "Debit Cost of Goods Sold $80, credit Inventory $80",
+            "Debit Inventory $80, credit Cost of Goods Sold $80",
+            "Debit Cost of Goods Sold $130, credit Inventory $130",
+            "Debit Accounts Receivable $80, credit Sales Revenue $80"
+          ],
+          "correct_index": 0,
+          "explanation": "The cost entry uses the inventory cost of $80: expense goes up with a debit and inventory goes down with a credit."
+        },
+        {
+          "prompt": "A perpetual-system cash sale is made for $100 on goods that cost $60. How much gross profit does that sale produce?",
+          "options": [
+            "$60",
+            "$100",
+            "$160",
+            "$40"
+          ],
+          "correct_index": 3,
+          "explanation": "Gross profit is revenue minus cost of goods sold, which is $100 - $60 = $40."
+        }
+      ],
+      "visual_plan": [
+        {
+          "kind": "inventory",
+          "nodes": [
+            {
+              "id": "gpu",
+              "label": "",
+              "value": "60",
+              "x": 0.3,
+              "y": 0.4,
+              "glyph": "box"
+            }
+          ],
+          "edges": [],
+          "equation": "",
+          "matrix_a": [],
+          "matrix_b": []
+        },
+        {
+          "kind": "inventory",
+          "nodes": [
+            {
+              "id": "gpu",
+              "label": "",
+              "value": "60",
+              "x": 0.3,
+              "y": 0.4,
+              "glyph": "box"
+            }
+          ],
+          "edges": [],
+          "equation": "",
+          "matrix_a": [],
+          "matrix_b": []
+        },
+        {
+          "kind": "inventory",
+          "nodes": [
+            {
+              "id": "gpu",
+              "label": "",
+              "value": "60",
+              "x": 0.3,
+              "y": 0.4,
+              "glyph": "box"
+            }
+          ],
+          "edges": [],
+          "equation": "",
+          "matrix_a": [],
+          "matrix_b": []
+        },
+        {
+          "kind": "inventory",
+          "nodes": [
+            {
+              "id": "gpu",
+              "label": "",
+              "value": "60",
+              "x": 0.3,
+              "y": 0.4,
+              "glyph": "box"
+            }
+          ],
+          "edges": [],
+          "equation": "",
+          "matrix_a": [],
+          "matrix_b": []
+        },
+        {
+          "kind": "inventory",
+          "nodes": [
+            {
+              "id": "gpu",
+              "label": "",
+              "value": "60",
+              "x": 0.3,
+              "y": 0.4,
+              "glyph": "box"
+            }
+          ],
+          "edges": [],
+          "equation": "",
+          "matrix_a": [],
+          "matrix_b": []
+        },
+        {
+          "kind": "inventory",
+          "nodes": [
+            {
+              "id": "gpu",
+              "label": "",
+              "value": "60",
+              "x": 0.3,
+              "y": 0.4,
+              "glyph": "box"
+            }
+          ],
+          "edges": [],
+          "equation": "",
+          "matrix_a": [],
+          "matrix_b": []
+        },
+        {
+          "kind": "inventory",
+          "nodes": [
+            {
+              "id": "gpu",
+              "label": "",
+              "value": "60",
+              "x": 0.3,
+              "y": 0.4,
+              "glyph": "box"
+            }
+          ],
+          "edges": [],
+          "equation": "",
+          "matrix_a": [],
+          "matrix_b": []
+        },
+        {
+          "kind": "inventory",
+          "nodes": [
+            {
+              "id": "gpu",
+              "label": "",
+              "value": "60",
+              "x": 0.3,
+              "y": 0.4,
+              "glyph": "box"
+            }
+          ],
+          "edges": [],
+          "equation": "",
+          "matrix_a": [],
+          "matrix_b": []
+        }
+      ]
+    }
+  ]
+}

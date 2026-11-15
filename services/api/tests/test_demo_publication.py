@@ -6,7 +6,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.core.demo_publication import POLICY, publish_lesson, validate_review
+from app.core.demo_publication import (
+    POLICY,
+    publication_sources,
+    publish_lesson,
+    renderer_digest,
+    validate_review,
+)
 from app.modules.videos.media import sha256
 from app.modules.videos.models import digest
 from app.modules.videos.repository import AtlasVideoRepository
@@ -111,6 +117,53 @@ def test_explicit_review_binds_source_renderer_assets_and_every_frame(tmp_path):
     (tmp_path / "pack/demo_lesson/captions.vtt").write_text("changed")
     with pytest.raises(ValueError):
         validate_review(lesson, tmp_path, review, renderer)
+
+
+def test_mixed_renderer_sources_keep_their_own_hash_and_reject_unknown_targets(tmp_path):
+    root = tmp_path / "repo"
+    for name in ("demo-library", "jensen-shop"):
+        folder = root / "services/renderer/experiments" / name
+        (folder / "src").mkdir(parents=True)
+        (folder / "src/Root.tsx").write_text(name)
+        (folder / "render.mjs").write_text("synthetic render")
+    for path in (
+        "services/renderer/src/PopCaptions.tsx",
+        "services/renderer/experiments/voxel-story/src/ModelKit.ts",
+    ):
+        (root / path).parent.mkdir(parents=True, exist_ok=True)
+        (root / path).write_text("synthetic shared source")
+    lessons = [SimpleNamespace(lesson_id=name) for name in ("ordinary", "story")]
+    generic_work, story_work = tmp_path / "original", tmp_path / "story"
+    sources = publication_sources(
+        lessons,
+        root,
+        generic_work,
+        {"story": {"renderer": "jensen_shop", "work": str(story_work)}},
+    )
+    assert sources["ordinary"] == (generic_work, renderer_digest(root))
+    assert sources["story"] == (story_work, renderer_digest(root, "jensen_shop"))
+    assert sources["ordinary"][1] != sources["story"][1]
+    # Editing the bespoke renderer cannot silently invalidate original renders.
+    (root / "services/renderer/experiments/jensen-shop/src/Root.tsx").write_text("changed")
+    assert sources["ordinary"][1] == renderer_digest(root)
+    assert sources["story"][1] != renderer_digest(root, "jensen_shop")
+    for overrides in (
+        [],
+        {"missing_lesson": {}},
+        {"story": {"renderer": "../../untrusted"}},
+        {"story": {"renderer": []}},
+        {"story": {"work": "relative"}},
+        {"story": {"renderer_source_digest": "forged"}},
+    ):
+        with pytest.raises(ValueError):
+            publication_sources(lessons, root, generic_work, overrides)
+
+
+def test_review_for_one_renderer_cannot_approve_another(tmp_path):
+    lesson, review, renderer = reviewed_files(tmp_path)
+    with pytest.raises(ValueError, match="exact pack and renderer"):
+        validate_review(lesson, tmp_path, review, "b" * 64)
+    validate_review(lesson, tmp_path, review, renderer)
 
 
 def test_publication_uses_existing_fence_and_retries_without_generation(database, tmp_path):
