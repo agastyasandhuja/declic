@@ -1511,3 +1511,27 @@ callbacks. The always-muted warmer also pauses unexpected native play callbacks.
 A regression uses a fake rate setter that actually starts playback and checks
 hold, release, pause, slot promotion, late callbacks, mute and disposal. This
 fix is included before the v10 build; physical double-audio retest remains pending.
+
+### Version 10 physical installation and launch evidence
+
+PR21 merged as `42a033689e7256422ec414bb305cfcccd28aebaa`. The signed Release
+1.0.0(10) app was built from that exact source (including matching contracts),
+installed over version9 on the connected iPhone15Pro, and launched successfully
+after the user unlocked it. Xcode reports installed version10. The physical
+screenshot confirms saved authenticated feed restoration, a live Reel frame,
+raised controls with real compact like/comment counts, and the playback scrubber.
+
+Commands completed: CocoaPods install from `apps/mobile/ios` (ExpoHaptics58.0.8),
+Release `xcodebuild` with `CURRENT_PROJECT_VERSION=10`, `codesign --verify --deep
+--strict`, `xcrun devicectl device install app`, and `device process launch`.
+Bundle SHA256: `fd23784248d82b6d54c5bf1d51766e9ec77b244e9c7f5994b3fda0e96bad3913`.
+The public API origin matches the active HTTPS tunnel; configured server-only
+values checked were absent from the JS bundle. The native workspace retains its
+recorded local Xcode compatibility patch. Version9 and version10 signed artifacts
+and build records are retained under ignored `.local/iphone-build/releases/`.
+Screenshot: `.local/iphone-build/main-1ef4b69/phone-main-42a0336-v10.png`.
+
+Physical long-press audio/haptic behavior, comments-open playback, and sustained
+rapid-swiping/cache effectiveness still require hands-on device testing. Xcode's
+screenshot confirms the rendered UI, not audible sound or gesture performance.
+The84 automated mobile regressions and typecheck passed before the build.
