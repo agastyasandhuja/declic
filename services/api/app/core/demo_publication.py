@@ -30,15 +30,8 @@ FORMAT = {
 }
 
 
-RENDERERS = {"generic": "demo-library", "jensen_shop": "jensen-shop"}
-
-
-def renderer_digest(root, profile="generic"):
-    # Operator-selected, installed templates only. A lesson or review cannot
-    # nominate arbitrary code or substitute its own expected source hash.
-    if profile not in RENDERERS:
-        raise ValueError("Unknown installed demo renderer")
-    source = root / "services/renderer/experiments" / RENDERERS[profile]
+def renderer_digest(root):
+    source = root / "services/renderer/experiments/demo-library"
     paths = [
         *sorted((source / "src").glob("*")),
         source / "render.mjs",
@@ -46,29 +39,6 @@ def renderer_digest(root, profile="generic"):
         root / "services/renderer/experiments/voxel-story/src/ModelKit.ts",
     ]
     return hashlib.sha256(b"".join(path.read_bytes() for path in paths)).hexdigest()
-
-
-def publication_sources(lessons, root, work, overrides=None):
-    """Resolve operator overrides while preserving each renderer's provenance."""
-    overrides = {} if overrides is None else overrides
-    identifiers = {lesson.lesson_id for lesson in lessons}
-    if not isinstance(overrides, dict) or set(overrides) - identifiers:
-        raise ValueError("Renderer overrides must name lessons in this batch")
-    sources = {}
-    for identifier in identifiers:
-        entry = overrides.get(identifier, {})
-        if not isinstance(entry, dict) or set(entry) - {"renderer", "work"}:
-            raise ValueError("Renderer override accepts only renderer and work")
-        profile = entry.get("renderer", "generic")
-        if not isinstance(profile, str) or profile not in RENDERERS:
-            raise ValueError("Unknown installed demo renderer")
-        selected_work = work
-        if "work" in entry:
-            if not isinstance(entry["work"], str) or not Path(entry["work"]).is_absolute():
-                raise ValueError("Renderer work override must be an absolute local path")
-            selected_work = Path(entry["work"])
-        sources[identifier] = (selected_work.resolve(), renderer_digest(root, profile))
-    return sources
 
 
 def validate_review(lesson, work, review, expected_renderer):
@@ -276,35 +246,23 @@ def main():
     parser.add_argument(
         "--output", type=Path, required=True, help="Write resulting generic catalog manifest"
     )
-    parser.add_argument(
-        "--renderer-overrides",
-        type=Path,
-        help="Optional lesson-ID map of installed renderer and absolute work directory",
-    )
     parser.add_argument("--apply", action="store_true", required=True)
     args = parser.parse_args()
     batch = Batch.model_validate_json(args.input.read_text())
     reviews = json.loads(args.reviews.read_text())
-    sources = publication_sources(
-        batch.lessons,
-        Path(__file__).resolve().parents[4],
-        args.work,
-        json.loads(args.renderer_overrides.read_text()) if args.renderer_overrides else None,
-    )
+    expected_renderer = renderer_digest(Path(__file__).resolve().parents[4])
     # Validate the entire batch before the first remote write.
     for lesson in batch.lessons:
-        work, expected_renderer = sources[lesson.lesson_id]
-        validate_review(lesson, work, reviews.get(lesson.lesson_id, {}), expected_renderer)
+        validate_review(lesson, args.work, reviews.get(lesson.lesson_id, {}), expected_renderer)
     database, _, _, videos, _ = components()
     try:
         entries = []
         for lesson in batch.lessons:
-            work, expected_renderer = sources[lesson.lesson_id]
             variant = publish_lesson(
                 videos.repository,
                 videos.storage,
                 lesson,
-                work,
+                args.work,
                 reviews[lesson.lesson_id],
                 expected_renderer,
             )
