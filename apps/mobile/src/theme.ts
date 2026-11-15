@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 
 export const theme = {
-  colors: { background: '#09090B', surface: '#16161B', elevated: '#22222A', text: '#F7F6FB', muted: '#A4A2B4', accent: '#9D86FF', ink: '#0B0716', border: '#2D2D36', danger: '#FF8A8A', coral: '#FF6B6B', success: '#5BD38C' },
+  colors: { background: '#09090B', surface: '#16161B', elevated: '#22222A', text: '#F7F6FB', muted: '#A4A2B4', accent: '#9D86FF', ink: '#0B0716', border: '#2D2D36', danger: '#FF8A8A', coral: '#FF6B6B', gold: '#F2C46D', success: '#5BD38C' },
   fonts: { display: 'Syne-ExtraBold', body: 'PlusJakartaSans-Regular', bold: 'PlusJakartaSans-Bold' },
   spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 },
   radius: { sm: 12, md: 20, lg: 28 },

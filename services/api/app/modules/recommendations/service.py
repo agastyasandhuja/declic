@@ -2,6 +2,7 @@ from copy import deepcopy
 from datetime import datetime
 
 from app.core import collections as tables
+from app.core import idempotency
 from app.core.database import Database
 from app.core.errors import APIError
 from app.core.time import iso, new_id, parse_time, utc_now
@@ -55,7 +56,7 @@ class FeedService:
         }
 
     def start_session(self, user_id: str, resume_session_id: str | None = None,
-                      *, refresh_unseen=False) -> dict:
+                      *, refresh_unseen=False, _connection=None) -> dict:
         now = self.clock()
 
         def operation(conn):
@@ -81,6 +82,48 @@ class FeedService:
             else:
                 state = repo.create_session(conn, user_id, now)
             return self.session_response(state)
+
+        if _connection is not None:
+            return operation(_connection)
+        return self.database.run(user_id, operation)
+
+    def bootstrap(self, user_id: str, limit: int, preferred_video_ids: list[str], key: str) -> dict:
+        """One authenticated transaction issues the startup page; hints are never authorization."""
+        body = {"limit": limit, "preferred_video_ids": preferred_video_ids}
+
+        def startup_page(conn, session_id):
+            state = repo.get_session(conn, user_id, session_id)
+            required = state["required_quiz_instance_id"]
+            if required:
+                gate = conn.value(tables.quiz_instances, "data", {
+                    "user_id": user_id, "instance_id": required,
+                })
+                return {
+                    "schema_version": "1", "session_id": session_id,
+                    "recommendation_revision": state["recommendation_revision"],
+                    "items": [gate["item"]], "next_cursor": None,
+                    "pending_quiz_instance_id": state["pending_quiz_instance_id"],
+                }
+            return self.get_feed(
+                user_id, session_id, None, limit,
+                preferred_video_ids=preferred_video_ids, _connection=conn,
+            )
+
+        def operation(conn):
+            prior = idempotency.lookup(conn, user_id, "feed/bootstrap", key, body)
+            if prior:
+                state = repo.get_session(conn, user_id, prior["session_id"])
+                if state["recommendation_revision"] != prior["recommendation_revision"]:
+                    raise APIError(409, "STALE_BOOTSTRAP", "Start a fresh feed request")
+                # Refresh signed links and honor any gate activated since the retry.
+                return startup_page(conn, state["session_id"])
+            state = self.start_session(user_id, refresh_unseen=True, _connection=conn)
+            page = startup_page(conn, state["session_id"])
+            idempotency.remember(conn, user_id, "feed/bootstrap", key, body, {
+                "session_id": page["session_id"],
+                "recommendation_revision": page["recommendation_revision"],
+            })
+            return page
 
         return self.database.run(user_id, operation)
 
@@ -132,7 +175,9 @@ class FeedService:
         for exposure in reversed(exposures):
             definitions = self.quizzes.list_for_objective(user_id, exposure["objective_id"])
             quiz_history = state.get("quiz_definition_history", [])
-            for definition in sorted(definitions, key=lambda q: (quiz_history.count(q.quiz_id), q.quiz_id, -q.revision)):
+            for definition in sorted(
+                definitions, key=lambda q: (quiz_history.count(q.quiz_id), q.quiz_id, -q.revision)
+            ):
                 if not set(definition.objective_ids).issubset(exposed_objectives & authorized) or (
                     definition.scope == "private" and definition.owner_user_id != user_id
                 ):
@@ -263,7 +308,8 @@ class FeedService:
         )
         return response
 
-    def get_feed(self, user_id: str, session_id: str, cursor: str | None, limit: int) -> dict:
+    def get_feed(self, user_id: str, session_id: str, cursor: str | None, limit: int,
+                 *, preferred_video_ids: list[str] | None = None, _connection=None) -> dict:
 
         if not 1 <= limit <= self.database.settings.max_page_size:
             raise APIError(422, "INVALID_LIMIT", "Feed limit outside allowed range")
@@ -374,6 +420,9 @@ class FeedService:
                     raise APIError(
                         409, "FEED_BUFFER_FULL", "Consume the issued feed before prefetching more"
                     )
+                startup_preference = (
+                    list(dict.fromkeys(preferred_video_ids or [])) if cursor is None else []
+                )
                 for _ in range(min(limit, remaining)):
                     selection = select_study(
                         user_id=user_id,
@@ -439,7 +488,13 @@ class FeedService:
                         if not candidates:
                             # Never immediately replay the only available clip.
                             break
-                        clip = min(candidates, key=lambda c: (positions.get(c.video_id, -1), c.video_id))
+                        cached = next((c for video_id in startup_preference
+                                       for c in candidates if c.video_id == video_id), None)
+                        clip = cached or min(
+                            candidates, key=lambda c: (positions.get(c.video_id, -1), c.video_id)
+                        )
+                        # At most one slot gets a cache preference; the rest keep normal ranking.
+                        startup_preference = []
                         state["entertainment_history"] = [
                             *[video_id for video_id in recent if video_id != clip.video_id],
                             clip.video_id,
@@ -475,6 +530,8 @@ class FeedService:
             repo.save_session(conn, user_id, state)
             return response
 
+        if _connection is not None:
+            return operation(_connection)
         return self.database.run(user_id, operation)
 
     def activate_gate(self, user_id: str, session_id: str, instance_id: str, item_id: str) -> dict:

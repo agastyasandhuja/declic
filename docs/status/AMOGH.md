@@ -463,3 +463,18 @@ not contact either live provider.
   invalidation of already-prefetched feed items when deadlines or source access
   change. The local service does not poll Canvas during feed reads. MongoDB and
   hosted OAuth integration remain deferred as instructed.
+
+## 2026-11-14 · Study Scroll v2 feed polish (apps/mobile, at user's request)
+
+- Implemented the v2 Claude Design feed chrome: frosted action rail, bolt "click"
+  icon (coral when clicked), outline comment/share icons, gold saved bookmark.
+- Added double-tap to click: `TapGesture` (src/lib/playback/TapGesture.ts) delays
+  the single-tap pause by 280 ms so a double tap never also pauses. Double tap only
+  adds a click (never removes one), shows a bolt + ring burst at the tap point,
+  fires a medium haptic on native, and respects reduced motion. Wired into both
+  `FeedScreen` and `UnifiedFeedScreen` (video cards only, not quizzes).
+- Commands: `tsc --noEmit -p apps/mobile` passed; `node --import tsx --test
+  tests/*.test.ts` passed 101/101 (3 new tap-gesture tests). Web preview
+  checked: double tap → "Unclick video" state + burst; second double tap kept it
+  clicked; single tap paused. Not yet checked on an iPhone.
+- Touches Adi's apps/mobile area; flag for review.

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,6 +15,12 @@ export function FeedIconButton({ label, icon, onPress, selected, color = theme.c
   selected?: boolean; color?: string; round?: boolean; disabled?: boolean; testID?: string; reducedMotion?: boolean;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
+  const wasSelected = useRef(selected);
+  // Pop the icon whenever it turns on, including from a double-tap on the video.
+  useEffect(() => {
+    if (selected && !wasSelected.current && !reducedMotion) { scale.setValue(0.6); Animated.spring(scale, { toValue: 1, friction: 3, tension: 200, useNativeDriver: true }).start(); }
+    wasSelected.current = selected;
+  }, [selected, reducedMotion]);
   const press = () => {
     if (!reducedMotion) {
       scale.setValue(0.8);
@@ -32,7 +38,7 @@ export function FeedIconButton({ label, icon, onPress, selected, color = theme.c
       onPress={press}
       style={({ pressed }) => [styles.action, round && styles.round, (pressed || disabled) && styles.dimmed]}
     >
-      <Ionicons name={icon} size={round ? 20 : 26} color={color} style={!round && styles.iconShadow} />
+      <Ionicons name={icon} size={round ? 20 : 23} color={color} style={!round && styles.iconShadow} />
       {compactCount(count) !== null && <Text style={styles.count}>{compactCount(count)}</Text>}
     </Pressable></Animated.View>
   );
@@ -56,17 +62,18 @@ export function FeedCaption({ byline, title, caption, children }: {
   );
 }
 
-export const feedRail = { position: 'absolute', right: 10, bottom: '17%', gap: 16 } as const;
+/** Frosted action rail from the v2 design; pairs with FeedCaption's bottom edge. */
+export const feedRail = { position: 'absolute', right: 10, bottom: 42, gap: 6, alignItems: 'center', paddingTop: 8, paddingBottom: 4, paddingHorizontal: 2, borderRadius: 30, backgroundColor: '#14141A61', borderWidth: 1, borderColor: '#FFFFFF1F' } as const;
 
 const styles = StyleSheet.create({
   header: { position: 'absolute', left: 16, right: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 44 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  action: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  count: { fontFamily: theme.fonts.bold, fontSize: 12, lineHeight: 17, color: theme.colors.text, textShadowColor: '#000000B3', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  action: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', gap: 1 },
+  count: { fontFamily: theme.fonts.bold, fontSize: 10, lineHeight: 14, color: theme.colors.text, textShadowColor: '#000000B3', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
   round: { borderRadius: 22, backgroundColor: '#09090B55', borderWidth: 1, borderColor: '#FFFFFF35' },
   dimmed: { opacity: 0.65 },
   iconShadow: { textShadowColor: '#000000B3', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 5 },
-  description: { position: 'absolute', left: 16, right: 70, bottom: 42, gap: 7 },
+  description: { position: 'absolute', left: 16, right: 78, bottom: 42, gap: 7 },
   byline: { fontFamily: theme.fonts.bold, fontSize: 15, lineHeight: 20, color: theme.colors.text, textShadowColor: '#000000B3', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
   title: { fontFamily: theme.fonts.bold, fontSize: 17, lineHeight: 22, color: theme.colors.text },
   caption: { fontFamily: theme.fonts.body, fontSize: 14, lineHeight: 20, color: theme.colors.text, textShadowColor: '#000000B3', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },

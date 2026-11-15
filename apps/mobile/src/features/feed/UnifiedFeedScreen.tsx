@@ -243,6 +243,8 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
   }
   const entertainment = current?.kind === 'entertainment_video' ? current.video : null;
   const liked = !!entertainment && clickedIds.includes(entertainment.video_id);
+  // FlatList cells can hold an old closure; read the latest state so a second double-tap never un-clicks.
+  const doubleTap = useRef(() => {}); doubleTap.current = () => { if (entertainment && !clickedIds.includes(entertainment.video_id)) socialAction(onClickVideo); };
   const saved = !!entertainment && savedIds.includes(entertainment.video_id);
   const showMore = !!video && index === items.length - 1;
 
@@ -319,7 +321,7 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
                 <>
                   {(cardIndex !== index || !sourceReady || !frameRendered) && item.video.thumbnail_url && (cardIndex === index || !playback.buffers?.some(buffer => buffer.uri === item.video.playback.url && buffer.ready)) && <Image source={{ uri: item.video.thumbnail_url }} resizeMode={fill ? 'cover' : 'contain'} style={StyleSheet.absoluteFill} />}
                   {!gesture.hidden && <FeedScrim />}
-                  {cardIndex === index && <FeedTouchArea interaction={interaction} paused={paused} error={!!playback.error} onToggle={() => setPaused(value => !value)} />}
+                  {cardIndex === index && <FeedTouchArea interaction={interaction} paused={paused} error={!!playback.error} reducedMotion={preferences.reducedMotion} onToggle={() => setPaused(value => !value)} onDoubleTap={item.kind === 'entertainment_video' ? () => doubleTap.current() : undefined} />}
                   {!gesture.hidden && <FeedCaption
                     byline={item.kind === 'study_video' ? item.course_context?.title : item.video.creator?.display_name || item.video.creator?.handle}
                     title={item.video.title}
@@ -347,10 +349,10 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
         <View pointerEvents="box-none" style={feedRail}>
           {entertainment && (
             <>
-              <FeedIconButton reducedMotion={preferences.reducedMotion} count={video?.like_count} label={liked ? 'Unclick video' : 'This clicks'} icon="heart" selected={liked} color={liked ? theme.colors.coral : theme.colors.text} onPress={() => socialAction(onClickVideo)} />
-              <FeedIconButton reducedMotion={preferences.reducedMotion} count={video?.comment_count} label="Comments" icon="chatbubble" onPress={() => interaction.openComments()} />
-              <FeedIconButton reducedMotion={preferences.reducedMotion} label={saved ? 'Unsave video' : 'Save video'} icon="bookmark" selected={saved} color={saved ? theme.colors.accent : theme.colors.text} onPress={() => socialAction(onSaveVideo)} />
-              {entertainment.source_url && <FeedIconButton reducedMotion={preferences.reducedMotion} label="Share original video" icon="arrow-redo" onPress={() => socialAction(clip => { if (clip.source_url) void Share.share({ message: clip.source_url }).catch(() => setError('Unable to open sharing.')); })} />}
+              <FeedIconButton reducedMotion={preferences.reducedMotion} count={video?.like_count} label={liked ? 'Unclick video' : 'This clicks'} icon={liked ? 'flash' : 'flash-outline'} selected={liked} color={liked ? theme.colors.coral : theme.colors.text} onPress={() => socialAction(onClickVideo)} />
+              <FeedIconButton reducedMotion={preferences.reducedMotion} count={video?.comment_count} label="Comments" icon="chatbubble-outline" onPress={() => interaction.openComments()} />
+              <FeedIconButton reducedMotion={preferences.reducedMotion} label={saved ? 'Unsave video' : 'Save video'} icon={saved ? 'bookmark' : 'bookmark-outline'} selected={saved} color={saved ? theme.colors.gold : theme.colors.text} onPress={() => socialAction(onSaveVideo)} />
+              {entertainment.source_url && <FeedIconButton reducedMotion={preferences.reducedMotion} label="Share original video" icon="paper-plane-outline" onPress={() => socialAction(clip => { if (clip.source_url) void Share.share({ message: clip.source_url }).catch(() => setError('Unable to open sharing.')); })} />}
             </>
           )}
           {index + 1 < items.length && (
