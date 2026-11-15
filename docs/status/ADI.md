@@ -1751,3 +1751,9 @@ post-update diagnostic JSON and launch results. The quiz screenshot included an
 incidental phone notification, so it remains local and is not embedded in shared
 documentation. API/proxy/tunnel processes and the root checkout were not changed
 by this physical verification.
+
+A subsequent owner-scoped read-only backend check showed the quiz was resolved.
+One further authorized cold-reopen attempt was then denied by the phone's locked
+state (CoreDevice10002/FBS7). No additional launch was attempted and no new cached
+Reel timing was inferred. The remaining measurement now needs the phone unlocked
+and the app kept open; no quiz answer is pending in that latest backend check.
