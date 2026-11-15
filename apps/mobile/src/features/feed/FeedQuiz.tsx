@@ -11,12 +11,13 @@ export interface QuizFeedback {
   explanation: string;
 }
 
-export function FeedQuiz({ quiz, top, answer, feedback, busy, ready, answerSent, error, onSelect, onSubmit, onContinue, onRecover, onRetry }: {
+export function FeedQuiz({ quiz, headerSpace, answer, feedback, busy, continuing, ready, answerSent, error, onSelect, onSubmit, onContinue, onRecover, onRetry }: {
   quiz: UnifiedQuiz['quiz'];
-  top: number;
+  headerSpace: number;
   answer: string | null;
   feedback: QuizFeedback | null;
   busy: boolean;
+  continuing: boolean;
   ready: boolean;
   answerSent: boolean;
   error: string | null;
@@ -29,10 +30,10 @@ export function FeedQuiz({ quiz, top, answer, feedback, busy, ready, answerSent,
   const feedbackColor = feedback?.correct ? theme.colors.success : theme.colors.coral;
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { paddingTop: headerSpace }]}>
       <LinearGradient pointerEvents="none" colors={['#9D86FF2E', '#09090B00']} start={{ x: 1, y: 0 }} end={{ x: 0.35, y: 1 }} style={styles.glow} />
-      <ScrollView contentContainerStyle={[styles.content, { paddingTop: top }]}>
-        <View style={styles.badge}><Text style={styles.badgeText}>QUICK CHECK</Text></View>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+        <Text style={styles.eyebrow}>Quick check</Text>
         <Text accessibilityRole="header" style={styles.prompt}>{quiz.prompt}</Text>
         <View accessibilityRole="radiogroup" style={styles.options}>
           {quiz.options.map((option, index) => {
@@ -74,11 +75,11 @@ export function FeedQuiz({ quiz, top, answer, feedback, busy, ready, answerSent,
                 {!!feedback.explanation && <Text style={styles.body}>{feedback.explanation}</Text>}
               </View>
             </View>
-            <Button title="Continue watching" onPress={onContinue} />
+            <Button title={continuing ? 'Loading next videos' : 'Continue watching'} busy={continuing} onPress={onContinue} />
           </>
         ) : (
           <>
-            <Button title={error && answerSent ? 'Retry answer' : ready ? 'Check answer' : 'Preparing question'} disabled={!ready || !answer} busy={busy} onPress={onSubmit} />
+            <Button title={busy && !error ? 'Checking answer' : error && answerSent ? 'Retry answer' : ready ? 'Check answer' : 'Preparing question'} disabled={!ready || !answer} busy={busy} onPress={onSubmit} />
             <View style={styles.lock}>
               <Ionicons name="lock-closed" size={14} color={theme.colors.muted} />
               <Text style={styles.lockText}>Answer to keep scrolling</Text>
@@ -93,20 +94,20 @@ export function FeedQuiz({ quiz, top, answer, feedback, busy, ready, answerSent,
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.background },
   glow: { position: 'absolute', left: 0, right: 0, top: 0, height: 250 },
-  content: { flexGrow: 1, width: '100%', maxWidth: 560, alignSelf: 'center', paddingHorizontal: 20, paddingBottom: 20, gap: 14 },
-  badge: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: theme.colors.accent },
-  badgeText: { fontFamily: theme.fonts.bold, fontSize: 12, color: theme.colors.ink },
-  prompt: { fontFamily: theme.fonts.display, fontSize: 26, lineHeight: 30, letterSpacing: -0.7, color: theme.colors.text },
+  scroll: { flex: 1 },
+  content: { flexGrow: 1, width: '100%', maxWidth: 560, alignSelf: 'center', paddingHorizontal: 22, paddingTop: 8, paddingBottom: 24, gap: 16 },
+  eyebrow: { fontFamily: theme.fonts.bold, fontSize: 14, lineHeight: 20, color: theme.colors.accent },
+  prompt: { fontFamily: theme.fonts.bold, fontSize: 28, lineHeight: 36, color: theme.colors.text },
   options: { gap: 10, marginTop: 4 },
-  option: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 58, backgroundColor: theme.colors.surface, borderWidth: 1.5, borderColor: theme.colors.elevated, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 },
+  option: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, backgroundColor: theme.colors.surface, borderWidth: 1.5, borderColor: theme.colors.elevated, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12 },
   selected: { backgroundColor: '#211B35' },
   letter: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center', borderRadius: 14, backgroundColor: theme.colors.elevated },
   letterText: { fontFamily: theme.fonts.bold, fontSize: 13, color: theme.colors.text },
   selectedLetter: { color: theme.colors.ink },
-  optionText: { flex: 1, fontFamily: theme.fonts.bold, fontSize: 15, lineHeight: 21, color: theme.colors.text },
+  optionText: { flex: 1, fontFamily: theme.fonts.body, fontSize: 17, lineHeight: 24, color: theme.colors.text },
   feedback: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 18, backgroundColor: theme.colors.surface },
   feedbackCopy: { flex: 1, gap: 4 },
-  body: { fontFamily: theme.fonts.body, fontSize: 15, lineHeight: 22, color: theme.colors.text },
+  body: { fontFamily: theme.fonts.body, fontSize: 17, lineHeight: 24, color: theme.colors.text },
   lock: { marginTop: 'auto', minHeight: 30, flexDirection: 'row', gap: 7, alignItems: 'center', justifyContent: 'center' },
   lockText: { fontFamily: theme.fonts.body, fontSize: 13, color: theme.colors.muted },
   error: { gap: 8 },

@@ -13,7 +13,7 @@ const store: MediaFileStore = {
     await FS.makeDirectoryAsync(directory, { intermediates: true });
     let entries: MediaFileEntry[] = [];
     try { const parsed: unknown = JSON.parse(await FS.readAsStringAsync(`${directory}index.json`)); if (Array.isArray(parsed)) entries = parsed.filter(value => value && typeof value === 'object' && typeof value.key === 'string'); } catch { /* Cold or evicted cache. */ }
-    entries = entries.filter(entry => /^[a-f0-9]{64}$/.test(entry.key) && Number.isFinite(entry.bytes) && entry.bytes > 0 && entry.bytes <= 20 * 1024 * 1024 && Number.isFinite(entry.expires) && Number.isFinite(entry.used));
+    entries = entries.filter(entry => /^[a-f0-9]{64}$/.test(entry.key) && Number.isFinite(entry.bytes) && entry.bytes > 0 && entry.bytes <= 20 * 1024 * 1024 && Number.isFinite(entry.expires) && Number.isFinite(entry.used) && (entry.url_expires === undefined || Number.isFinite(entry.url_expires)));
     const actual: MediaFileEntry[] = [];
     for (const entry of entries) {
       const info = await FS.getInfoAsync(file(entry.key));
@@ -48,4 +48,9 @@ export const nativeMediaFiles = new HttpMediaCache(store);
 
 export function clearNativeMediaFiles() {
   return clearMediaCacheFiles(() => nativeMediaFiles.clear(), FS.cacheDirectory, FS.deleteAsync);
+}
+
+export async function saveStartupDiagnostics(value: import('./StartupTrace').StartupSnapshot) {
+  if (!FS.cacheDirectory) return;
+  await FS.writeAsStringAsync(`${directory}startup-diagnostics.json`, JSON.stringify(value));
 }

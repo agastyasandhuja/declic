@@ -1639,3 +1639,47 @@ hold and haptics before reporting the later rapid-swipe glitch. Version11 fixed
 that lifecycle behavior and passed the user's sustained swipe test; version 12
 then fixed and physically verified the previously inactive HTTP preload cache.
 Earlier signed artifacts remain retained under their versioned ignored folders.
+
+## Fresh authorized cached starters — November 14, 2026
+
+Cold startup now prepares the owner-scoped cache while fonts load, then starts a
+single authenticated `POST /v1/feed/bootstrap` before mounting the feed. The first
+screen consumes that exact response, avoiding a separate session round trip and
+repeated first-page request. Initial and continuation page sizes remain five.
+The backend selects the first eligible cached entertainment hint while retaining
+quiz gates, normal study slots, ownership and fresh occurrence/event identities.
+The client never reorders cards or restores an old quiz/occurrence from disk.
+
+Completed entertainment downloads record bounded encrypted local hints containing
+only API/account scope, stable video/asset IDs, file hashes and retention expiry.
+No signed URLs, quiz contents or provider credentials persist in these hints.
+Only a fresh server-issued card matching both video and asset can associate its
+renewed URL with a retained file. Fresh changed-asset or quiz-only responses revoke
+old associations; late responses cannot recreate them. Logout/account/API changes
+invalidate hints and active associations, and private byte cleanup remains
+fail-closed. The first request can fall back to normal server selection when
+hints or files are missing; cache errors do not block fresh feed playback.
+
+Completed bytes may remain for 24 hours within the existing 128 MiB budget.
+Their original URL lease is tracked separately and still expires; retaining a
+file is not authorization to play it. Fresh authorization is required on every
+startup, including when a signed URL changed. Active file leases, one-download
+concurrency, current/next buffer priority and the six-video lookahead are retained.
+Long-offline, revoked, evicted and expired content cannot guarantee instant video.
+
+The latest merged rail/double-tap changes and the installed version13 quiz fixes
+were preserved: quiz text/header spacing, loading/continuation states, replacement
+page position reset, reset-vs-append behavior after background interruption and
+no reactivation of an already answered quiz. Root checkout changes were read and
+integrated only into the isolated startup worktree; root was not reset or stashed.
+
+Validation: **113 mobile tests pass**, including new bootstrap sharing/quiz order,
+constant page size, bounded stale-key retry, owner/API/logout isolation, completed
+file hints, renewed URLs, mismatched assets, expired original URLs, late hashing
+and stale authorization races. Proxy tests cover the authenticated bootstrap
+allowlist and anonymous rejection. TypeScript and `git diff --check` pass.
+No paid providers were called. A tiny local `startup-diagnostics.json` records
+only timing/cache-hit booleans and a timestamp so a subsequent phone check can
+distinguish a selected cached starter from merely having bytes on disk. Actual
+startup latency and selected-cache-hit verification await the combined phone build;
+unit tests are not presented as physical performance measurements.

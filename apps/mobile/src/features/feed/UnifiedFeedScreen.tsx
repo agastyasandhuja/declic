@@ -1,3 +1,6 @@
+import { startupTrace } from '../../lib/playback/startupMetrics';
+import { config } from '../../config';
+import { feedBootstrap } from './startup';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, AppState, FlatList, Image, Share, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useVideoPlayer, type VideoPlayer } from 'expo-video';
@@ -35,6 +38,7 @@ import { appendUnified, parseUnifiedPage, type UnifiedItem } from './unified';
 export function UnifiedFeedScreen({ focused, preferences, setPreferences, clickedIds, savedIds, onClickVideo, onSaveVideo, onImmersiveChange }: { onImmersiveChange?(hidden: boolean): void; focused: boolean; preferences: PlaybackPreferences; setPreferences(value: PlaybackPreferences): void; clickedIds: string[]; savedIds: string[]; onClickVideo(video: EntertainmentVideo): void; onSaveVideo(video: EntertainmentVideo): void }) {
   const { api, user } = useAuth(); const insets = useSafeAreaInsets();
   const [items, setItems] = useState<UnifiedItem[]>([]); const [index, setIndex] = useState(0); const [height, setHeight] = useState(0);
+  const [listRevision, setListRevision] = useState(0);
   const [loading, setLoading] = useState(false); const [error, setError] = useState<string | null>(null);
   const [foreground, setForeground] = useState(AppState.currentState === 'active'); const [paused, setPaused] = useState(false);
   const [fill, setFill] = useState(false);
@@ -49,7 +53,10 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
   const [renderedSelection, setRenderedSelection] = useState<number | null>(null);
   const selectionRef = useRef(playback.selection); selectionRef.current = playback.selection;
   const firstFrame = useRef(new FirstFrameGuard()); const stalled = useRef(new PlaybackStallGuard());
-  const loadAbort = useRef<AbortController | null>(null); const resumePage = useRef(false);
+  const loadAbort = useRef<AbortController | null>(null);
+  const requestResetsFeed = useRef(false);
+  const resumePage = useRef<boolean | null>(null);
+  const firstPage = useRef<ReturnType<typeof parseUnifiedPage> | null>(null);
   const session = useRef<string | null>(null); const sessionPromise = useRef<Promise<string> | null>(null);
   const cursor = useRef<string | null>(null); const pending = useRef(false); const mounted = useRef(true);
   const generation = useRef(0); const revision = useRef<number | null>(null);
@@ -75,7 +82,7 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
   const next = items[index + 1]; const nextUrl = next && next.kind !== 'quiz' ? next.video.playback.url : undefined;
   const immediateReady = !!nextUrl && !!playback.buffers?.some(buffer => buffer.uri === nextUrl && buffer.ready);
   const standby = playback.activeSlot === 0 ? second : first;
-  const warmAssets = items.slice(index + 2, index + 8).flatMap(item => item.kind === 'quiz' ? [] : [item.video.playback]);
+  const warmAssets = items.slice(index + 2, index + 8).flatMap(item => item.kind === 'quiz' ? [] : [{ ...item.video.playback, ...(item.kind === 'entertainment_video' ? { video_id: item.video.video_id } : {}) }]);
   useMediaWarmup(warmAssets, hasBufferHeadroom(player.bufferedPosition, player.currentTime, player.duration) && hasBufferHeadroom(standby.bufferedPosition, 0, standby.duration) && sourceReady && frameRendered && immediateReady && focused && foreground && !transitioning && !playbackBlocked);
   const emit = useCallback((type: string, position = 0, watched = 0, item = itemRef.current) => {
     if (!session.current || !item || item.kind === 'quiz' || terminal.current.has(item.item_id)) return;
@@ -89,11 +96,12 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
   const flush = useCallback(async () => { try { await events.flush(); } catch { /* Retry the same IDs in chronological order. */ } }, [events]);
   const ensureSession = useCallback(async () => {
     if (session.current) return session.current;
-    if (!sessionPromise.current) sessionPromise.current = api.request<{session_id: string}>('/v1/feed/sessions', { method: 'POST', body: { refresh_unseen: true }, headers: { 'Idempotency-Key': Crypto.randomUUID() } }).then(r => { session.current = r.session_id; return r.session_id; }).finally(() => { sessionPromise.current = null; });
+    if (!sessionPromise.current) sessionPromise.current = feedBootstrap.take(`${config.apiBaseUrl}:${user?.user_id}`, api).then(page => { firstPage.current = page; session.current = page.session_id; return page.session_id; }).finally(() => { sessionPromise.current = null; });
     return sessionPromise.current;
-  }, [api]);
+  }, [api, user?.user_id]);
   const load = useCallback(async (reset = false) => {
     if (pending.current && !reset) return; const request = ++generation.current; loadAbort.current?.abort(); const abort = new AbortController(); loadAbort.current = abort; pending.current = true; setLoading(true); setError(null);
+    requestResetsFeed.current = reset;
     try {
       const id = await ensureSession(); await flush();
       if (generation.current !== request || abort.signal.aborted) return;
@@ -105,7 +113,7 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
       const pacedRead = createPageReader(abort.signal);
       const read = () => pacedRead(async () => parseUnifiedPage(await api.request(`/v1/feed?${query}`, { signal: abort.signal })));
       const available = (page: ReturnType<typeof parseUnifiedPage>) => page.items.some(item => reset || !values.current.some(previous => previous.item_id === item.item_id));
-      let page = await read();
+      let page = firstPage.current ?? await read(); firstPage.current = null;
       const seen = new Set(query.has('cursor') ? [query.get('cursor')!] : []);
       for (let skipped = 0; !available(page) && page.next_cursor && skipped < 3; skipped++) {
         if (seen.has(page.next_cursor)) throw new Error('The feed repeated a page. Please refresh.');
@@ -129,16 +137,26 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
       const remove = reset ? 0 : Math.min(Math.max(0, merged.length - 80), Math.max(0, indexRef.current - 10));
       values.current = merged.slice(remove); setItems(values.current);
       if (remove) { setIndex(indexRef.current - remove); list.current?.scrollToOffset({ offset: (indexRef.current - remove) * heightRef.current, animated: false }); }
-      if (reset) { indexRef.current = 0; setIndex(0); list.current?.scrollToOffset({ offset: 0, animated: false }); }
+      if (reset) {
+        // Mount the replacement page at its first row. The existing native list
+        // still has the quiz page's dimensions and scroll lock at this point.
+        indexRef.current = 0;
+        setIndex(0);
+        setTransitioning(false);
+        scrollY.setValue(0);
+        setListRevision(request);
+      }
     } catch (problem) { if (mounted.current && generation.current === request && !abort.signal.aborted) { if (problem instanceof ApiError && problem.code === 'STALE_CURSOR') cursor.current = null; setError(problem instanceof Error ? problem.message : 'Unable to load your feed.'); } }
     finally { if (generation.current === request) { pending.current = false; if (mounted.current) setLoading(false); } }
-  }, [api, ensureSession, flush]);
+  }, [api, ensureSession, flush, scrollY]);
   useEffect(() => { mounted.current = true; void load(true); return () => { mounted.current = false; generation.current++; loadAbort.current?.abort(); void flush(); }; }, [load, flush]);
   useEffect(() => {
     if (!focused || !foreground) {
-      if (pending.current) { resumePage.current = true; loadAbort.current?.abort(); }
-    } else if (resumePage.current && !loading) {
-      resumePage.current = false; void load();
+      if (pending.current) { resumePage.current = requestResetsFeed.current; loadAbort.current?.abort(); }
+    } else if (resumePage.current !== null && !loading) {
+      const reset = resumePage.current;
+      resumePage.current = null;
+      void load(reset);
     }
   }, [focused, foreground, loading, load]);
   useLayoutEffect(() => () => controller.dispose(), [controller]);
@@ -197,10 +215,11 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
     const timer = setInterval(() => { if (!pending.current) void load(); }, 10000);
     return () => clearInterval(timer);
   }, [focused, foreground, items.length, load]);
-  useEffect(() => { if (!focused || !foreground || current?.kind !== 'quiz') return; let cancelled = false;
+  const quizAnswered = feedback !== null;
+  useEffect(() => { if (!focused || !foreground || current?.kind !== 'quiz' || quizAnswered) return; let cancelled = false;
     events.flush().then(() => api.request<{scroll_locked: boolean}>(`/v1/feed/sessions/${session.current}/quiz-gate`, { method: 'POST', headers: { 'Idempotency-Key': current.item_id }, body: { item_id: current.item_id, quiz_instance_id: current.quiz.quiz_instance_id } })).then(result => { if (!cancelled) { setGateReady(result.scroll_locked); if (!result.scroll_locked) void load(true); } }).catch(problem => { if (!cancelled) setError(problem.message); });
     return () => { cancelled = true; };
-  }, [current?.item_id, focused, foreground, api, load, events, gateAttempt]);
+  }, [current?.item_id, focused, foreground, api, load, events, gateAttempt, quizAnswered]);
   const move = useRef((nextIndex: number) => {});
   move.current = nextIndex => { if (nextIndex === indexRef.current || itemRef.current?.kind === 'quiz') return; interaction.reset(); emit('video_skipped', player.currentTime * 1000, watch.current.totalMs); if (itemRef.current) terminal.current.add(itemRef.current.item_id); void flush(); controller.setGate({ focused: false }); indexRef.current = nextIndex; setIndex(nextIndex); };
   const viewable = useRef(({ viewableItems }: { viewableItems: { index?: number | null }[] }) => { const i = viewableItems[0]?.index; if (i != null) move.current(i); }).current;
@@ -250,7 +269,7 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
     const id = itemRef.current?.item_id;
     const target = id ? resumeSeek.current.takeTarget(id, selection, Date.now()) : null;
     if (target !== null) { controller.seekTo(target / 1000); watch.current.sample(target, Date.now(), false); }
-    setRenderedSelection(selection);
+    setRenderedSelection(selection); startupTrace.frame();
   }
   function beginScrub() {
     if (!video || !current || current.kind === 'quiz') return;
@@ -275,9 +294,10 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, !preferences.reducedMotion && { transform: [{ translateY: Animated.add(Animated.multiply(scrollY, -1), index * height) }] }]}><BufferedVideoViews players={[first, second]} playback={playback} sourceReady={sourceReady} visible={!!video} fill={fill} onFrame={onFrame} adjacent={{ height, nextUrl, previousUrl }} /></Animated.View>
       {height > 0 && items.length > 0 ? (
         <Animated.FlatList
+          key={listRevision}
           ref={list}
           data={items}
-          extraData={[index, answer, feedback, gateReady, busy, error, paused, gesture.hidden, preferences.captions]}
+          extraData={[index, answer, feedback, gateReady, busy, loading, error, paused, gesture.hidden, preferences.captions]}
           removeClippedSubviews={false}
           initialNumToRender={2}
           maxToRenderPerBatch={2}
@@ -301,10 +321,11 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
               {item.kind === 'quiz' ? (
                 <FeedQuiz
                   quiz={item.quiz}
-                  top={insets.top + 76}
+                  headerSpace={insets.top + 64}
                   answer={answer}
                   feedback={feedback}
                   busy={busy}
+                  continuing={loading}
                   ready={gateReady}
                   answerSent={submittedAnswer.current !== null}
                   error={error}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
-import { isMediaCacheEnabled } from './MediaCache';
+import { isMediaCacheEnabled, starterMedia } from './MediaCache';
 import { MediaWarmup, type WarmAsset } from './MediaWarmup';
 import { nativeMediaFiles } from './NativeMediaFiles';
 
@@ -10,7 +10,11 @@ export function useMediaWarmup(assets: WarmAsset[], enabled: boolean) {
   const [memoryLimited, setMemoryLimited] = useState(false);
   const latest = useRef(assets); latest.current = assets;
   const queue = useMemo(() => new MediaWarmup({
-    warm: (url, signal) => nativeMediaFiles.warm(url, latest.current.find(asset => asset.url === url)?.expires_at ?? null, signal),
+    warm: async (url, signal) => {
+      const asset = latest.current.find(item => item.url === url), epoch = nativeMediaFiles.generation;
+      await nativeMediaFiles.warm(url, asset?.expires_at ?? null, signal);
+      if (!signal.aborted && epoch === nativeMediaFiles.generation && asset?.video_id && asset.asset_id) await starterMedia.record(asset.video_id, asset.asset_id, url).catch(() => undefined);
+    },
     stop() { /* Queue aborts its HTTP task; no native player to reset. */ },
   }), []);
   const key = JSON.stringify(assets);
