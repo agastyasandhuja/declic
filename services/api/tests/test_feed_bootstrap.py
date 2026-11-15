@@ -27,7 +27,7 @@ def test_cached_first_clip_then_normal_inventory_and_retry(client, catalog):
     assert response.status_code == 200, response.text
     page = response.json()
     assert [i['video']['video_id'] for i in page['items']] == [
-        'reel_008', 'reel_000', 'reel_001', 'reel_002', 'reel_003',
+        'reel_008',
     ]
     assert bootstrap(client, ['reel_008'], key).json() == page
     assert bootstrap(client, ['reel_009'], key).status_code == 409
@@ -35,7 +35,7 @@ def test_cached_first_clip_then_normal_inventory_and_retry(client, catalog):
         'session_id': page['session_id'], 'cursor': page['next_cursor'], 'limit': 5,
     })
     assert next_page.status_code == 200, next_page.text
-    assert next_page.json()['items'][0]['video']['video_id'] == 'reel_004'
+    assert next_page.json()['items'][0]['video']['video_id'] == 'reel_000'
 
 
 def test_invalid_and_immediate_repeat_hints_ignored(client, catalog, clock):
@@ -54,11 +54,11 @@ def test_invalid_and_immediate_repeat_hints_ignored(client, catalog, clock):
 def test_retry_revalidates_revoked_catalog_content(client, catalog):
     clips(catalog)
     key = str(uuid.uuid4())
-    first = bootstrap(client, ['reel_008'], key).json()
+    assert bootstrap(client, ['reel_008'], key).status_code == 200
     catalog.clips = [c for c in catalog.clips if c.video_id != 'reel_008']
-    retry = bootstrap(client, ['reel_008'], key).json()
-    assert retry['session_id'] == first['session_id']
-    assert 'reel_008' not in [i['video']['video_id'] for i in retry['items']]
+    retry = bootstrap(client, ['reel_008'], key)
+    assert retry.status_code == 503
+    assert retry.json()['error']['code'] == 'ENTERTAINMENT_UNAVAILABLE'
 
 
 @pytest.mark.parametrize('activate', [False, True])
@@ -84,7 +84,17 @@ def test_bootstrap_does_not_suppress_due_study_slot(client, app, catalog, databa
         repo.save_session(conn, 'user_demo_01', state)
     database.run('user_demo_01', due)
     page = bootstrap(client, [catalog.clips[0].video_id]).json()
-    assert page['items'][0]['kind'] == 'study_video'
+    assert page['items'][0]['kind'] == 'entertainment_video'
+    assert len(page['items']) == 1
+    state = database.run(
+        'user_demo_01', lambda conn: repo.get_session(conn, 'user_demo_01', session)
+    )
+    assert state['study_debt'] == 1
+    following = client.get('/v1/feed', params={
+        'session_id': session, 'cursor': page['next_cursor'], 'limit': 5,
+    })
+    assert following.status_code == 200, following.text
+    assert following.json()['items'][0]['kind'] == 'study_video'
 
 
 def test_bootstrap_auth_and_bounded_hint_schema(client, app):
@@ -98,3 +108,22 @@ def test_bootstrap_auth_and_bounded_hint_schema(client, app):
     second = bootstrap(client).json()
     assert second['session_id'] != first['session_id']
     assert not ({i['item_id'] for i in first['items']} & {i['item_id'] for i in second['items']})
+
+
+def test_startup_and_retry_do_not_wait_for_course_inventory(client, app):
+    from unittest.mock import patch
+    key = str(uuid.uuid4())
+    with patch.object(app.state.feed.academics, 'list_objectives',
+                      side_effect=AssertionError('slow academic read')):
+        page = bootstrap(client, key=key)
+        assert page.status_code == 200, page.text
+        assert len(page.json()['items']) == 1
+        assert page.json()['items'][0]['kind'] == 'entertainment_video'
+        assert bootstrap(client, key=key).status_code == 200
+
+
+def test_no_reels_does_not_fall_back_to_study_on_open(client, catalog):
+    catalog.clips = []
+    response = bootstrap(client)
+    assert response.status_code == 503
+    assert response.json()['error']['code'] == 'ENTERTAINMENT_UNAVAILABLE'

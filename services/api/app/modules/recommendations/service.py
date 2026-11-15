@@ -106,7 +106,8 @@ class FeedService:
                 }
             return self.get_feed(
                 user_id, session_id, None, limit,
-                preferred_video_ids=preferred_video_ids, _connection=conn,
+                preferred_video_ids=preferred_video_ids, startup_entertainment=True,
+                _connection=conn,
             )
 
         def operation(conn):
@@ -241,7 +242,9 @@ class FeedService:
         response = deepcopy(page["data"])
         valid = []
         try:
-            objectives = self.academics.list_objectives(user_id)
+            objectives = (self.academics.list_objectives(user_id)
+                          if any(item["kind"] == "study_video" for item in response["items"])
+                          else [])
         except APIError as exc:
             if exc.status != 503:
                 raise
@@ -309,7 +312,8 @@ class FeedService:
         return response
 
     def get_feed(self, user_id: str, session_id: str, cursor: str | None, limit: int,
-                 *, preferred_video_ids: list[str] | None = None, _connection=None) -> dict:
+                 *, preferred_video_ids: list[str] | None = None, startup_entertainment=False,
+                 _connection=None) -> dict:
 
         if not 1 <= limit <= self.database.settings.max_page_size:
             raise APIError(422, "INVALID_LIMIT", "Feed limit outside allowed range")
@@ -358,7 +362,12 @@ class FeedService:
                     "pending_quiz_instance_id": state["pending_quiz_instance_id"],
                 }
             if page is not None and page["data"] is not None and page["data"]["items"]:
-                return self._refresh_page(conn, user_id, state, page, now)
+                refreshed = self._refresh_page(conn, user_id, state, page, now)
+                if startup_entertainment and not refreshed["items"]:
+                    raise APIError(503, "ENTERTAINMENT_UNAVAILABLE",
+                                   "Your reels are preparing. Please retry shortly.",
+                                   retryable=True)
+                return refreshed
             if state["required_quiz_instance_id"]:
                 raise APIError(
                     409, "QUIZ_REQUIRED", "Resolve the issued quiz before requesting more items"
@@ -367,7 +376,8 @@ class FeedService:
                 page_id = self._page(conn, user_id, state, limit)
                 state["root_page_id"] = page_id
             try:
-                quiz = self._maybe_quiz(conn, user_id, state, now)
+                quiz = (None if startup_entertainment
+                        else self._maybe_quiz(conn, user_id, state, now))
             except APIError as exc:
                 if exc.status != 503:
                     raise
@@ -376,18 +386,21 @@ class FeedService:
             availability = {"study": "ready", "entertainment": "ready"}
             if not quiz:
                 # Adapters are bounded cached reads; no provider retrieval or generation here.
-                try:
-                    objectives = [
-                        o for o in self.academics.list_objectives(user_id) if o.user_id == user_id
-                    ]
-                    variants = self.videos.list_variants(
-                        user_id, [o.objective_id for o in objectives]
-                    )
-                except APIError as exc:
-                    if exc.status != 503:
-                        raise
-                    objectives, variants = [], []
-                    availability["study"] = "unavailable"
+                objectives, variants = [], []
+                if not startup_entertainment:
+                    try:
+                        objectives = [
+                            o for o in self.academics.list_objectives(user_id)
+                            if o.user_id == user_id
+                        ]
+                        variants = self.videos.list_variants(
+                            user_id, [o.objective_id for o in objectives]
+                        )
+                    except APIError as exc:
+                        if exc.status != 503:
+                            raise
+                        objectives, variants = [], []
+                        availability["study"] = "unavailable"
                 try:
                     clips = self.entertainment.list_candidates(user_id, 200)
                 except APIError as exc:
@@ -403,7 +416,7 @@ class FeedService:
                         if c.availability == "ready" and c.playback.playable(now)
                     }.values()
                 )
-                states = repo.learning_states(conn, user_id)
+                states = {} if startup_entertainment else repo.learning_states(conn, user_id)
                 if not any(v.eligible(user_id, o, now) for o in objectives for v in variants):
                     availability["study"] = "unavailable"
                 buffered = conn.count(
@@ -423,8 +436,8 @@ class FeedService:
                 startup_preference = (
                     list(dict.fromkeys(preferred_video_ids or [])) if cursor is None else []
                 )
-                for _ in range(min(limit, remaining)):
-                    selection = select_study(
+                for _ in range(min(1 if startup_entertainment else limit, remaining)):
+                    selection = None if startup_entertainment else select_study(
                         user_id=user_id,
                         objectives=objectives,
                         variants=variants,
@@ -433,7 +446,7 @@ class FeedService:
                         now=now,
                         policy=self.policy,
                     )
-                    study, debt = slot(
+                    study, debt = (False, state["study_debt"]) if startup_entertainment else slot(
                         state["study_debt"],
                         state["active_view_ms"] / 1000,
                         selection is not None,
@@ -511,6 +524,9 @@ class FeedService:
                         break
                     state["study_debt"] = debt
                     items.append(self._issue(conn, user_id, state, item, now, history))
+            if startup_entertainment and not items:
+                raise APIError(503, "ENTERTAINMENT_UNAVAILABLE",
+                               "Your reels are preparing. Please retry shortly.", retryable=True)
             next_cursor = self._page(conn, user_id, state, limit) if items else None
             response = {
                 "schema_version": "1",
@@ -519,7 +535,7 @@ class FeedService:
                 "items": items,
                 "next_cursor": next_cursor,
                 "pending_quiz_instance_id": None,
-                "availability": availability,
+                "availability": None if startup_entertainment else availability,
             }
             conn.update(
                 tables.pages,
