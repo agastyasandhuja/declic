@@ -1886,3 +1886,21 @@ allowlist was updated and its process restarted; the existing tunnel was retaine
 Future backend deployment must refresh the snapshot and launcher arguments;
 editing root source alone does not update this managed API. App source main
 `9bbdcc7` includes only mobile changes after that reviewed backend snapshot.
+
+### Regular reel first and shorter startup — November 14, 2026
+
+User reported the loading state and requested no study video on opening. The
+physical v14 diagnostic measured 2,026 ms to the fresh page and 3,077 ms to
+first frame on a network cache miss; the phone screenshot showed a study card.
+Bootstrap now returns one regular reel, preferring an eligible completed cache
+hint. It defers course/video inventory, learning-state reads and new quiz
+selection to the following mixed page. Existing study debt and required quiz
+gates remain intact. Cursor page size stays five; installed v14 already starts
+the next page after the first frame. No regular inventory yields a retryable
+error, never an opening study fallback. Entertainment-only page retries also
+skip academic inventory.
+
+Validation: 33 bootstrap/inventory/API/playback/demo/prepared-feed tests passed
+against isolated MongoDB; Ruff passed. Startup tests prove the opening request
+and retry do not call academic inventory, and a due study follows the opening
+reel rather than being erased. Post-deployment phone timing remains pending.

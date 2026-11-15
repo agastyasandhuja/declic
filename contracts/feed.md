@@ -131,11 +131,15 @@ transaction. A retry with the same key/body revalidates the same page; a changed
 request conflicts, and an obsolete recommendation revision returns
 `409 STALE_BOOTSTRAP` so the client can start again with a new key.
 
-Hints only prefer the first otherwise-due entertainment slot among currently
-authorized, ready, nonexpired candidates, excluding the immediately previous
-clip. Study scheduling and all remaining slots keep normal ranking. Scheduled
-or active quizzes survive reopening and take precedence over hinted playback.
-Subsequent cursor reads use the same page size as bootstrap. Clients may resolve
+On app opening, bootstrap returns one regular reel among currently authorized,
+ready, nonexpired entertainment candidates, excluding the immediately previous
+clip. Cache hints prefer a matching eligible reel. Course/video inventory and
+new quiz selection wait for the following mixed page, so they do not delay the
+first reel. Existing study debt is preserved for that page. Scheduled or active
+quiz gates survive reopening and take precedence. If no regular reel is ready,
+startup returns retryable `503 ENTERTAINMENT_UNAVAILABLE` rather than substituting
+a study video. The one-item startup response still binds its cursor to the
+requested page size; subsequent mixed cursor reads use that same size. Clients may resolve
 a freshly authorized clip to a completed local cache file scoped to the same
 account/API and still within its cache lifetime; hints themselves grant no
 playback authorization or learning credit.
