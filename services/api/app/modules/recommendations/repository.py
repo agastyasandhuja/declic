@@ -53,8 +53,13 @@ def create_session(conn: UnitOfWork, user_id: str, now: datetime) -> dict:
     return state
 
 
-def learning_states(conn: UnitOfWork, user_id: str) -> dict[str, dict]:
-    return {r["objective_id"]: r["data"] for r in conn.find(tables.learning, {"user_id": user_id})}
+def learning_states(
+    conn: UnitOfWork, user_id: str, objective_ids: list[str] | None = None
+) -> dict[str, dict]:
+    query = {"user_id": user_id}
+    if objective_ids is not None:
+        query["objective_id"] = {"$in": objective_ids}
+    return {r["objective_id"]: r["data"] for r in conn.find(tables.learning, query)}
 
 
 def get_occurrence(conn: UnitOfWork, user_id: str, session_id: str, item_id: str) -> dict:
@@ -75,11 +80,15 @@ def save_occurrence(conn: UnitOfWork, row: dict) -> None:
     )
 
 
-def invalidate_user_feeds(conn: UnitOfWork, user_id: str) -> dict[str, dict]:
+def invalidate_user_feeds(
+    conn: UnitOfWork, user_id: str, *, updated_session: dict | None = None
+) -> dict[str, dict]:
     """Drop unseen reservations in every session after a learning-state mutation."""
     updated = {}
     for row in conn.find(tables.sessions, {"user_id": user_id}):
         state = row["data"]
+        if updated_session is not None and state["session_id"] == updated_session["session_id"]:
+            state = updated_session
         state["recommendation_revision"] += 1
         state["root_page_id"] = None
         state["study_debt"] = min(state["study_debt"], 1)
