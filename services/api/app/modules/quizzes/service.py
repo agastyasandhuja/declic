@@ -46,8 +46,7 @@ class QuizService:
         state["required_quiz_instance_id"] = None
         state["quiz_exposures"] = []
         state["last_active_at"] = iso(self.clock())
-        repo.save_session(conn, user_id, state)
-        return repo.invalidate_user_feeds(conn, user_id)[state["session_id"]]
+        return repo.invalidate_user_feeds(conn, user_id, updated_session=state)[state["session_id"]]
 
     def answer(self, user_id: str, instance_id: str, body: AnswerRequest, key: str) -> dict:
         route = f"quizzes/{instance_id}/answers"
@@ -79,23 +78,22 @@ class QuizService:
             correct = body.selected_option_id == definition.correct_option_id
             revision = conn.value(tables.users, "learning_revision", {"user_id": user_id}) + 1
             conn.update(tables.users, {"user_id": user_id}, {"learning_revision": revision})
-            states = repo.learning_states(conn, user_id)
+            states = repo.learning_states(conn, user_id, definition.objective_ids)
             for objective_id in definition.objective_ids:
-                old = states.get(
-                    objective_id,
-                    {
-                        "user_id": user_id,
-                        "objective_id": objective_id,
-                        "mastery_estimate": 0.5,
-                        "correct_count": 0,
-                        "incorrect_count": 0,
-                        "misconception_tags": [],
-                        "last_attempt_at": None,
-                        "last_reviewed_at": None,
-                        "next_review_at": None,
-                        "revision": 0,
-                    },
-                )
+                learning_key = {"user_id": user_id, "objective_id": objective_id}
+                existing = states.get(objective_id)
+                old = existing or {
+                    "user_id": user_id,
+                    "objective_id": objective_id,
+                    "mastery_estimate": 0.5,
+                    "correct_count": 0,
+                    "incorrect_count": 0,
+                    "misconception_tags": [],
+                    "last_attempt_at": None,
+                    "last_reviewed_at": None,
+                    "next_review_at": None,
+                    "revision": 0,
+                }
                 # Bounded, interpretable estimate. Viewing never enters this calculation.
                 mastery = old["mastery_estimate"] * 0.65 + (0.35 if correct else 0)
                 tags = set(old["misconception_tags"])
@@ -122,21 +120,13 @@ class QuizService:
                     "misconception_tags": sorted(tags),
                     "revision": revision,
                 }
-                insert_ignore(
-                    conn,
-                    tables.learning,
-                    {
-                        "user_id": user_id,
-                        "objective_id": objective_id,
-                        "data": value,
-                    },
-                    ["user_id", "objective_id"],
-                )
-                conn.update(
-                    tables.learning,
-                    {"$and": [{"user_id": user_id}, {"objective_id": objective_id}]},
-                    {"data": value},
-                )
+                if existing is None:
+                    insert_ignore(
+                        conn, tables.learning, {**learning_key, "data": value},
+                        ["user_id", "objective_id"],
+                    )
+                else:
+                    conn.update(tables.learning, learning_key, {"data": value})
             state = self._unlock(conn, user_id, state, instance_id, "answered")
             attempt_id = new_id()
             response = {
