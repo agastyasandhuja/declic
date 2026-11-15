@@ -1717,3 +1717,43 @@ The signed app and ignored build/install records are retained under
 native patch details are in `build-info.json`; credentials, cached videos and
 screenshots remain outside version control. Source validation before installation:
 116 mobile tests, TypeScript and diff-check passed.
+
+## Version 14 foreground startup measurements — November 14, 2026
+
+The user subsequently opened the installed version 14 app. Xcode Devices verified
+version 14 and the physical screenshot showed a live study-video frame with the
+saved-auth feed navigation. This supersedes the earlier locked-device launch
+blocker. Read-only retrieval was restricted to the app's startup diagnostic and
+hashed media-cache index; no authentication files or other app data were read.
+
+Before the Reel-first backend update, the phone recorded a fresh page at 2026 ms,
+source resolution at 2069 ms and its first decoded frame at 3077 ms after bootstrap
+began. Both cache-hit and starter-alias flags were false. These are one observed
+run's app-side elapsed times, excluding earlier process/auth/cache setup, not a
+startup benchmark or a claim of instant playback. The cache index separately
+showed seven completed files totaling 46,754,877 bytes, all retained beyond one
+hour; cached-file existence alone does not establish first-video reuse.
+
+The integrator then deployed the reviewed PR34 Reel-first bootstrap while
+preserving the other chat's demo-catalog runtime changes. Its current managed
+snapshot is `.local/demo-api/releases/9d1dba32a8e7-demo-a7e5abacb120-reel-first`.
+No new native build was required. An authorized cold reopen using CoreDevice's
+`--terminate-existing` succeeded. The fresh diagnostic recorded the page at 1819 ms
+but no video source/frame: the server returned an existing pending quiz, which
+was visibly preserved on the phone. No answer was selected or submitted by the
+agent. The user was asked to complete the quiz and continue before another
+cached-Reel measurement. **Actual cached regular-Reel startup timing remains
+unverified**, and no speedup is claimed from this quiz-only response.
+
+Ignored evidence is retained with the signed version 14 archive under
+`.local/iphone-build/releases/main-9bbdcc7-v14/`, including first-run and
+post-update diagnostic JSON and launch results. The quiz screenshot included an
+incidental phone notification, so it remains local and is not embedded in shared
+documentation. API/proxy/tunnel processes and the root checkout were not changed
+by this physical verification.
+
+A subsequent owner-scoped read-only backend check showed the quiz was resolved.
+One further authorized cold-reopen attempt was then denied by the phone's locked
+state (CoreDevice10002/FBS7). No additional launch was attempted and no new cached
+Reel timing was inferred. The remaining measurement now needs the phone unlocked
+and the app kept open; no quiz answer is pending in that latest backend check.
