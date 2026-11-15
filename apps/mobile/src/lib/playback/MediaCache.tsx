@@ -25,7 +25,7 @@ export async function cachedVideoSource(uri: string | null) {
   if (!uri) return null;
   const epoch = nativeMediaFiles.generation;
   const key = caching ? starterMedia.keyFor(uri) : undefined;
-  const resolved = caching ? await (key ? nativeMediaFiles.resolveKey(key, epoch).then(value => value ?? uri) : nativeMediaFiles.resolve(uri)).catch(() => uri) : uri;
+  const resolved = caching && starterMedia.allowsDirect(uri) ? await (key ? nativeMediaFiles.resolveKey(key, epoch).then(value => value ?? uri) : nativeMediaFiles.resolve(uri)).catch(() => uri) : uri;
   const source = { uri: resolved, useCaching: false };
   if (epoch === nativeMediaFiles.generation) startupTrace.source(resolved.startsWith('file:'), !!key && resolved.startsWith('file:'));
   if (resolved.startsWith('file:')) releases.set(source, () => key ? nativeMediaFiles.releaseKey(key, epoch) : nativeMediaFiles.release(uri, epoch));

@@ -10,9 +10,10 @@ export class StarterMedia {
   private authorization = 0;
   private hints: Hint[] = [];
   private aliases = new Map<string, Hint>();
+  private blocked = new Set<string>();
   private queue: Promise<unknown> = Promise.resolve();
   constructor(private cache: HttpMediaCache, private storage: Storage, private now = Date.now) {}
-  deactivate() { this.epoch++; this.authorization++; this.scope = null; this.hints = []; this.aliases.clear(); }
+  deactivate() { this.epoch++; this.authorization++; this.scope = null; this.hints = []; this.aliases.clear(); this.blocked.clear(); }
   async open(scope: string | null) {
     this.deactivate(); this.scope = scope; const epoch = this.epoch;
     const task = this.queue.catch(() => undefined).then(async () => {
@@ -32,6 +33,7 @@ export class StarterMedia {
     if (!scope || !videoId || videoId.length > 200 || !assetId || assetId.length > 200) return;
     const file = await this.cache.describe(url);
     if (!file || file.expires <= this.now() + 30000 || epoch !== this.epoch) return;
+    this.blocked.delete(url);
     this.hints = [{ video_id: videoId, asset_id: assetId, key: file.key, expires: file.expires }, ...this.hints.filter(h => h.video_id !== videoId && h.expires > this.now())].slice(0, 12);
     const data = JSON.stringify({ scope, hints: this.hints });
     const task = this.queue.catch(() => undefined).then(async () => { if (epoch === this.epoch) await this.storage.write(data); });
@@ -49,14 +51,31 @@ export class StarterMedia {
     this.aliases.clear(); // A fresh response replaces prior authorization, including changed assets/quiz-only pages.
     for (const item of items) {
       if (item.kind !== 'entertainment_video') continue;
-      const hint = this.hints.find(h => h.video_id === item.video.video_id && h.asset_id === item.video.playback.asset_id);
+      const hint = this.hints.find(h => h.video_id === item.video.video_id);
+      if (hint && hint.asset_id !== item.video.playback.asset_id) {
+        this.blocked.add(item.video.playback.url);
+        await this.prepareWarm(item.video.video_id, item.video.playback.asset_id, item.video.playback.url);
+        continue;
+      }
       const expiry = item.video.playback.expires_at ? Date.parse(item.video.playback.expires_at) : Infinity;
       if (!hint || hint.expires <= this.now() || expiry <= this.now() || !await this.cache.describeKey(hint.key)) continue;
       if (epoch !== this.epoch || authorization !== this.authorization) return;
+      this.blocked.delete(item.video.playback.url);
       this.aliases.set(item.video.playback.url, { ...hint, expires: Math.min(hint.expires, expiry) });
     }
     while (this.aliases.size > 80) this.aliases.delete(this.aliases.keys().next().value!);
   }
+  async prepareWarm(videoId: string, assetId: string, url: string) {
+    const epoch = this.epoch;
+    if (!this.scope) return false;
+    const hint = this.hints.find(h => h.video_id === videoId);
+    if (!hint || hint.asset_id === assetId) return true;
+    this.blocked.add(url);
+    try { await this.cache.discardKey(hint.key); }
+    catch { return false; } // Do not relabel old bytes as a different asset after failed cleanup.
+    return epoch === this.epoch;
+  }
+  allowsDirect(url: string) { return !this.blocked.has(url); }
   keyFor(url: string) { const hint = this.aliases.get(url); return hint && hint.expires > this.now() ? hint.key : undefined; }
   forget(url: string) { this.aliases.delete(url); }
 }
