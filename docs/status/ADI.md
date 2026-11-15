@@ -1511,3 +1511,43 @@ callbacks. The always-muted warmer also pauses unexpected native play callbacks.
 A regression uses a fake rate setter that actually starts playback and checks
 hold, release, pause, slot promotion, late callbacks, mute and disposal. This
 fix is included before the v10 build; physical double-audio retest remains pending.
+
+## Version 11 stabilization after physical swipe feedback — November 14, 2026
+
+The user confirmed version 10's single-audio 2× hold and haptic, then reported
+severe audio glitches and preloads failing after one or two swipes. Installed
+Expo iOS source confirms that unchanged mute assignments still enqueue audio
+session work, and `replaceAsync` can resolve before its main-queue source apply.
+The prior active/standby role keys also recreated the native video surface when
+promoting a prepared player.
+
+The controller now records requested play/pause/mute/rate state and sends only
+semantic changes. Standby preparation and repeated gates do not replay or mute
+the active player. An Expo adapter waits for the matching applied source and
+native `readyToPlay` status, guards native mute/rate writes, and releases pending
+listeners on disposal. The two native video surfaces retain their physical slot
+and source-generation identity across promotion. A decoded standby frame is
+reused only for that same generation; changed sources and retries invalidate it.
+
+The rotating third player is removed. Six upcoming MP4s are instead downloaded
+serially through Expo FileSystem only after current/next media has buffered
+headroom. The owner/API-scoped file cache admits completed bounded files (20 MiB
+per clip, 128 MiB total), respects expiry, cancels stale/background work, and
+never changes a source mid-clip. Selected and standby files have explicit
+lifetime leases, so eviction cannot remove files a player still uses. Late
+releases are bound to the exact source object and owner epoch. A failed local
+file gets one direct-network fallback. Remote playback bypasses Expo's custom
+range cache. Metadata still fills fifteen cards without crossing a quiz gate.
+
+The rail moves down modestly from22% to17% of feed height, with solid white
+heart/comment/share/bookmark icons and the existing Save action. The unified
+share action now opens the native share sheet, matching the standalone feed.
+
+Validation: Node 24 TypeScript passes and **96 mobile tests pass**. New regressions
+cover deferred native readiness, zero extra active-player commands after100
+repeated gates and standby completion, stable decoded-frame promotion, stale
+frame rejection, local-file fallback, current/pending lease cleanup on disposal,
+late async source resolution, and cache cancellation/ownership/size/eviction.
+Tests use synthetic native drivers and filesystem adapters; no paid providers.
+Physical post-swipe audio and preload performance require the version 11 device
+build and user retest; these checks are not inferred from unit tests.

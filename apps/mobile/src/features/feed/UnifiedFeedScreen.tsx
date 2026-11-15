@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, AppState, FlatList, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, AppState, FlatList, Image, Share, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useVideoPlayer, type VideoPlayer } from 'expo-video';
 import * as Crypto from 'expo-crypto';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,8 +20,9 @@ import { FeedCaption, FeedHeader, FeedIconButton, FeedScrim, feedRail } from './
 import { FeedProgress, FeedTouchArea, PlaybackMenu, SpeedIndicator } from './FeedControls';
 import { ReelComments } from './ReelComments';
 import { hasBufferHeadroom } from '../../lib/playback/MediaWarmup';
-import { cachedVideoSource } from '../../lib/playback/MediaCache';
+import { cachedVideoSource, discardCachedVideo, releaseCachedVideo } from '../../lib/playback/MediaCache';
 import { useMediaWarmup } from '../../lib/playback/useMediaWarmup';
+import { createExpoPlayerDriver } from '../../lib/playback/ExpoPlayerDriver';
 import { useFeedInteraction } from './useFeedInteraction';
 import { FeedQuiz, type QuizFeedback } from './FeedQuiz';
 import type { PlaybackPreferences } from '../settings/ProfileScreen';
@@ -61,7 +62,7 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
   const watch = useRef(new VisibleWatchTracker()); const answerKey = useRef(Crypto.randomUUID()); const submittedAnswer = useRef<string | null>(null);
   const setup = (p: VideoPlayer) => { p.loop = true; p.staysActiveInBackground = false; p.audioMixingMode = 'doNotMix'; p.bufferOptions = { preferredForwardBufferDuration: 5, waitsToMinimizeStalling: false }; };
   const first = useVideoPlayer(null, setup); const second = useVideoPlayer(null, setup);
-  const controller = useMemo(() => new BufferedPlayerController([first, second].map(p => ({ play: () => p.play(), pause: () => p.pause(), setRate: (rate: number) => { if (p.playbackRate !== rate) p.playbackRate = rate; }, setMuted: (muted: boolean) => { p.muted = muted; }, seekTo: (seconds: number) => { p.currentTime = seconds; }, replaceAsync: (uri: string | null) => p.replaceAsync(cachedVideoSource(uri)) })) as [PlayerDriver, PlayerDriver], setPlayback), [first, second]);
+  const controller = useMemo(() => new BufferedPlayerController([first, second].map(p => createExpoPlayerDriver(p, cachedVideoSource, discardCachedVideo, releaseCachedVideo)) as [PlayerDriver, PlayerDriver], setPlayback), [first, second]);
   const player = playback.activeSlot === 0 ? first : second;
   const visibility = useRef({ focused, foreground }); visibility.current = { focused, foreground };
   const current = items[index]; itemRef.current = current;
@@ -73,8 +74,8 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
   const previous = items[index - 1]; const previousUrl = previous && previous.kind !== 'quiz' ? previous.video.playback.url : undefined;
   const next = items[index + 1]; const nextUrl = next && next.kind !== 'quiz' ? next.video.playback.url : undefined;
   const immediateReady = !!nextUrl && !!playback.buffers?.some(buffer => buffer.uri === nextUrl && buffer.ready);
-  const warmAssets = items.slice(index + 2, index + 8).flatMap(item => item.kind === 'quiz' ? [] : [item.video.playback]);
   const standby = playback.activeSlot === 0 ? second : first;
+  const warmAssets = items.slice(index + 2, index + 8).flatMap(item => item.kind === 'quiz' ? [] : [item.video.playback]);
   useMediaWarmup(warmAssets, hasBufferHeadroom(player.bufferedPosition, player.currentTime, player.duration) && hasBufferHeadroom(standby.bufferedPosition, 0, standby.duration) && sourceReady && frameRendered && immediateReady && focused && foreground && !transitioning && !playbackBlocked);
   const emit = useCallback((type: string, position = 0, watched = 0, item = itemRef.current) => {
     if (!session.current || !item || item.kind === 'quiz' || terminal.current.has(item.item_id)) return;
@@ -143,8 +144,8 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
   useLayoutEffect(() => () => controller.dispose(), [controller]);
   useLayoutEffect(() => {
     recovery.current.observe(video ? current!.item_id : null, focused && foreground);
-    controller.setGate({ focused: focused && !!video && !needsPlaybackRefresh(video.playback.expires_at) && retryingVideo.current !== current?.item_id, foreground, manuallyPaused: paused || playbackBlocked });
-  }, [controller, focused, foreground, paused, playbackBlocked, current?.item_id, video?.playback.expires_at, !!video]);
+    controller.setGate({ focused: focused && !!video && sourceReady && !needsPlaybackRefresh(video.playback.expires_at) && retryingVideo.current !== current?.item_id, foreground, manuallyPaused: paused || playbackBlocked });
+  }, [controller, focused, foreground, paused, playbackBlocked, current?.item_id, video?.playback.expires_at, !!video, sourceReady]);
   useLayoutEffect(() => { controller.setMuted(preferences.muted); }, [controller, preferences.muted]);
   useEffect(() => {
     const listeners = [first, second].map((p, slot) => p.addListener('playingChange', event => { if (event.isPlaying) controller.enforcePlaybackOwner(slot as 0 | 1); }));
@@ -343,10 +344,10 @@ export function UnifiedFeedScreen({ focused, preferences, setPreferences, clicke
         <View pointerEvents="box-none" style={feedRail}>
           {entertainment && (
             <>
-              <FeedIconButton reducedMotion={preferences.reducedMotion} count={video?.like_count} label={liked ? 'Unclick video' : 'This clicks'} icon={liked ? 'heart' : 'heart-outline'} selected={liked} color={liked ? theme.colors.coral : theme.colors.text} onPress={() => socialAction(onClickVideo)} />
-              <FeedIconButton reducedMotion={preferences.reducedMotion} count={video?.comment_count} label="Comments" icon="chatbubble-ellipses-outline" onPress={() => interaction.openComments()} />
-              <FeedIconButton reducedMotion={preferences.reducedMotion} label={saved ? 'Unsave video' : 'Save video'} icon={saved ? 'bookmark' : 'bookmark-outline'} selected={saved} color={saved ? theme.colors.accent : theme.colors.text} onPress={() => socialAction(onSaveVideo)} />
-              {entertainment.source_url && <FeedIconButton reducedMotion={preferences.reducedMotion} label="Open original post" icon="open-outline" onPress={() => socialAction(clip => { if (clip.source_url) void Linking.openURL(clip.source_url).catch(() => setError('Unable to open this post.')); })} />}
+              <FeedIconButton reducedMotion={preferences.reducedMotion} count={video?.like_count} label={liked ? 'Unclick video' : 'This clicks'} icon="heart" selected={liked} color={liked ? theme.colors.coral : theme.colors.text} onPress={() => socialAction(onClickVideo)} />
+              <FeedIconButton reducedMotion={preferences.reducedMotion} count={video?.comment_count} label="Comments" icon="chatbubble" onPress={() => interaction.openComments()} />
+              <FeedIconButton reducedMotion={preferences.reducedMotion} label={saved ? 'Unsave video' : 'Save video'} icon="bookmark" selected={saved} color={saved ? theme.colors.accent : theme.colors.text} onPress={() => socialAction(onSaveVideo)} />
+              {entertainment.source_url && <FeedIconButton reducedMotion={preferences.reducedMotion} label="Share original video" icon="arrow-redo" onPress={() => socialAction(clip => { if (clip.source_url) void Share.share({ message: clip.source_url }).catch(() => setError('Unable to open sharing.')); })} />}
             </>
           )}
           {index + 1 < items.length && (
