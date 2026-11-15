@@ -65,7 +65,7 @@ python services/renderer/experiments/demo-library/batch_render.py approve --work
 Approval binds every reviewed frame and exact lesson/pack/renderer hashes. It only
 allows the full video render; it is **not** publication approval. A singleton
 workspace lock prevents a second batch coordinator from doubling concurrency.
-Logs stay under `work/logs`. Final audio is normalized to −16 LUFS/−1 dBTP by an
+Logs stay under `work/logs`. Final audio targets −16 LUFS/−2 dBTP by an
 audio-only encode before the unchanged technical media validation. No new voice
 request is needed for that delivery adjustment.
 

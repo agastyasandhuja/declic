@@ -1813,3 +1813,22 @@ limits. The first completed 3D job previously took 250 seconds; the first 2D job
 162 seconds. These are baselines, not a claimed speedup. Visual renderer source
 f4fed794 and all approved frame inputs remain unchanged. No new narration or
 model call is needed for this resource adjustment.
+
+### 2026-11-14 — complete generic batch and AAC peak headroom
+
+The local two-slot coordinator finished all 24 original demo videos with current
+f4fed794 visual provenance, 24 inspected frame approvals and 24 passing media
+reports. Narration used the prepared ElevenLabs cache; no additional Claude API
+calls or narration regeneration occurred during rendering. Independent technical
+QA and the separately requested bespoke GPU-shop replacement remain separate
+publication gates; this is not a claim of user creative approval or phone playback.
+
+Printing's first delivered AAC waveform measured −16.87 LUFS / −0.47 dBTP and
+correctly failed the existing −0.5 dBTP ceiling despite a −1 dBTP normalization
+target. An audio-only 1 dB attenuation repaired that completed artifact to
+−17.91 LUFS / −1.63 dBTP without rerendering the picture. Future local demo
+normalization now targets −2 dBTP for reconstruction headroom; the final measured
+media gate remains unchanged. A temporary copy of that real completed clip using
+the new target passed at −16.77 LUFS / −0.90 dBTP, and encoded video-stream SHA-256
+matched exactly before/after. The published-candidate clip was not modified by
+this verification. The visual renderer fingerprint remains f4fed794.
