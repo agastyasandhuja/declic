@@ -1551,3 +1551,44 @@ late async source resolution, and cache cancellation/ownership/size/eviction.
 Tests use synthetic native drivers and filesystem adapters; no paid providers.
 Physical post-swipe audio and preload performance require the version 11 device
 build and user retest; these checks are not inferred from unit tests.
+
+## Physical version 11 acceptance and cold-cache correction — November 14, 2026
+
+Release 1.0.0(11), source `57fe85a672b709834a640a3a0f4b331a7c2b711c`,
+built, signed, installed and launched on the connected iPhone. Saved app login
+restored and a live Reel frame, real counts, lower solid-icon rail, Save, Share
+and scrubber were observed. The user then confirmed **“Playback and controls
+work” after the requested 10–15 swipe test**. This supersedes the pending physical
+post-swipe playback check above. It does not establish that six distant files
+were downloaded. The agent did not listen to phone audio or perform those touch
+gestures; that acceptance is the user's report.
+
+The version 11 Hermes bundle SHA256 is
+`97960abfb0a5ddbcc29b357cf28c017d32bab9b342e03b0ec091588f7db5579f`.
+Ignored build/install/launch records and screenshot are retained under
+`.local/iphone-build/main-1ef4b69/` and the signed app is archived under
+`.local/iphone-build/releases/main-57fe85a-v11/`. The physical screenshot is
+`phone-main-57fe85a-v11.png`. Existing Xcode compatibility patch details remain in
+that build's `build-info.json`; no server credentials or media are committed.
+
+A narrowly scoped CoreDevice cache probe found no matching
+`Library/Caches/declic-feed-files-v1` directory. Exact index retrieval returned
+CoreDeviceError 7000; the filtered parent-directory metadata query succeeded
+with zero matches. Installed Expo Video's old cache cleanup lists its cache
+directory without checking whether it exists. On a cold cache that throws,
+causing our owner policy to disable caching before opening the HTTP cache.
+
+The correction removes obsolete Expo Video cache sizing/cleanup from HTTP-cache
+initialization. The HTTP cache already enforces its own 128 MiB budget. Owner
+changes first clear its private files, then delete only the known legacy
+`expo-video-cache/` folder through FileSystem's idempotent deletion. Missing
+legacy directories are normal; actual HTTP cleanup errors still prevent owner
+marker changes and cache enablement. Playback continues through direct network
+fallback if cache preparation fails.
+
+Validation: Node24 TypeScript passes and **98 mobile tests pass**. New regression
+coverage uses a temporary real filesystem directory to reproduce the missing
+legacy folder, permit cold opening, remove previous-owner bytes and preserve
+unrelated cache files. A separate failure test checks owner/logout fail-closed
+behavior. No paid providers were called. A version12 build and exact on-device
+cache-index verification remain pending at this source checkpoint.

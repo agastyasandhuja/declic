@@ -1,3 +1,4 @@
+import { clearMediaCacheFiles } from './MediaCacheCleanup';
 import * as Crypto from 'expo-crypto';
 import * as FS from 'expo-file-system/legacy';
 import { HttpMediaCache, type MediaFileEntry, type MediaFileStore } from './HttpMediaCache';
@@ -44,3 +45,7 @@ const store: MediaFileStore = {
   },
 };
 export const nativeMediaFiles = new HttpMediaCache(store);
+
+export function clearNativeMediaFiles() {
+  return clearMediaCacheFiles(() => nativeMediaFiles.clear(), FS.cacheDirectory, FS.deleteAsync);
+}

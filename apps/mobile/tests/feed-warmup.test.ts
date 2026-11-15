@@ -73,7 +73,7 @@ import { MediaCachePolicy } from '../src/lib/playback/MediaCachePolicy';
 import { BufferedPlayerController } from '../src/lib/playback/BufferedPlayerController';
 test('native disk cache survives same authenticated scope, clears on account/API/logout, fails closed', async () => {
   let owner: string | null = 'api:alice'; let clears = 0; let fail = false;
-  const policy = new MediaCachePolicy({ configure: async bytes => { assert.equal(bytes, 128 * 1024 * 1024); }, readOwner: async () => owner, writeOwner: async value => { owner = value; }, clear: async () => { if (fail) throw new Error('busy'); clears++; } });
+  const policy = new MediaCachePolicy({ readOwner: async () => owner, writeOwner: async value => { owner = value; }, clear: async () => { if (fail) throw new Error('busy'); clears++; } });
   assert.equal(await policy.prepare('api:alice'), true); assert.equal(clears, 0);
   assert.equal(await policy.prepare('api:bob'), true); assert.equal(clears, 1);
   assert.equal(await policy.prepare('other-api:bob'), true); assert.equal(clears, 2);
