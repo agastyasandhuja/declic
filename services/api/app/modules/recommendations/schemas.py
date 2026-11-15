@@ -14,6 +14,11 @@ class SessionRequest(RequestModel):
     refresh_unseen: bool = False
 
 
+class BootstrapRequest(RequestModel):
+    limit: Annotated[int, Field(strict=True, ge=1, le=50)] = 5
+    preferred_video_ids: list[Identifier] = Field(default_factory=list, max_length=6)
+
+
 class GateRequest(RequestModel):
     quiz_instance_id: Identifier
     item_id: Identifier

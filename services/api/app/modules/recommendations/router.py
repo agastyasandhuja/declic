@@ -1,11 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Header, Query, Request
 
 from app.core.dependencies import CurrentUser
 from app.modules.recommendations.models import Identifier
 from app.modules.recommendations.responses import FeedResponse
 from app.modules.recommendations.schemas import (
+    BootstrapRequest,
     EventBatch,
     EventResponse,
     GateRequest,
@@ -21,6 +22,18 @@ router = APIRouter(prefix="/v1/feed", tags=["feed"])
 def sessions(body: SessionRequest, request: Request, user: CurrentUser):
     return request.app.state.feed.start_session(user.user_id, body.resume_session_id,
                                                 refresh_unseen=body.refresh_unseen)
+
+
+@router.post("/bootstrap", response_model=FeedResponse, response_model_exclude_none=False)
+def bootstrap(
+    body: BootstrapRequest,
+    request: Request,
+    user: CurrentUser,
+    idempotency_key: Annotated[str, Header(min_length=1, max_length=128)],
+):
+    return request.app.state.feed.bootstrap(
+        user.user_id, body.limit, body.preferred_video_ids, idempotency_key
+    )
 
 
 @router.get("", response_model=FeedResponse, response_model_exclude_none=False)

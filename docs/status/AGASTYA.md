@@ -1848,3 +1848,16 @@ and media ignore coverage includes WebM, M4V, M4A and AIFF.
 Validation: targeted local-demo schema tests and Ruff passed; tracked media
 audit found no video/audio files. This is a current-tree cleanup, not a rewrite
 of historical commits.
+
+### Cold-start feed bootstrap — November 14, 2026
+
+Added an authenticated one-request startup route returning the existing unified
+feed page. Bounded client cache-ID hints can prefer one already-authorized
+entertainment slot while retaining study scheduling, immediate-repeat exclusion
+and scheduled/active quiz gates. Session/page creation is atomic; retries retain
+occurrence identities, revalidate revoked content, and reject changed bodies or
+obsolete revisions. No private URLs or client-supplied owner IDs are accepted.
+
+Validation: targeted bootstrap/inventory tests passed against fixture SQLite
+and isolated local MongoDB; Ruff passed. No provider/model calls or generated
+media changes. Mobile integration and phone cold-start timing remain pending.
