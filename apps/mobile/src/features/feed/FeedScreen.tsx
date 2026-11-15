@@ -235,6 +235,9 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
     else setPageError('You’re caught up. Fresh clips will appear when you reload.');
   }
   const liked = !!video && clickedIds.includes(video.video_id);
+  // FlatList cells can hold an old closure; read the latest clicks so a second double-tap never un-clicks.
+  const clickedRef = useRef(clickedIds); clickedRef.current = clickedIds;
+  const clickOnce = (clip: EntertainmentVideo) => { if (!clickedRef.current.includes(clip.video_id)) onClickVideo(clip); };
   const saved = !!video && savedIds.includes(video.video_id);
   function onFrame(selection: number) {
     if (selectionRef.current !== selection) return;
@@ -251,7 +254,7 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
       renderItem={({ item, index: cardIndex }) => <View style={{ height, backgroundColor: 'transparent' }}>
         {(cardIndex !== index || !sourceReady || !frameRendered) && item.thumbnail_url && (cardIndex === index || !playback.buffers?.some(buffer => buffer.uri === item.playback.url && buffer.ready)) && <Image source={{ uri: item.thumbnail_url }} resizeMode={fillVideo ? 'cover' : 'contain'} style={StyleSheet.absoluteFill} />}
         {!gesture.hidden && <FeedScrim />}
-        {cardIndex === index && <FeedTouchArea interaction={interaction} paused={paused} error={!!playback.error} onToggle={() => setPaused(value => !value)} />}
+        {cardIndex === index && <FeedTouchArea interaction={interaction} paused={paused} error={!!playback.error} reducedMotion={preferences.reducedMotion} onToggle={() => setPaused(value => !value)} onDoubleTap={() => clickOnce(item)} />}
         {cardIndex === index && (!sourceReady || !frameRendered || (native.status === 'loading' && !native.isPlaying)) && !playback.error && <View pointerEvents="none" style={styles.center}><ActivityIndicator color={theme.colors.accent} size="large" /><Text style={styles.loadingText}>Finding your flow…</Text></View>}
         {cardIndex === index && playback.error && <View style={styles.center}><View style={styles.errorCard}><Ionicons name="cloud-offline-outline" size={30} color={theme.colors.accent} /><Text style={styles.errorTitle}>A small interruption.</Text><Text style={styles.errorText}>{playback.error}</Text><Button title="Retry clip" onPress={() => void retryVideo()} /><Button title="Skip clip" secondary onPress={skip} />{playback.timedOut && <Button title="Reload feed" secondary onPress={onReload} />}</View></View>}
         {!gesture.hidden && <FeedCaption byline={item.creator.display_name ?? item.creator.handle} caption={preferences.captions ? item.caption : undefined}>
@@ -260,10 +263,10 @@ export function FeedScreen({ source, focused, brokenClip, onEvent, onReload, pre
       </View>} /> : <View style={styles.center}><View style={styles.empty}><Ionicons name="play-circle-outline" size={54} color={theme.colors.accent} /><Text style={styles.errorTitle}>{loading ? 'Your feed is warming up.' : 'You’re all caught up.'}</Text><Text style={styles.errorText}>{pageError ?? 'No new clips are available right now. Check again in a little while.'}</Text>{loading ? <ActivityIndicator color={theme.colors.accent} /> : <Button title={nextCursor ? 'Try next page' : 'Reload feed'} onPress={() => void fetchPage(nextCursor, !nextCursor)} />}</View></View>}
     {!gesture.hidden && <FeedHeader top={insets.top + 8} />}
     {video && !gesture.hidden && <View pointerEvents="box-none" style={feedRail}>
-      <FeedIconButton reducedMotion={preferences.reducedMotion} count={video.like_count} label={liked ? 'Unclick video' : 'This clicks'} icon="heart" selected={liked} color={liked ? theme.colors.coral : theme.colors.text} onPress={() => onClickVideo(video)} />
-      <FeedIconButton reducedMotion={preferences.reducedMotion} count={video.comment_count} label="Comments" icon="chatbubble" onPress={() => interaction.openComments()} />
-      <FeedIconButton reducedMotion={preferences.reducedMotion} label={saved ? 'Unsave video' : 'Save video'} icon="bookmark" selected={saved} color={saved ? theme.colors.accent : theme.colors.text} onPress={() => onSaveVideo(video)} />
-      {video.source_url && <FeedIconButton reducedMotion={preferences.reducedMotion} label="Share original video" icon="arrow-redo" onPress={() => { void Share.share({ message: video.source_url! }).catch(() => setPageError('Unable to open sharing. Please retry.')); }} />}
+      <FeedIconButton reducedMotion={preferences.reducedMotion} count={video.like_count} label={liked ? 'Unclick video' : 'This clicks'} icon={liked ? 'flash' : 'flash-outline'} selected={liked} color={liked ? theme.colors.coral : theme.colors.text} onPress={() => onClickVideo(video)} />
+      <FeedIconButton reducedMotion={preferences.reducedMotion} count={video.comment_count} label="Comments" icon="chatbubble-outline" onPress={() => interaction.openComments()} />
+      <FeedIconButton reducedMotion={preferences.reducedMotion} label={saved ? 'Unsave video' : 'Save video'} icon={saved ? 'bookmark' : 'bookmark-outline'} selected={saved} color={saved ? theme.colors.gold : theme.colors.text} onPress={() => onSaveVideo(video)} />
+      {video.source_url && <FeedIconButton reducedMotion={preferences.reducedMotion} label="Share original video" icon="paper-plane-outline" onPress={() => { void Share.share({ message: video.source_url! }).catch(() => setPageError('Unable to open sharing. Please retry.')); }} />}
       {index < videos.length - 1 || nextCursor
         ? <FeedIconButton reducedMotion={preferences.reducedMotion} label={index < videos.length - 1 ? 'Next clip' : 'Load more clips'} icon="chevron-up" testID="next-clip" onPress={skip} />
         : <FeedIconButton reducedMotion={preferences.reducedMotion} label="Reload feed" icon="refresh" onPress={onReload} />}

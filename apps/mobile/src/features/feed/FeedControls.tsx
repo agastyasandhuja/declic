@@ -1,23 +1,70 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, PanResponder, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Easing, Modal, PanResponder, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { TapGesture } from '../../lib/playback/TapGesture';
 import { Button } from '../../components/Button';
 import { theme } from '../../theme';
 import { scrubTarget } from '../../lib/playback/FeedInteraction';
 import type { FeedInteraction } from '../../lib/playback/FeedInteraction';
 
-/** Center 75% opens options; the outer 12.5% on each side temporarily speeds up. */
-export function FeedTouchArea({ interaction, paused, error, onToggle }: { interaction: FeedInteraction; paused: boolean; error: boolean; onToggle(): void }) {
+/** One "click" burst: a bolt that pops and floats up inside an expanding accent ring. */
+function ClickBurst({ x, y, tilt, reducedMotion, onDone }: { x: number; y: number; tilt: number; reducedMotion: boolean; onDone(): void }) {
+  const t = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const run = Animated.timing(t, { toValue: 1, duration: reducedMotion ? 600 : 900, easing: Easing.out(Easing.quad), useNativeDriver: true });
+    run.start(() => onDone()); return () => run.stop();
+  }, []);
+  const opacity = t.interpolate({ inputRange: [0, 0.18, 0.75, 1], outputRange: [0, 1, 1, 0] });
+  const scale = reducedMotion ? 1 : t.interpolate({ inputRange: [0, 0.18, 0.35, 0.75, 1], outputRange: [0.3, 1.25, 0.95, 1, 1.1] });
+  const rise = reducedMotion ? 0 : t.interpolate({ inputRange: [0, 0.35, 0.75, 1], outputRange: [0, 0, -0.2 * BOLT, -0.7 * BOLT] });
+  const ringScale = t.interpolate({ inputRange: [0, 0.66, 1], outputRange: [0.3, 2.4, 2.4] });
+  const ringOpacity = t.interpolate({ inputRange: [0, 0.66, 1], outputRange: [1, 0, 0] });
+  return <View pointerEvents="none" style={[styles.burst, { left: x - BOLT / 2, top: y - BOLT / 2 }]}>
+    {!reducedMotion && <Animated.View style={[styles.ring, { opacity: ringOpacity, transform: [{ scale: ringScale }] }]} />}
+    <Animated.View style={{ opacity, transform: [{ translateY: rise }, { scale }, { rotate: `${tilt}deg` }] }}>
+      <Ionicons name="flash" size={BOLT} color={theme.colors.coral} style={styles.boltGlow} />
+    </Animated.View>
+  </View>;
+}
+const BOLT = 88;
+
+/**
+ * Tap pauses, double-tap "clicks" (likes) the clip, hold speeds up or opens options.
+ * Center 75% opens options on hold; the outer 12.5% on each side temporarily speeds up.
+ */
+export function FeedTouchArea({ interaction, paused, error, onToggle, onDoubleTap, reducedMotion = false }: { interaction: FeedInteraction; paused: boolean; error: boolean; onToggle(): void; onDoubleTap?(): void; reducedMotion?: boolean }) {
   const held = useRef(false);
-  return <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>{(['left', 'center', 'right'] as const).map(zone => <Pressable key={zone}
+  const root = useRef<React.ComponentRef<typeof View>>(null); const origin = useRef({ x: 0, y: 0 });
+  const [bursts, setBursts] = useState<{ id: number; x: number; y: number; tilt: number }[]>([]);
+  const nextId = useRef(0);
+  const handlers = useRef({ onToggle, onDoubleTap }); handlers.current = { onToggle, onDoubleTap };
+  const taps = useRef<TapGesture | null>(null);
+  if (!taps.current) taps.current = new TapGesture(() => handlers.current.onToggle(), (x, y) => {
+    if (!handlers.current.onDoubleTap) return;
+    handlers.current.onDoubleTap();
+    if (Platform.OS !== 'web') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+    const id = ++nextId.current;
+    setBursts(list => [...list.slice(-4), { id, x, y, tilt: Math.round(Math.random() * 30 - 15) }]);
+  });
+  useEffect(() => () => taps.current?.reset(), []);
+  const measure = () => root.current?.measureInWindow((x, y) => { origin.current = { x, y }; });
+  return <View ref={root} onLayout={measure} pointerEvents="box-none" style={StyleSheet.absoluteFill}>{(['left', 'center', 'right'] as const).map(zone => <Pressable key={zone}
     accessibilityRole="button" accessibilityLabel={zone === 'center' ? paused ? 'Play video. Hold for options' : 'Pause video. Hold for options' : 'Hold for double speed'}
-    delayLongPress={350} onPressIn={() => { held.current = false; }}
-    onLongPress={() => { held.current = true; interaction.hold(zone === 'center' ? 'center' : 'edge'); }}
+    accessibilityHint={onDoubleTap ? 'Double-tap the video to click it' : undefined}
+    delayLongPress={350} onPressIn={() => { held.current = false; measure(); }}
+    onLongPress={() => { held.current = true; taps.current?.reset(); interaction.hold(zone === 'center' ? 'center' : 'edge'); }}
     onPressOut={() => interaction.release()}
-    onPress={() => { if (!held.current) onToggle(); }}
+    onPress={event => {
+      if (held.current) return;
+      if (!onDoubleTap) { onToggle(); return; }
+      taps.current?.tap(event.nativeEvent.pageX - origin.current.x, event.nativeEvent.pageY - origin.current.y, Date.now());
+    }}
     style={[styles.touch, zone === 'center' ? { left: '12.5%', width: '75%' } : { [zone]: 0, width: '12.5%' }]}>
       {zone === 'center' && paused && !error && <View style={styles.pause}><Ionicons name="play" size={38} color="white" /></View>}
-    </Pressable>)}</View>;
+    </Pressable>)}
+    {bursts.map(burst => <ClickBurst key={burst.id} {...burst} reducedMotion={reducedMotion} onDone={() => setBursts(list => list.filter(item => item.id !== burst.id))} />)}
+  </View>;
 }
 
 export function FeedSheet({ title, open, onClose, children, compact = false }: React.PropsWithChildren<{ title: string; open: boolean; onClose(): void; compact?: boolean }>) {
@@ -84,6 +131,9 @@ export function FeedProgress({ position, duration, disabled, onBegin, onSeek, on
 const styles = StyleSheet.create({
   touch: { position: 'absolute', top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   pause: { height: 68, width: 68, borderRadius: 34, backgroundColor: '#09090B70', alignItems: 'center', justifyContent: 'center' },
+  burst: { position: 'absolute', width: BOLT, height: BOLT, alignItems: 'center', justifyContent: 'center' },
+  ring: { position: 'absolute', width: 64, height: 64, borderRadius: 32, borderWidth: 3, borderColor: theme.colors.accent },
+  boltGlow: { textShadowColor: '#FF6B6B8C', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 18 },
   modal: { flex: 1, backgroundColor: '#00000066', justifyContent: 'flex-end' }, sheet: { backgroundColor: theme.colors.surface, borderTopLeftRadius: 26, borderTopRightRadius: 26, maxHeight: '75%', padding: 20, paddingBottom: 38 },
   handle: { width: 38, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF55', alignSelf: 'center', marginBottom: 12 },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }, heading: { fontFamily: theme.fonts.bold, fontSize: 18, color: theme.colors.text }, close: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }, options: { gap: 12 },
